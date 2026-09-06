@@ -23,6 +23,7 @@ internal static class RolesEndpoints
             Id = r => r.Id,
             Include = q => q.Include(r => r.RolePermissions).ThenInclude(rp => rp.Permission),
             ToDto = ToDto,
+            Search = (query, term) => query.Where(r => r.Name.ToLower().Contains(term.ToLower())),
             Create = request => new Role
             {
                 Name = request.Name,

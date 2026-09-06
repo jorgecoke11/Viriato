@@ -1,1 +1,57 @@
 @import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* A calm, app-like feel: anything interactive eases into its hover/focus/active state instead of
+   snapping. Scoped to real interactive elements (never `*`, which thrashes unrelated layout
+   changes) and to the .cursor-pointer rows/cards the app already uses to mark "this is clickable".
+   Skipped entirely when the OS asks for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  .cursor-pointer {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Thin, unobtrusive scrollbars instead of the chunky OS default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+/* Mount/unmount animation (modals, menus, accordions, page transitions, toasts) now lives in the
+   Framer Motion-driven system under src/lib/motion/ — see tokens.ts and variants.ts — since plain
+   CSS keyframes can't play on the way out when React unmounts a node. MotionConfig in main.tsx
+   wires prefers-reduced-motion into that system the same way the old @media block did here. */

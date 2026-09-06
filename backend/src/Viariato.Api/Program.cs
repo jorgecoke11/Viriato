@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -7,6 +9,14 @@ using Scalar.AspNetCore;
 using Viariato.Api;
 using Viariato.Api.RateLimiting;
 using Viariato.Infrastructure;
+using Viariato.Modules.Markets;
+using Viariato.Modules.Markets.Endpoints;
+using Viariato.Modules.Casos;
+using Viariato.Modules.Casos.Endpoints;
+using Viariato.Modules.Flujos;
+using Viariato.Modules.Flujos.Endpoints;
+using Viariato.Modules.Ops;
+using Viariato.Modules.Ops.Endpoints;
 using Viariato.Modules.Users;
 using Viariato.Modules.Users.Endpoints;
 using Viariato.Shared.Authorization;
@@ -20,7 +30,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddUsersModule(builder.Configuration);
+builder.Services.AddOpsModule(builder.Configuration);
+builder.Services.AddMarketsModule(builder.Configuration);
+builder.Services.AddFlujosModule(builder.Configuration);
+builder.Services.AddCasosModule(builder.Configuration);
 builder.Services.AddOpenApi();
+
+// Markets exposes enums (MarketSignal, CriterionResult) straight through its DTOs — serialize them
+// as their names, not raw ints, so the frontend doesn't need a numeric lookup table.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
@@ -32,6 +51,14 @@ builder.Services.AddOptions<JwtOptions>()
 
 builder.Services.AddOptions<AuthOptions>()
     .Bind(builder.Configuration.GetSection(AuthOptions.SectionName))
+    .ValidateOnStart();
+
+builder.Services.AddOptions<MarketsOptions>()
+    .Bind(builder.Configuration.GetSection(MarketsOptions.SectionName))
+    .ValidateOnStart();
+
+builder.Services.AddOptions<DocumentStorageOptions>()
+    .Bind(builder.Configuration.GetSection(DocumentStorageOptions.SectionName))
     .ValidateOnStart();
 
 builder.Services
@@ -98,7 +125,21 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
         : Results.Problem("Database unavailable.", statusCode: StatusCodes.Status503ServiceUnavailable);
 });
 
+// Version + commit are baked into the assembly at publish time (-p:Version / -p:SourceRevisionId
+// in the Dockerfile), so this just reads back what was compiled in — no config, no file I/O.
+// Public and unauthenticated: it's harmless build info, and the frontend shows it pre-login too.
+var informationalVersion = Assembly.GetExecutingAssembly()
+    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+var versionParts = (informationalVersion ?? "0.0.0-dev").Split('+', 2);
+var versionResponse = new { version = versionParts[0], commit = versionParts.Length > 1 ? versionParts[1] : null };
+
+app.MapGet("/api/v1/version", () => Results.Ok(versionResponse));
+
 app.MapUsersEndpoints();
+app.MapOpsEndpoints();
+app.MapMarketsEndpoints();
+app.MapFlujosEndpoints();
+app.MapCasosEndpoints();
 
 app.Run();
 

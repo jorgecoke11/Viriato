@@ -1,25 +1,41 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { ApiError } from '../../../lib/apiClient'
+import { overlayVariants, panelVariants } from '../../../lib/motion/variants'
 import { useToast } from '../../../lib/toast/useToast'
 import * as adminApi from '../api'
 import type { RoleDto } from '../api'
 
-export function RolePermissionsModal({ role, onClose }: { role: RoleDto; onClose: () => void }) {
+export function RolePermissionsModal({ role, onClose }: { role: RoleDto | null; onClose: () => void }) {
+  const open = role !== null
   const queryClient = useQueryClient()
   const { showToast } = useToast()
-  const [selected, setSelected] = useState<Set<string>>(new Set(role.permissions))
+
+  // The modal now stays mounted at all times (needed so it can animate its own exit), so the role
+  // it displays has to be frozen here — the caller nulls its `role` state the instant it closes.
+  const [activeRole, setActiveRole] = useState(role)
+  const [selected, setSelected] = useState<Set<string>>(new Set(role?.permissions ?? []))
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (role) {
+      setActiveRole(role)
+      setSelected(new Set(role.permissions))
+      setError(null)
+    }
+  }, [role])
 
   const permissionsQuery = useQuery({
     queryKey: ['admin-permissions'],
-    queryFn: () => adminApi.listPermissions(''),
+    queryFn: () => adminApi.listPermissions(),
+    enabled: open,
   })
 
   const saveMutation = useMutation({
-    mutationFn: (permissionIds: string[]) => adminApi.updateRolePermissions(role.id, permissionIds),
+    mutationFn: (permissionIds: string[]) => adminApi.updateRolePermissions(activeRole!.id, permissionIds),
     onSuccess: () => {
       // Two different screens cache the roles list under different keys: the Roles admin
       // page's generic CrudPage, and the role dropdown on the Users page. Refresh both.
@@ -51,31 +67,44 @@ export function RolePermissionsModal({ role, onClose }: { role: RoleDto; onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <Card className="w-full max-w-sm">
-        <h2 className="mb-4 text-lg font-medium text-gray-900">Permisos de «{role.name}»</h2>
-        <div className="flex flex-col gap-2">
-          {permissionsQuery.data?.items.map((permission) => (
-            <label key={permission.id} className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={selected.has(permission.name)}
-                onChange={() => toggle(permission.name)}
-              />
-              {permission.name}
-            </label>
-          ))}
-        </div>
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="button" disabled={saveMutation.isPending} onClick={handleSave}>
-            {saveMutation.isPending ? 'Guardando…' : 'Guardar'}
-          </Button>
-        </div>
-      </Card>
-    </div>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+          variants={overlayVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+        >
+          <motion.div variants={panelVariants} initial="initial" animate="animate" exit="exit">
+            <Card className="w-full max-w-sm">
+              <h2 className="mb-4 text-lg font-medium text-gray-900">Permisos de «{activeRole?.name}»</h2>
+              <div className="flex flex-col gap-2">
+                {permissionsQuery.data?.items.map((permission) => (
+                  <label key={permission.id} className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="accent-indigo-600"
+                      checked={selected.has(permission.name)}
+                      onChange={() => toggle(permission.name)}
+                    />
+                    {permission.name}
+                  </label>
+                ))}
+              </div>
+              {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+              <div className="mt-4 flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={onClose}>
+                  Cancelar
+                </Button>
+                <Button type="button" disabled={saveMutation.isPending} onClick={handleSave}>
+                  {saveMutation.isPending ? 'Guardando…' : 'Guardar'}
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

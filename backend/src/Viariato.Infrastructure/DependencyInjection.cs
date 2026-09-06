@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Viariato.Infrastructure.BackgroundQueue;
+using Viariato.Infrastructure.Trabajos;
 
 namespace Viariato.Infrastructure;
 
@@ -18,6 +20,10 @@ public static class DependencyInjection
 
             options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention();
         });
+
+        services.AddScoped<ITrabajoTracker, TrabajoTracker>();
+        services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+        services.AddHostedService<QueuedHostedService>();
 
         return services;
     }

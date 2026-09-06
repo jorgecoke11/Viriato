@@ -62,7 +62,7 @@ export function LoginPage() {
         </form>
         <p className="mt-4 text-sm text-gray-500">
           ¿No tienes cuenta?{' '}
-          <Link to="/registro" className="font-medium text-gray-900 hover:underline">
+          <Link to="/registro" className="font-medium text-indigo-600 hover:underline">
             Regístrate
           </Link>
         </p>

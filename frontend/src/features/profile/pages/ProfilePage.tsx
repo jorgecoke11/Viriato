@@ -13,7 +13,7 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Mi perfil</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Mi perfil</h1>
       {user && <ProfileForm key={user.id} initial={user} onSaved={updateUser} />}
       <PasswordForm />
     </div>

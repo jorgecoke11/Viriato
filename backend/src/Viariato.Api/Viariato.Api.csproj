@@ -4,6 +4,10 @@
     <ProjectReference Include="..\Viariato.Shared\Viariato.Shared.csproj" />
     <ProjectReference Include="..\Viariato.Infrastructure\Viariato.Infrastructure.csproj" />
     <ProjectReference Include="..\Viariato.Modules.Users\Viariato.Modules.Users.csproj" />
+    <ProjectReference Include="..\Viariato.Modules.Markets\Viariato.Modules.Markets.csproj" />
+    <ProjectReference Include="..\Viariato.Modules.Ops\Viariato.Modules.Ops.csproj" />
+    <ProjectReference Include="..\Viariato.Modules.Flujos\Viariato.Modules.Flujos.csproj" />
+    <ProjectReference Include="..\Viariato.Modules.Casos\Viariato.Modules.Casos.csproj" />
   </ItemGroup>
 
   <ItemGroup>

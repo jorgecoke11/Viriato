@@ -33,11 +33,14 @@ const columns: CrudColumn<RoleDto>[] = [
   },
 ]
 
+const roleFields: CrudFormConfig<RoleDto, RoleFormValues, adminApi.CreateRoleInput, adminApi.UpdateRoleInput>['createFields'] = [
+  { name: 'name', label: 'Nombre', required: true },
+  { name: 'description', label: 'Descripción', type: 'textarea' },
+]
+
 const form: CrudFormConfig<RoleDto, RoleFormValues, adminApi.CreateRoleInput, adminApi.UpdateRoleInput> = {
-  fields: [
-    { name: 'name', label: 'Nombre', required: true },
-    { name: 'description', label: 'Descripción', type: 'textarea' },
-  ],
+  createFields: roleFields,
+  editFields: roleFields,
   emptyValues: { name: '', description: '' },
   toEditValues: (role) => ({ name: role.name, description: role.description ?? '' }),
   toCreateInput: (values) => ({ name: values.name, description: values.description }),
@@ -72,7 +75,7 @@ export function RolesPage() {
           </button>
         )}
       />
-      {permissionsRole && <RolePermissionsModal role={permissionsRole} onClose={() => setPermissionsRole(null)} />}
+      <RolePermissionsModal role={permissionsRole} onClose={() => setPermissionsRole(null)} />
     </>
   )
 }

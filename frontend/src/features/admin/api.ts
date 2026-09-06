@@ -29,12 +29,20 @@ export interface UpdateRoleInput {
   description?: string
 }
 
-const withSearch = (path: string, search: string) => {
-  const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ''
-  return `${path}${query}`
+const buildQuery = (params: Record<string, string | undefined>) => {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value) search.set(key, value)
+  }
+  const query = search.toString()
+  return query ? `?${query}` : ''
 }
 
-export const listUsers = (search: string) => apiFetch<PagedResult<UserDto>>(withSearch('/users', search))
+// The hand-written /users endpoint reads "search"; the generic Crud kit backing /roles and
+// /permissions reads "searchTerm" — each adapter below translates the CrudPage's neutral
+// `filters.search` into whatever query param its own backend endpoint actually expects.
+export const listUsers = (filters: Record<string, string> = {}) =>
+  apiFetch<PagedResult<UserDto>>(`/users${buildQuery({ search: filters.search })}`)
 
 export const assignRole = (userId: string, roleId: string) =>
   apiFetch<UserDto>(`/users/${userId}/roles`, {
@@ -45,7 +53,8 @@ export const assignRole = (userId: string, roleId: string) =>
 export const removeRole = (userId: string, roleId: string) =>
   apiFetch<void>(`/users/${userId}/roles/${roleId}`, { method: 'DELETE' })
 
-export const listRoles = (search: string) => apiFetch<PagedResult<RoleDto>>(withSearch('/roles', search))
+export const listRoles = (filters: Record<string, string> = {}) =>
+  apiFetch<PagedResult<RoleDto>>(`/roles${buildQuery({ searchTerm: filters.search })}`)
 
 export const createRole = (input: CreateRoleInput) =>
   apiFetch<RoleDto>('/roles', { method: 'POST', body: JSON.stringify(input) })
@@ -61,5 +70,5 @@ export const updateRolePermissions = (id: string, permissionIds: string[]) =>
     body: JSON.stringify({ permissionIds }),
   })
 
-export const listPermissions = (search: string) =>
-  apiFetch<PagedResult<PermissionDto>>(withSearch('/permissions', search))
+export const listPermissions = (filters: Record<string, string> = {}) =>
+  apiFetch<PagedResult<PermissionDto>>(`/permissions${buildQuery({ searchTerm: filters.search })}`)

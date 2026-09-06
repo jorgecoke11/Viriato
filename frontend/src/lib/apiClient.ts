@@ -71,7 +71,7 @@ function extractErrorMessage(problem: unknown, fallback: string): string {
   return fallback
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function fetchWithRefresh(path: string, options: RequestInit): Promise<Response> {
   let response = await rawFetch(path, options)
 
   if (response.status === 401 && path !== REFRESH_PATH) {
@@ -83,6 +83,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     response = await rawFetch(path, options)
   }
 
+  return response
+}
+
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetchWithRefresh(path, options)
+
   if (!response.ok) {
     const problem = await response.json().catch(() => null)
     throw new ApiError(extractErrorMessage(problem, response.statusText), response.status, problem)
@@ -93,4 +99,18 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   return (await response.json()) as T
+}
+
+// <img>/<video> src can't carry an Authorization header, so authenticated media (documento
+// content, evidencia screenshots/videos) is fetched as a Blob and exposed via an Object URL instead
+// — see useAuthenticatedMediaUrl.
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  const response = await fetchWithRefresh(path, {})
+
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null)
+    throw new ApiError(extractErrorMessage(problem, response.statusText), response.status, problem)
+  }
+
+  return response.blob()
 }

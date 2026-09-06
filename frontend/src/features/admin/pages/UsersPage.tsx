@@ -16,12 +16,12 @@ export function UsersPage() {
 
   const usersQuery = useQuery({
     queryKey: ['admin-users', search],
-    queryFn: () => adminApi.listUsers(search),
+    queryFn: () => adminApi.listUsers({ search }),
   })
 
   const rolesQuery = useQuery({
     queryKey: ['admin-roles'],
-    queryFn: () => adminApi.listRoles(''),
+    queryFn: () => adminApi.listRoles(),
   })
 
   const assignMutation = useMutation({
@@ -50,7 +50,7 @@ export function UsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold text-gray-900">Usuarios</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Usuarios</h1>
 
       <Input
         label="Buscar"
@@ -145,7 +145,7 @@ function RoleAssigner({
   return (
     <div className="flex gap-2">
       <select
-        className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+        className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
         value={selected}
         onChange={(e) => setSelected(e.target.value)}
       >

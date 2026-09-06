@@ -19,6 +19,11 @@ services:
     build:
       context: ./backend
       dockerfile: src/Viariato.Api/Dockerfile
+      args:
+        # Set on the host before building, e.g.:
+        #   APP_VERSION=$(cat VERSION) GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build api
+        APP_VERSION: ${APP_VERSION:-0.0.0-dev}
+        GIT_SHA: ${GIT_SHA:-unknown}
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
       ASPNETCORE_URLS: ${ASPNETCORE_URLS}
@@ -31,6 +36,9 @@ services:
       Cors__AllowedOrigins: ${Cors__AllowedOrigins}
       Bootstrap__AdminEmail: ${Bootstrap__AdminEmail}
       Bootstrap__AdminPassword: ${Bootstrap__AdminPassword}
+      Markets__UserAgent: ${Markets__UserAgent}
+      Markets__SyncRequestDelayMs: ${Markets__SyncRequestDelayMs}
+      Markets__DiscountRatePercent: ${Markets__DiscountRatePercent}
     ports:
       - "8080:8080"
     depends_on:

@@ -1,18 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useState, type FormEvent } from 'react'
+import { overlayVariants, panelVariants } from '../../lib/motion/variants'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { Input } from '../ui/Input'
 import type { CrudField } from './types'
 
-export function CrudFormModal<TValues extends Record<string, string>>({
-  title,
-  fields,
-  initialValues,
-  onSubmit,
-  onClose,
-  submitting,
-  error,
-}: {
+interface CrudFormModalProps<TValues extends Record<string, string | boolean>> {
+  open: boolean
   title: string
   fields: CrudField<TValues>[]
   initialValues: TValues
@@ -20,10 +15,34 @@ export function CrudFormModal<TValues extends Record<string, string>>({
   onClose: () => void
   submitting: boolean
   error: string | null
-}) {
-  const [values, setValues] = useState<TValues>(initialValues)
+}
 
-  function handleChange(name: string, value: string) {
+export function CrudFormModal<TValues extends Record<string, string | boolean>>({
+  open,
+  title,
+  fields,
+  initialValues,
+  onSubmit,
+  onClose,
+  submitting,
+  error,
+}: CrudFormModalProps<TValues>) {
+  const [values, setValues] = useState<TValues>(initialValues)
+  // Re-seeds the form each time it opens (create vs. edit, or a different row) — the component now
+  // stays mounted permanently so it can animate its own exit, so this replaces the fresh state a
+  // remount used to give us for free.
+  useEffect(() => {
+    if (open) setValues(initialValues)
+  }, [open, initialValues])
+
+  // Frozen so the panel keeps showing the right title/fields/error while it animates out, even
+  // though the caller may already be resetting those props back to their "closed" defaults.
+  const [frozen, setFrozen] = useState({ title, fields, error })
+  useEffect(() => {
+    if (open) setFrozen({ title, fields, error })
+  }, [open, title, fields, error])
+
+  function handleChange(name: string, value: string | boolean) {
     setValues((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -33,43 +52,104 @@ export function CrudFormModal<TValues extends Record<string, string>>({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <Card className="w-full max-w-md">
-        <h2 className="mb-4 text-lg font-medium text-gray-900">{title}</h2>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          {fields.map((field) =>
-            field.type === 'textarea' ? (
-              <div key={field.name} className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">{field.label}</label>
-                <textarea
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-                  value={values[field.name] ?? ''}
-                  required={field.required}
-                  onChange={(e) => handleChange(field.name, e.target.value)}
-                />
-              </div>
-            ) : (
-              <Input
-                key={field.name}
-                label={field.label}
-                name={field.name}
-                value={values[field.name] ?? ''}
-                required={field.required}
-                onChange={(e) => handleChange(field.name, e.target.value)}
-              />
-            ),
-          )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Guardando…' : 'Guardar'}
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </div>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+          variants={overlayVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+        >
+          <motion.div variants={panelVariants} initial="initial" animate="animate" exit="exit">
+            <Card className="w-full max-w-md">
+              <h2 className="mb-4 text-lg font-medium text-gray-900">{frozen.title}</h2>
+              <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+                {frozen.fields.map((field) => {
+                  const value = values[field.name]
+
+                  if (field.type === 'checkbox') {
+                    return (
+                      <label key={field.name} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          className="accent-indigo-600"
+                          checked={Boolean(value)}
+                          disabled={field.disabled}
+                          onChange={(e) => handleChange(field.name, e.target.checked)}
+                        />
+                        {field.label}
+                      </label>
+                    )
+                  }
+
+                  if (field.type === 'select') {
+                    return (
+                      <div key={field.name} className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-gray-700">{field.label}</label>
+                        <select
+                          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                          value={String(value ?? '')}
+                          disabled={field.disabled}
+                          required={field.required}
+                          onChange={(e) => handleChange(field.name, e.target.value)}
+                        >
+                          {field.options?.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        {field.helpText && <p className="text-xs text-gray-500">{field.helpText}</p>}
+                      </div>
+                    )
+                  }
+
+                  if (field.type === 'textarea') {
+                    return (
+                      <div key={field.name} className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-gray-700">{field.label}</label>
+                        <textarea
+                          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                          value={String(value ?? '')}
+                          required={field.required}
+                          disabled={field.disabled}
+                          onChange={(e) => handleChange(field.name, e.target.value)}
+                        />
+                        {field.helpText && <p className="text-xs text-gray-500">{field.helpText}</p>}
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={field.name} className="flex flex-col gap-1">
+                      <Input
+                        label={field.label}
+                        name={field.name}
+                        type={field.type === 'number' ? 'number' : 'text'}
+                        value={String(value ?? '')}
+                        required={field.required}
+                        disabled={field.disabled}
+                        onChange={(e) => handleChange(field.name, e.target.value)}
+                      />
+                      {field.helpText && <p className="text-xs text-gray-500">{field.helpText}</p>}
+                    </div>
+                  )
+                })}
+                {frozen.error && <p className="text-sm text-red-600">{frozen.error}</p>}
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" onClick={onClose}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? 'Guardando…' : 'Guardar'}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
