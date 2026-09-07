@@ -23,6 +23,9 @@ internal static class AsignacionesEndpoints
         endpoints.MapGet("/api/v1/flujos/asignados", GetMisFlujosAsignadosAsync)
             .RequireAuthorization(Permissions.CasosRead);
 
+        endpoints.MapGet("/api/v1/flujos/asignados/{userId:guid}", GetFlujosAsignadosDeUsuarioAsync)
+            .RequireAuthorization(Permissions.FlujosManage);
+
         var manage = endpoints.MapGroup("/api/v1/flujos/{flujoId:guid}/asignaciones").RequireAuthorization(Permissions.FlujosManage);
         manage.MapGet("/", ListAsignacionesAsync);
         manage.MapPost("/", AsignarAsync);
@@ -33,6 +36,18 @@ internal static class AsignacionesEndpoints
     {
         var userId = http.User.GetUserId();
 
+        var flujos = await db.Set<AsignacionFlujo>().AsNoTracking()
+            .Where(a => a.UserId == userId)
+            .Join(db.Set<Flujo>().AsNoTracking(), a => a.FlujoId, f => f.Id, (a, f) => f)
+            .Include(f => f.VersionActiva)
+            .OrderBy(f => f.Nombre)
+            .ToListAsync(ct);
+
+        return Results.Ok(flujos.Select(f => f.ToDto()).ToList());
+    }
+
+    private static async Task<IResult> GetFlujosAsignadosDeUsuarioAsync(Guid userId, AppDbContext db, CancellationToken ct)
+    {
         var flujos = await db.Set<AsignacionFlujo>().AsNoTracking()
             .Where(a => a.UserId == userId)
             .Join(db.Set<Flujo>().AsNoTracking(), a => a.FlujoId, f => f.Id, (a, f) => f)

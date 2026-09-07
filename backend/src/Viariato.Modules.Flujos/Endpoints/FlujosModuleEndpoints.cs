@@ -12,6 +12,7 @@ public static class FlujosModuleEndpoints
         endpoints.MapFlujoTiposCasoEndpoints();
         endpoints.MapAgentesEndpoints();
         endpoints.MapAsignacionesEndpoints();
+        endpoints.MapStorageConfigsEndpoints();
 
         return endpoints;
     }

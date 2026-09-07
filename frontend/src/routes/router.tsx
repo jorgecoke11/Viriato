@@ -10,6 +10,7 @@ import { DashboardPage } from '../features/casos/pages/DashboardPage'
 import { NuevoCasoPage } from '../features/casos/pages/NuevoCasoPage'
 import { FlujoDetailPage } from '../features/flujos/pages/FlujoDetailPage'
 import { FlujosListPage } from '../features/flujos/pages/FlujosListPage'
+import { StorageConfigsPage } from '../features/flujos/pages/StorageConfigsPage'
 import { CompaniesPage } from '../features/markets/pages/CompaniesPage'
 import { CompanyDetailPage } from '../features/markets/pages/CompanyDetailPage'
 import { TrabajoDetailPage } from '../features/ops/pages/TrabajoDetailPage'
@@ -95,6 +96,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FlujoDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/almacenamiento',
+        element: (
+          <ProtectedRoute>
+            <StorageConfigsPage />
           </ProtectedRoute>
         ),
       },

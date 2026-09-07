@@ -48,7 +48,7 @@ internal static class DocumentosEndpoints
         Guid casoId,
         IFormFile file,
         AppDbContext db,
-        IDocumentStorage storage,
+        IDocumentStorageResolver storageResolver,
         HttpContext http,
         CancellationToken ct)
     {
@@ -62,6 +62,7 @@ internal static class DocumentosEndpoints
         if (file.Length == 0) return ProblemResults.Conflict(http, "El archivo está vacío.");
 
         await using var stream = file.OpenReadStream();
+        await using var storage = await storageResolver.ResolveForFlujoAsync(caso.FlujoId, ct);
         var storageKey = await storage.SaveAsync(stream, file.FileName, ct);
 
         var documento = new Documento
@@ -81,7 +82,8 @@ internal static class DocumentosEndpoints
         return Results.Ok(documento.ToDto());
     }
 
-    private static async Task<IResult> DownloadDocumentoAsync(Guid id, AppDbContext db, IDocumentStorage storage, HttpContext http, CancellationToken ct)
+    private static async Task<IResult> DownloadDocumentoAsync(
+        Guid id, AppDbContext db, IDocumentStorageResolver storageResolver, HttpContext http, CancellationToken ct)
     {
         var documento = await db.Set<Documento>().AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, ct);
         if (documento is null) return ProblemResults.NotFound(http, "Documento no encontrado.");
@@ -92,6 +94,10 @@ internal static class DocumentosEndpoints
             return ProblemResults.NotFound(http, "Documento no encontrado.");
         }
 
+        // Deliberately not disposed here: for the S3 provider the returned stream reads directly off
+        // the storage client's connection, and Results.File only disposes the stream itself once the
+        // response finishes — disposing the client now would cut that read short.
+        var storage = await storageResolver.ResolveForFlujoAsync(caso.FlujoId, ct);
         var stream = await storage.OpenReadAsync(documento.StorageKey, ct);
         return Results.File(stream, documento.ContentType, documento.Nombre);
     }

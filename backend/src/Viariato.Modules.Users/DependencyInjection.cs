@@ -30,6 +30,8 @@ public static class DependencyInjection
         services.AddSingleton<LoginRequestValidator>();
         services.AddSingleton<UpdateProfileRequestValidator>();
         services.AddSingleton<ChangePasswordRequestValidator>();
+        services.AddSingleton<CreateUserRequestValidator>();
+        services.AddSingleton<UpdateUserRequestValidator>();
         services.AddSingleton<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
 
         return services;

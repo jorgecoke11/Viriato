@@ -1,10 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../components/ui/Button'
-import { Card } from '../../../components/ui/Card'
+import { Modal } from '../../../components/ui/Modal'
 import { ApiError } from '../../../lib/apiClient'
-import { overlayVariants, panelVariants } from '../../../lib/motion/variants'
 import { useToast } from '../../../lib/toast/useToast'
 import * as adminApi from '../api'
 import type { RoleDto } from '../api'
@@ -67,44 +65,36 @@ export function RolePermissionsModal({ role, onClose }: { role: RoleDto | null; 
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
-          variants={overlayVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-        >
-          <motion.div variants={panelVariants} initial="initial" animate="animate" exit="exit">
-            <Card className="w-full max-w-sm">
-              <h2 className="mb-4 text-lg font-medium text-gray-900">Permisos de «{activeRole?.name}»</h2>
-              <div className="flex flex-col gap-2">
-                {permissionsQuery.data?.items.map((permission) => (
-                  <label key={permission.id} className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="accent-indigo-600"
-                      checked={selected.has(permission.name)}
-                      onChange={() => toggle(permission.name)}
-                    />
-                    {permission.name}
-                  </label>
-                ))}
-              </div>
-              {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-              <div className="mt-4 flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={onClose}>
-                  Cancelar
-                </Button>
-                <Button type="button" disabled={saveMutation.isPending} onClick={handleSave}>
-                  {saveMutation.isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
-            </Card>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <Modal
+      open={open}
+      title={`Permisos de «${activeRole?.name}»`}
+      onClose={onClose}
+      size="sm"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="button" disabled={saveMutation.isPending} onClick={handleSave}>
+            {saveMutation.isPending ? 'Guardando…' : 'Guardar'}
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        {permissionsQuery.data?.items.map((permission) => (
+          <label key={permission.id} className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="accent-indigo-600"
+              checked={selected.has(permission.name)}
+              onChange={() => toggle(permission.name)}
+            />
+            {permission.name}
+          </label>
+        ))}
+      </div>
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+    </Modal>
   )
 }

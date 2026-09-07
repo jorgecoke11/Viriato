@@ -12,6 +12,7 @@ internal static class UserDtoMapper
             user.BaseCurrency,
             user.TimeZone,
             user.Locale,
+            user.IsActive,
             roles,
             permissions,
             user.CreatedAt);

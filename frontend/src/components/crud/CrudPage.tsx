@@ -28,6 +28,9 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
   filters = { mode: 'general' },
   renderRowExtra,
   headerExtra,
+  deleteConfirm,
+  canEditRow,
+  canDeleteRow,
 }: {
   title: string
   resourceKey: string
@@ -38,6 +41,12 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
   filters?: CrudFilterConfig
   renderRowExtra?: (item: T) => ReactNode
   headerExtra?: ReactNode
+  /** Customizes the delete confirmation dialog — useful when `api.remove` is really a
+   * deactivate/archive action rather than a destructive delete (e.g. Users). */
+  deleteConfirm?: { title?: string; message?: string; confirmLabel?: string; successMessage?: string }
+  /** Hides the edit/delete action for a specific row (e.g. an admin can't edit their own user). */
+  canEditRow?: (item: T) => boolean
+  canDeleteRow?: (item: T) => boolean
 }) {
   const [filterValues, setFilterValues] = useState<Record<string, string>>({})
   const [modalState, setModalState] = useState<ModalState<T, TFormValues>>(null)
@@ -89,7 +98,7 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
     onSuccess: () => {
       setPendingDelete(null)
       invalidate()
-      showToast('success', 'Eliminado correctamente.')
+      showToast('success', deleteConfirm?.successMessage ?? 'Eliminado correctamente.')
     },
     onError: (err) => {
       showToast('error', err instanceof ApiError ? err.message : 'No se pudo eliminar.')
@@ -183,6 +192,8 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
           onEdit={canEdit ? openEdit : undefined}
           onDelete={api.remove ? (item) => setPendingDelete(item) : undefined}
           renderRowExtra={renderRowExtra}
+          canEditRow={canEditRow}
+          canDeleteRow={canDeleteRow}
         />
         {query.isLoading && <p className="p-4 text-sm text-gray-500">Cargando…</p>}
         {query.isError && (
@@ -211,8 +222,9 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
 
       <ConfirmDialog
         open={pendingDelete !== null}
-        title="Eliminar"
-        message="¿Seguro que quieres eliminar este elemento? Esta acción no se puede deshacer."
+        title={deleteConfirm?.title ?? 'Eliminar'}
+        message={deleteConfirm?.message ?? '¿Seguro que quieres eliminar este elemento? Esta acción no se puede deshacer.'}
+        confirmLabel={deleteConfirm?.confirmLabel}
         pending={deleteMutation.isPending}
         onConfirm={() => pendingDelete && deleteMutation.mutate(getId(pendingDelete))}
         onCancel={() => setPendingDelete(null)}

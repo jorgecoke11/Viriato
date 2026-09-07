@@ -1,8 +1,6 @@
-import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { overlayVariants, panelVariants } from '../../lib/motion/variants'
 import { Button } from './Button'
-import { Card } from './Card'
+import { Modal } from './Modal'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -33,31 +31,23 @@ export function ConfirmDialog({
   }, [open, title, message, confirmLabel, pendingLabel, onConfirm, pending])
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
-          variants={overlayVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-        >
-          <motion.div variants={panelVariants} initial="initial" animate="animate" exit="exit">
-            <Card className="w-full max-w-sm">
-              <h2 className="mb-2 text-lg font-medium text-gray-900">{frozen.title}</h2>
-              <p className="text-sm text-gray-600">{frozen.message}</p>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={onCancel}>
-                  Cancelar
-                </Button>
-                <Button type="button" variant="danger" disabled={frozen.pending} onClick={frozen.onConfirm}>
-                  {frozen.pending ? frozen.pendingLabel : frozen.confirmLabel}
-                </Button>
-              </div>
-            </Card>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <Modal
+      open={open}
+      title={frozen.title}
+      onClose={onCancel}
+      size="sm"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button type="button" variant="danger" disabled={frozen.pending} onClick={frozen.onConfirm}>
+            {frozen.pending ? frozen.pendingLabel : frozen.confirmLabel}
+          </Button>
+        </div>
+      }
+    >
+      <p className="text-sm text-gray-600">{frozen.message}</p>
+    </Modal>
   )
 }

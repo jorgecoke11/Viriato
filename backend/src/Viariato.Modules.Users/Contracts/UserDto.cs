@@ -7,6 +7,7 @@ public sealed record UserDto(
     string BaseCurrency,
     string TimeZone,
     string Locale,
+    bool IsActive,
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> Permissions,
     DateTimeOffset CreatedAt);

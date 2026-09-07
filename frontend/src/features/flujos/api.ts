@@ -8,8 +8,54 @@ export interface FlujoDto {
   versionActivaId: string | null
   numeroVersionActiva: number | null
   activo: boolean
+  storageConfigId: string | null
+  storageConfigNombre: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type StorageProviderType = 'Local' | 'S3Compatible'
+
+export interface StorageConfigDto {
+  id: string
+  nombre: string
+  proveedor: StorageProviderType
+  endpoint: string | null
+  region: string | null
+  bucketName: string | null
+  hasCredentials: boolean
+  usePathStyle: boolean
+  useSsl: boolean
+  localPath: string | null
+  activo: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateStorageConfigRequest {
+  nombre: string
+  proveedor: StorageProviderType
+  endpoint?: string | null
+  region?: string | null
+  bucketName?: string | null
+  accessKey?: string | null
+  secretKey?: string | null
+  usePathStyle: boolean
+  useSsl: boolean
+  localPath?: string | null
+}
+
+export interface UpdateStorageConfigRequest {
+  nombre?: string
+  endpoint?: string | null
+  region?: string | null
+  bucketName?: string | null
+  accessKey?: string | null
+  secretKey?: string | null
+  usePathStyle?: boolean
+  useSsl?: boolean
+  localPath?: string | null
+  activo?: boolean
 }
 
 export interface FlujoEstadoDefDto {
@@ -91,6 +137,23 @@ export const updateFlujo = (id: string, request: UpdateFlujoRequest) =>
   apiFetch<FlujoDto>(`/flujos/${id}`, { method: 'PATCH', body: JSON.stringify(request) })
 
 export const deleteFlujo = (id: string) => apiFetch<void>(`/flujos/${id}`, { method: 'DELETE' })
+
+export const updateFlujoAlmacenamiento = (flujoId: string, storageConfigId: string | null) =>
+  apiFetch<FlujoDto>(`/flujos/${flujoId}/almacenamiento`, {
+    method: 'PUT',
+    body: JSON.stringify({ storageConfigId }),
+  })
+
+export const listStorageConfigs = (filters: Record<string, string> = {}) =>
+  apiFetch<PagedResult<StorageConfigDto>>(`/storage-configs${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+
+export const createStorageConfig = (request: CreateStorageConfigRequest) =>
+  apiFetch<StorageConfigDto>('/storage-configs', { method: 'POST', body: JSON.stringify(request) })
+
+export const updateStorageConfig = (id: string, request: UpdateStorageConfigRequest) =>
+  apiFetch<StorageConfigDto>(`/storage-configs/${id}`, { method: 'PATCH', body: JSON.stringify(request) })
+
+export const deleteStorageConfig = (id: string) => apiFetch<void>(`/storage-configs/${id}`, { method: 'DELETE' })
 
 export const listFlujoEstados = (flujoId: string) => apiFetch<FlujoEstadoDefDto[]>(`/flujos/${flujoId}/estados`)
 

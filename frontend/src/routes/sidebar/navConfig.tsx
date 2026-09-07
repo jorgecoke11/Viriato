@@ -1,4 +1,4 @@
-import { Activity, GitBranch, KeyRound, LayoutDashboard, LineChart, List, ListChecks, Settings, ShieldCheck, Users } from 'lucide-react'
+import { Activity, GitBranch, HardDrive, KeyRound, LayoutDashboard, LineChart, List, ListChecks, Settings, ShieldCheck, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 export interface NavLinkNode {
@@ -46,7 +46,10 @@ export const navTree: NavNode[] = [
     id: 'config-procesos',
     label: 'Configuración general de procesos',
     icon: <GitBranch size={18} />,
-    children: [{ type: 'link', to: '/admin/flujos', label: 'Procesos', icon: <GitBranch size={18} />, permission: 'flujos.manage' }],
+    children: [
+      { type: 'link', to: '/admin/flujos', label: 'Procesos', icon: <GitBranch size={18} />, permission: 'flujos.manage' },
+      { type: 'link', to: '/admin/almacenamiento', label: 'Almacenamiento', icon: <HardDrive size={18} />, permission: 'flujos.manage' },
+    ],
   },
   {
     type: 'group',

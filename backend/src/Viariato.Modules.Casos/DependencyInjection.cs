@@ -16,7 +16,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<IModuleModelConfiguration, CasosModuleModelConfiguration>();
 
-        services.AddSingleton<IDocumentStorage, LocalDiskDocumentStorage>();
+        services.AddScoped<IDocumentStorageResolver, DocumentStorageResolver>();
 
         services.AddScoped<IEjecucionOrchestrator, EjecucionOrchestrator>();
         services.AddKeyedScoped<IPasoEjecutor, RpaPasoEjecutor>(TipoPaso.Rpa);

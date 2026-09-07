@@ -18,6 +18,11 @@ public sealed class Flujo
     /// <summary>Soft toggle to hide a Flujo from "start a new Caso" pickers without deleting it.</summary>
     public bool Activo { get; set; } = true;
 
+    /// <summary>Where this Flujo's evidencias/documentos are written. Null until an admin assigns one.</summary>
+    public Guid? StorageConfigId { get; set; }
+
+    public StorageConfig? StorageConfig { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

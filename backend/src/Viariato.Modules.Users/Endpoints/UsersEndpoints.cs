@@ -30,6 +30,10 @@ internal static class UsersEndpoints
         group.MapGet("/", ListUsersAsync).RequireAuthorization(Permissions.UsersRead);
         group.MapGet("/{id:guid}", GetByIdAsync).RequireAuthorization(Permissions.UsersRead);
 
+        group.MapPost("/", CreateUserAsync).RequireAuthorization(Permissions.UsersManage);
+        group.MapPatch("/{id:guid}", UpdateUserAsync).RequireAuthorization(Permissions.UsersManage);
+        group.MapDelete("/{id:guid}", DeactivateUserAsync).RequireAuthorization(Permissions.UsersManage);
+
         group.MapPost("/{id:guid}/roles", AssignRoleAsync).RequireAuthorization(Permissions.UsersManage);
         group.MapDelete("/{id:guid}/roles/{roleId:guid}", RemoveRoleAsync).RequireAuthorization(Permissions.UsersManage);
     }
@@ -160,6 +164,159 @@ internal static class UsersEndpoints
 
         var (roles, permissions) = await tokens.GetRolesAndPermissionsAsync(id, ct);
         return Results.Ok(user.ToDto(roles, permissions));
+    }
+
+    private static async Task<IResult> CreateUserAsync(
+        CreateUserRequest request,
+        CreateUserRequestValidator validator,
+        AppDbContext db,
+        IPasswordHasher<User> hasher,
+        TokenService tokens,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var validation = validator.Validate(request);
+        if (!validation.IsValid)
+        {
+            return ProblemResults.ValidationProblem(validation);
+        }
+
+        var normalized = request.Email.Trim().ToLowerInvariant();
+        var emailTaken = await db.Set<User>().AnyAsync(u => u.EmailNormalized == normalized, ct);
+        if (emailTaken)
+        {
+            return ProblemResults.Conflict(http, "Ya existe un usuario con ese email.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var user = new User
+        {
+            Email = request.Email,
+            EmailNormalized = normalized,
+            DisplayName = request.DisplayName,
+            EmailConfirmed = true,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        user.PasswordHash = hasher.HashPassword(user, request.Password);
+
+        db.Add(user);
+
+        var userRole = await db.Set<Role>().SingleAsync(r => r.Name == SystemRoles.User, ct);
+        db.Add(new UserRole { UserId = user.Id, RoleId = userRole.Id, GrantedAt = now });
+
+        await db.SaveChangesAsync(ct);
+
+        var (roles, permissions) = await tokens.GetRolesAndPermissionsAsync(user.Id, ct);
+        return Results.Ok(user.ToDto(roles, permissions));
+    }
+
+    private static async Task<IResult> UpdateUserAsync(
+        Guid id,
+        UpdateUserRequest request,
+        UpdateUserRequestValidator validator,
+        ClaimsPrincipal principal,
+        AppDbContext db,
+        TokenService tokens,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var validation = validator.Validate(request);
+        if (!validation.IsValid)
+        {
+            return ProblemResults.ValidationProblem(validation);
+        }
+
+        if (id == principal.GetUserId())
+        {
+            return ProblemResults.Forbidden(http, "No puedes editar tu propio usuario desde aquí.");
+        }
+
+        var user = await db.Set<User>().FindAsync([id], ct);
+        if (user is null)
+        {
+            return ProblemResults.NotFound(http, "Usuario no encontrado.");
+        }
+
+        if (request.DisplayName is not null)
+        {
+            user.DisplayName = request.DisplayName;
+        }
+
+        if (request.IsActive is not null && request.IsActive.Value != user.IsActive)
+        {
+            if (!request.IsActive.Value && await IsLastAdminAsync(db, id, ct))
+            {
+                return ProblemResults.Conflict(http, "No se puede desactivar al último usuario con rol Admin.");
+            }
+
+            user.IsActive = request.IsActive.Value;
+            if (!user.IsActive)
+            {
+                await tokens.RevokeAllForUserAsync(id, ct);
+            }
+        }
+
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        var (roles, permissions) = await tokens.GetRolesAndPermissionsAsync(id, ct);
+        return Results.Ok(user.ToDto(roles, permissions));
+    }
+
+    private static async Task<IResult> DeactivateUserAsync(
+        Guid id,
+        ClaimsPrincipal principal,
+        AppDbContext db,
+        TokenService tokens,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        if (id == principal.GetUserId())
+        {
+            return ProblemResults.Forbidden(http, "No puedes desactivar tu propio usuario.");
+        }
+
+        var user = await db.Set<User>().FindAsync([id], ct);
+        if (user is null)
+        {
+            return ProblemResults.NotFound(http, "Usuario no encontrado.");
+        }
+
+        if (!user.IsActive)
+        {
+            return Results.NoContent();
+        }
+
+        if (await IsLastAdminAsync(db, id, ct))
+        {
+            return ProblemResults.Conflict(http, "No se puede desactivar al último usuario con rol Admin.");
+        }
+
+        user.IsActive = false;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await tokens.RevokeAllForUserAsync(id, ct);
+
+        return Results.NoContent();
+    }
+
+    private static async Task<bool> IsLastAdminAsync(AppDbContext db, Guid userId, CancellationToken ct)
+    {
+        var adminRole = await db.Set<Role>().SingleOrDefaultAsync(r => r.Name == SystemRoles.Admin, ct);
+        if (adminRole is null)
+        {
+            return false;
+        }
+
+        var hasAdminRole = await db.Set<UserRole>().AnyAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.Id, ct);
+        if (!hasAdminRole)
+        {
+            return false;
+        }
+
+        var adminCount = await db.Set<UserRole>().CountAsync(ur => ur.RoleId == adminRole.Id, ct);
+        return adminCount <= 1;
     }
 
     private static async Task<IResult> AssignRoleAsync(

@@ -34,7 +34,7 @@ internal static class EvidenciasEndpoints
         [FromForm] string? contenidoJson,
         IFormFile? file,
         AppDbContext db,
-        IDocumentStorage storage,
+        IDocumentStorageResolver storageResolver,
         HttpContext http,
         CancellationToken ct)
     {
@@ -57,6 +57,7 @@ internal static class EvidenciasEndpoints
         if (file is not null && file.Length > 0)
         {
             await using var stream = file.OpenReadStream();
+            await using var storage = await storageResolver.ResolveForFlujoAsync(caso.FlujoId, ct);
             var storageKey = await storage.SaveAsync(stream, file.FileName, ct);
 
             var documento = new Documento

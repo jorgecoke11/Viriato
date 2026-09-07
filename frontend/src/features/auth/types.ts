@@ -5,6 +5,7 @@ export interface UserDto {
   baseCurrency: string
   timeZone: string
   locale: string
+  isActive: boolean
   roles: string[]
   permissions: string[]
   createdAt: string

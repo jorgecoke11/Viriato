@@ -9,7 +9,7 @@ export interface CrudColumn<T> {
   render: (item: T) => ReactNode
 }
 
-export type CrudFieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select'
+export type CrudFieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'password'
 
 export interface CrudFieldOption {
   value: string

@@ -11,6 +11,8 @@ public static class FlujosDtoMapper
         flujo.VersionActivaId,
         flujo.VersionActiva?.NumeroVersion,
         flujo.Activo,
+        flujo.StorageConfigId,
+        flujo.StorageConfig?.Nombre,
         flujo.CreatedAt,
         flujo.UpdatedAt);
 
@@ -51,6 +53,21 @@ public static class FlujosDtoMapper
 
     public static FlujoTipoCasoDefDto ToDto(this FlujoTipoCasoDef tipo) => new(
         tipo.Id, tipo.FlujoId, tipo.Nombre, tipo.Orden, tipo.Activo, tipo.CreatedAt, tipo.UpdatedAt);
+
+    public static StorageConfigDto ToDto(this StorageConfig config) => new(
+        config.Id,
+        config.Nombre,
+        config.Proveedor,
+        config.Endpoint,
+        config.Region,
+        config.BucketName,
+        !string.IsNullOrEmpty(config.AccessKey) && !string.IsNullOrEmpty(config.SecretKey),
+        config.UsePathStyle,
+        config.UseSsl,
+        config.LocalPath,
+        config.Activo,
+        config.CreatedAt,
+        config.UpdatedAt);
 
     public static AgenteDefinicionDto ToDto(this AgenteDefinicion agente) => new(
         agente.Id,

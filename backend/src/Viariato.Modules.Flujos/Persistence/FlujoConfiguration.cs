@@ -24,7 +24,13 @@ public sealed class FlujoConfiguration : IEntityTypeConfiguration<Flujo>
             .HasForeignKey(v => v.FlujoId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(f => f.StorageConfig)
+            .WithMany()
+            .HasForeignKey(f => f.StorageConfigId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(f => f.Nombre);
         builder.HasIndex(f => f.VersionActivaId);
+        builder.HasIndex(f => f.StorageConfigId);
     }
 }

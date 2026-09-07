@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { Pencil, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { fadeVariants } from '../../lib/motion/variants'
 import type { CrudColumn } from './types'
@@ -10,6 +11,8 @@ export function CrudTable<T>({
   onEdit,
   onDelete,
   renderRowExtra,
+  canEditRow,
+  canDeleteRow,
 }: {
   items: T[]
   columns: CrudColumn<T>[]
@@ -17,6 +20,9 @@ export function CrudTable<T>({
   onEdit?: (item: T) => void
   onDelete?: (item: T) => void
   renderRowExtra?: (item: T) => ReactNode
+  /** Hides the edit/delete action for a specific row (e.g. an admin can't edit their own user). */
+  canEditRow?: (item: T) => boolean
+  canDeleteRow?: (item: T) => boolean
 }) {
   const hasActions = Boolean(onEdit || onDelete || renderRowExtra)
 
@@ -56,14 +62,26 @@ export function CrudTable<T>({
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     {renderRowExtra?.(item)}
-                    {onEdit && (
-                      <button type="button" className="text-gray-500 hover:text-gray-900" onClick={() => onEdit(item)}>
-                        Editar
+                    {onEdit && (canEditRow?.(item) ?? true) && (
+                      <button
+                        type="button"
+                        className="text-gray-500 hover:text-gray-900"
+                        onClick={() => onEdit(item)}
+                        aria-label="Editar"
+                        title="Editar"
+                      >
+                        <Pencil size={16} />
                       </button>
                     )}
-                    {onDelete && (
-                      <button type="button" className="text-gray-500 hover:text-red-600" onClick={() => onDelete(item)}>
-                        Eliminar
+                    {onDelete && (canDeleteRow?.(item) ?? true) && (
+                      <button
+                        type="button"
+                        className="text-gray-500 hover:text-red-600"
+                        onClick={() => onDelete(item)}
+                        aria-label="Eliminar"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     )}
                   </div>

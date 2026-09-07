@@ -1,6 +1,16 @@
 import { apiFetch } from '../../lib/apiClient'
 import type { PagedResult } from '../../lib/types'
 import type { UserDto } from '../auth/types'
+import type { FlujoDto } from '../flujos/api'
+
+export type { FlujoDto }
+
+export interface AsignacionFlujoDto {
+  id: string
+  flujoId: string
+  userId: string
+  createdAt: string
+}
 
 export interface RoleDto {
   id: string
@@ -29,6 +39,17 @@ export interface UpdateRoleInput {
   description?: string
 }
 
+export interface CreateUserInput {
+  email: string
+  password: string
+  displayName: string
+}
+
+export interface UpdateUserInput {
+  displayName?: string
+  isActive?: boolean
+}
+
 const buildQuery = (params: Record<string, string | undefined>) => {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
@@ -43,6 +64,23 @@ const buildQuery = (params: Record<string, string | undefined>) => {
 // `filters.search` into whatever query param its own backend endpoint actually expects.
 export const listUsers = (filters: Record<string, string> = {}) =>
   apiFetch<PagedResult<UserDto>>(`/users${buildQuery({ search: filters.search })}`)
+
+export const createUser = (input: CreateUserInput) =>
+  apiFetch<UserDto>('/users', { method: 'POST', body: JSON.stringify(input) })
+
+export const updateUser = (id: string, input: UpdateUserInput) =>
+  apiFetch<UserDto>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+
+export const deactivateUser = (id: string) => apiFetch<void>(`/users/${id}`, { method: 'DELETE' })
+
+export const listFlujosAsignadosDeUsuario = (userId: string) =>
+  apiFetch<FlujoDto[]>(`/flujos/asignados/${userId}`)
+
+export const asignarFlujo = (flujoId: string, userId: string) =>
+  apiFetch<AsignacionFlujoDto>(`/flujos/${flujoId}/asignaciones`, { method: 'POST', body: JSON.stringify({ userId }) })
+
+export const desasignarFlujo = (flujoId: string, userId: string) =>
+  apiFetch<void>(`/flujos/${flujoId}/asignaciones/${userId}`, { method: 'DELETE' })
 
 export const assignRole = (userId: string, roleId: string) =>
   apiFetch<UserDto>(`/users/${userId}/roles`, {

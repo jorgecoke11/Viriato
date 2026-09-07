@@ -24,7 +24,7 @@ internal static class FlujosEndpoints
         endpoints.MapReadOnlyCrud("/api/v1/flujos", new ReadOnlyCrudResource<Flujo, FlujoDto>
         {
             Id = f => f.Id,
-            Include = q => q.Include(f => f.VersionActiva),
+            Include = q => q.Include(f => f.VersionActiva).Include(f => f.StorageConfig),
             ToDto = f => f.ToDto(),
             Search = (query, term) => query.Where(f => f.Nombre.ToLower().Contains(term.ToLower())),
             Authorize = (http, ct) => FlujosAuthorization.RequireClaimAsync(http, Permissions.FlujosRead, ct),
@@ -35,6 +35,7 @@ internal static class FlujosEndpoints
         manage.MapPost("/", CreateFlujoAsync);
         manage.MapPatch("/{id:guid}", UpdateFlujoAsync);
         manage.MapDelete("/{id:guid}", DeleteFlujoAsync);
+        manage.MapPut("/{id:guid}/almacenamiento", UpdateFlujoAlmacenamientoAsync);
     }
 
     private static async Task<IResult> CreateFlujoAsync(
@@ -76,7 +77,7 @@ internal static class FlujosEndpoints
         var validation = validator.Validate(request);
         if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
 
-        var flujo = await db.Set<Flujo>().Include(f => f.VersionActiva).FirstOrDefaultAsync(f => f.Id == id, ct);
+        var flujo = await db.Set<Flujo>().Include(f => f.VersionActiva).Include(f => f.StorageConfig).FirstOrDefaultAsync(f => f.Id == id, ct);
         if (flujo is null) return ProblemResults.NotFound(http, "Flujo no encontrado.");
 
         if (request.Nombre is not null && request.Nombre != flujo.Nombre)
@@ -93,6 +94,34 @@ internal static class FlujosEndpoints
         await db.SaveChangesAsync(ct);
 
         return Results.Ok(flujo.ToDto());
+    }
+
+    private static async Task<IResult> UpdateFlujoAlmacenamientoAsync(
+        Guid id,
+        UpdateFlujoAlmacenamientoRequest request,
+        AppDbContext db,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var flujo = await db.Set<Flujo>().FirstOrDefaultAsync(f => f.Id == id, ct);
+        if (flujo is null) return ProblemResults.NotFound(http, "Flujo no encontrado.");
+
+        if (request.StorageConfigId is not null)
+        {
+            var existe = await db.Set<StorageConfig>().AnyAsync(s => s.Id == request.StorageConfigId, ct);
+            if (!existe) return ProblemResults.NotFound(http, "Almacenamiento no encontrado.");
+        }
+
+        flujo.StorageConfigId = request.StorageConfigId;
+        flujo.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        var actualizado = await db.Set<Flujo>()
+            .Include(f => f.VersionActiva)
+            .Include(f => f.StorageConfig)
+            .FirstAsync(f => f.Id == id, ct);
+
+        return Results.Ok(actualizado.ToDto());
     }
 
     private static async Task<IResult> DeleteFlujoAsync(Guid id, AppDbContext db, HttpContext http, CancellationToken ct)

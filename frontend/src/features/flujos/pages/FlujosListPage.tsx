@@ -14,6 +14,7 @@ interface FlujoFormValues {
 const columns: CrudColumn<FlujoDto>[] = [
   { key: 'nombre', label: 'Nombre', render: (f) => f.nombre },
   { key: 'version', label: 'Versión activa', render: (f) => (f.numeroVersionActiva ? `v${f.numeroVersionActiva}` : 'Sin publicar') },
+  { key: 'almacenamiento', label: 'Almacenamiento', render: (f) => f.storageConfigNombre ?? 'Sin asignar' },
   { key: 'activo', label: 'Activo', render: (f) => (f.activo ? 'Sí' : 'No') },
 ]
 

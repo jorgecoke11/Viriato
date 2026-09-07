@@ -7,6 +7,8 @@ public sealed record FlujoDto(
     Guid? VersionActivaId,
     int? NumeroVersionActiva,
     bool Activo,
+    Guid? StorageConfigId,
+    string? StorageConfigNombre,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
