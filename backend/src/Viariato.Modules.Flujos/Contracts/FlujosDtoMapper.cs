@@ -42,6 +42,7 @@ public static class FlujosDtoMapper
         paso.Nombre,
         paso.TipoPaso.ToString(),
         paso.AgenteDefinicionId,
+        paso.ServicioId,
         paso.ConfiguracionJson);
 
     public static AsignacionFlujoDto ToDto(this AsignacionFlujo asignacion) => new(

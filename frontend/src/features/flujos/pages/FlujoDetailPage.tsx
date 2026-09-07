@@ -11,12 +11,13 @@ import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../api'
 import { FlujoEstadosPanel } from '../FlujoEstadosPanel'
 import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
+import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
 
-type Tab = 'estados' | 'tipos'
+type Tab = 'versiones' | 'estados' | 'tipos'
 
 export function FlujoDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const [tab, setTab] = useState<Tab>('estados')
+  const [tab, setTab] = useState<Tab>('versiones')
   const query = useQuery({ queryKey: ['flujo', id], queryFn: () => flujosApi.getFlujo(id!), enabled: Boolean(id) })
 
   if (!id) return null
@@ -41,6 +42,7 @@ export function FlujoDetailPage() {
       <div>
         <Tabs
           tabs={[
+            { value: 'versiones', label: 'Versiones' },
             { value: 'estados', label: 'Estados' },
             { value: 'tipos', label: 'Tipos de caso' },
           ]}
@@ -49,6 +51,19 @@ export function FlujoDetailPage() {
         />
 
         <AnimatePresence mode="wait">
+          {tab === 'versiones' && (
+            <motion.div
+              key="versiones"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
+              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+            >
+              <div className="mt-4">
+                <FlujoVersionesPanel flujoId={flujo.id} />
+              </div>
+            </motion.div>
+          )}
+
           {tab === 'estados' && (
             <motion.div
               key="estados"

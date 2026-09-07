@@ -25,9 +25,15 @@ public sealed class FlujoPasoDefConfiguration : IEntityTypeConfiguration<FlujoPa
             .HasForeignKey(p => p.AgenteDefinicionId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(p => p.Servicio)
+            .WithMany()
+            .HasForeignKey(p => p.ServicioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(p => new { p.FlujoVersionId, p.Orden }).IsUnique();
         builder.HasIndex(p => p.FlujoVersionId);
         builder.HasIndex(p => p.TipoPaso);
         builder.HasIndex(p => p.AgenteDefinicionId);
+        builder.HasIndex(p => p.ServicioId);
     }
 }

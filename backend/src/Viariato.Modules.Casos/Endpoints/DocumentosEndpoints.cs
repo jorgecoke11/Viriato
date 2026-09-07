@@ -36,12 +36,12 @@ internal static class DocumentosEndpoints
         }
 
         var documentos = await db.Set<Documento>().AsNoTracking()
+            .Include(d => d.Clasificaciones).ThenInclude(c => c.TipoDocumento)
             .Where(d => d.CasoId == casoId)
             .OrderByDescending(d => d.CreatedAt)
-            .Select(d => d.ToDto())
             .ToListAsync(ct);
 
-        return Results.Ok(documentos);
+        return Results.Ok(documentos.Select(d => d.ToDto()).ToList());
     }
 
     private static async Task<IResult> UploadDocumentoAsync(

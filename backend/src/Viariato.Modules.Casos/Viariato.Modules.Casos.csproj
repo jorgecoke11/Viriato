@@ -4,6 +4,8 @@
     <ProjectReference Include="..\Viariato.Shared\Viariato.Shared.csproj" />
     <ProjectReference Include="..\Viariato.Infrastructure\Viariato.Infrastructure.csproj" />
     <ProjectReference Include="..\Viariato.Modules.Flujos\Viariato.Modules.Flujos.csproj" />
+    <ProjectReference Include="..\Viariato.Modules.RpaFleet\Viariato.Modules.RpaFleet.csproj" />
+    <ProjectReference Include="..\Viariato.ApiContracts\Viariato.ApiContracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

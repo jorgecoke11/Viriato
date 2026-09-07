@@ -28,7 +28,16 @@ public static class CasosDtoMapper
 
     public static DocumentoDto ToDto(this Documento documento) => new(
         documento.Id, documento.CasoId, documento.EjecucionPasoId, documento.Nombre, documento.ContentType,
-        documento.TamanoBytes, documento.Hash, documento.CreatedAt);
+        documento.TamanoBytes, documento.Hash, documento.CreatedAt,
+        documento.Clasificaciones.OrderBy(c => c.PaginaDesde).Select(c => c.ToDto()).ToList());
+
+    public static TipoDocumentoDto ToDto(this TipoDocumento tipo) => new(
+        tipo.Id, tipo.Nombre, tipo.Descripcion, tipo.Activo, tipo.CreatedAt, tipo.UpdatedAt);
+
+    public static DocumentoClasificacionDto ToDto(this DocumentoClasificacion clasificacion) => new(
+        clasificacion.Id, clasificacion.DocumentoId, clasificacion.TipoDocumentoId,
+        clasificacion.TipoDocumento?.Nombre ?? string.Empty, clasificacion.PaginaDesde, clasificacion.PaginaHasta,
+        clasificacion.CreatedAt);
 
     public static EvidenciaDto ToDto(this Evidencia evidencia) => new(
         evidencia.Id, evidencia.EjecucionPasoId, evidencia.CasoId, evidencia.Tipo.ToString(), evidencia.Titulo,

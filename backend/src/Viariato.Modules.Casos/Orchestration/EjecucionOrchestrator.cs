@@ -110,35 +110,51 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         }
     }
 
-    public async Task ReintentarPasoAsync(Guid ejecucionPasoId, CancellationToken ct)
+    public async Task ReprocesarPasoAsync(Guid ejecucionPasoId, CancellationToken ct)
     {
-        var pasoFallido = await db.Set<EjecucionPaso>().FirstOrDefaultAsync(p => p.Id == ejecucionPasoId, ct)
+        var pasoOrigen = await db.Set<EjecucionPaso>().FirstOrDefaultAsync(p => p.Id == ejecucionPasoId, ct)
             ?? throw new InvalidOperationException($"EjecucionPaso {ejecucionPasoId} no encontrado.");
 
-        if (pasoFallido.Estado != EjecucionPasoEstado.Fallido)
+        if (pasoOrigen.Estado is not (EjecucionPasoEstado.Completado or EjecucionPasoEstado.Fallido or EjecucionPasoEstado.Cancelado))
         {
-            throw new InvalidOperationException("Solo se puede reintentar un paso fallido.");
+            throw new InvalidOperationException("Solo se puede reprocesar un paso Completado, Fallido o Cancelado.");
         }
 
         var hayIntentoPosterior = await db.Set<EjecucionPaso>().AnyAsync(p =>
-            p.EjecucionId == pasoFallido.EjecucionId
-            && p.FlujoPasoDefId == pasoFallido.FlujoPasoDefId
-            && p.NumeroIntento > pasoFallido.NumeroIntento, ct);
+            p.EjecucionId == pasoOrigen.EjecucionId
+            && p.FlujoPasoDefId == pasoOrigen.FlujoPasoDefId
+            && p.NumeroIntento > pasoOrigen.NumeroIntento, ct);
         if (hayIntentoPosterior)
         {
-            throw new InvalidOperationException("Solo se puede reintentar el último intento de un paso.");
+            throw new InvalidOperationException("Solo se puede reprocesar el último intento de un paso.");
         }
 
-        var ejecucion = await db.Set<Ejecucion>().FirstAsync(e => e.Id == pasoFallido.EjecucionId, ct);
+        var ejecucion = await db.Set<Ejecucion>().FirstAsync(e => e.Id == pasoOrigen.EjecucionId, ct);
         var caso = await db.Set<Caso>().FirstAsync(c => c.Id == ejecucion.CasoId, ct);
-        var pasoDef = await db.Set<FlujoPasoDef>().AsNoTracking().FirstAsync(p => p.Id == pasoFallido.FlujoPasoDefId, ct);
+        var pasoDef = await db.Set<FlujoPasoDef>().AsNoTracking().FirstAsync(p => p.Id == pasoOrigen.FlujoPasoDefId, ct);
 
         ejecucion.Estado = EjecucionEstado.EnProgreso;
+        ejecucion.FinishedAt = null;
         caso.Estado = CasoEstado.EnProgreso;
+        caso.CompletedAt = null;
         caso.UpdatedAt = DateTimeOffset.UtcNow;
-        await RegistrarEventoAsync(caso.Id, ejecucion.Id, CasoEventoAccion.PasoReintentado, pasoFallido.Id, ct);
+        await RegistrarEventoAsync(caso.Id, ejecucion.Id, CasoEventoAccion.PasoReintentado, pasoOrigen.Id, ct);
 
-        await CrearYDespacharPasoAsync(ejecucion, caso, pasoDef, pasoFallido.NumeroIntento + 1, ct);
+        await CrearYDespacharPasoAsync(ejecucion, caso, pasoDef, pasoOrigen.NumeroIntento + 1, ct);
+    }
+
+    public async Task CompletarCasoAsync(Guid ejecucionPasoId, CancellationToken ct)
+    {
+        var paso = await db.Set<EjecucionPaso>().FirstOrDefaultAsync(p => p.Id == ejecucionPasoId, ct)
+            ?? throw new InvalidOperationException($"EjecucionPaso {ejecucionPasoId} no encontrado.");
+        var ejecucion = await db.Set<Ejecucion>().FirstOrDefaultAsync(e => e.Id == paso.EjecucionId, ct)
+            ?? throw new InvalidOperationException($"Ejecucion {paso.EjecucionId} no encontrada.");
+        var caso = await db.Set<Caso>().FirstOrDefaultAsync(c => c.Id == ejecucion.CasoId, ct)
+            ?? throw new InvalidOperationException($"Caso {ejecucion.CasoId} no encontrado.");
+
+        await RegistrarEventoAsync(caso.Id, ejecucion.Id, CasoEventoAccion.PasoCompletado, paso.Id, ct);
+        await AplicarEstadoNegocioSiCorrespondeAsync(caso, paso, ct);
+        await FinalizarAsync(ejecucion, caso, EjecucionEstado.Completada, CasoEstado.Completado, CasoEventoAccion.Completado, ct);
     }
 
     public async Task PausarAsync(Guid casoId, CancellationToken ct)
@@ -207,9 +223,67 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
             var ejecucion = await db.Set<Ejecucion>().FirstAsync(e => e.Id == caso.EjecucionActualId, ct);
             ejecucion.Estado = EjecucionEstado.Cancelada;
             ejecucion.FinishedAt = DateTimeOffset.UtcNow;
+
+            // Orphaned steps a robot could otherwise still claim off the queue after the Caso is
+            // already closed — cancelling the Caso must also stop whatever was still in flight.
+            var pasosEnCurso = await db.Set<EjecucionPaso>().Where(p =>
+                p.EjecucionId == ejecucion.Id
+                && (p.Estado == EjecucionPasoEstado.Pendiente
+                    || p.Estado == EjecucionPasoEstado.EnProgreso
+                    || p.Estado == EjecucionPasoEstado.EsperandoRevisionHumana)).ToListAsync(ct);
+            foreach (var pasoEnCurso in pasosEnCurso)
+            {
+                pasoEnCurso.Estado = EjecucionPasoEstado.Cancelado;
+                pasoEnCurso.FinishedAt = DateTimeOffset.UtcNow;
+            }
         }
 
+        var estadoDescartado = await EnsureEstadoDescartadoAsync(caso.FlujoId, ct);
+        caso.EstadoNegocioActualId = estadoDescartado.Id;
+        db.Add(new CasoEvento
+        {
+            CasoId = caso.Id,
+            EjecucionId = caso.EjecucionActualId,
+            Accion = CasoEventoAccion.EstadoNegocioActualizado,
+            DetalleJson = JsonSerializer.Serialize(new { estadoDescartado.Codigo, estadoDescartado.Display }),
+            OccurredAt = DateTimeOffset.UtcNow,
+        });
+
         await RegistrarEventoAsync(casoId, caso.EjecucionActualId, CasoEventoAccion.Cancelado, null, ct);
+    }
+
+    /// <summary>Every Flujo must have a "Descartado" business estado available for cancelled Casos to
+    /// land on, but admins shouldn't have to remember to create it by hand in every process — so it's
+    /// provisioned lazily, per Flujo, the first time a Caso of that Flujo gets cancelled. Once created,
+    /// an admin is free to rename its Display like any other FlujoEstadoDef.</summary>
+    private async Task<FlujoEstadoDef> EnsureEstadoDescartadoAsync(Guid flujoId, CancellationToken ct)
+    {
+        const string codigoDescartado = "DESCARTADO";
+
+        var estado = await db.Set<FlujoEstadoDef>().FirstOrDefaultAsync(e => e.FlujoId == flujoId && e.Codigo == codigoDescartado, ct);
+        if (estado is not null)
+        {
+            return estado;
+        }
+
+        var maxOrden = await db.Set<FlujoEstadoDef>()
+            .Where(e => e.FlujoId == flujoId)
+            .Select(e => (int?)e.Orden)
+            .MaxAsync(ct) ?? 0;
+
+        estado = new FlujoEstadoDef
+        {
+            FlujoId = flujoId,
+            Codigo = codigoDescartado,
+            Display = "Descartado",
+            Orden = maxOrden + 1,
+            EsFinal = true,
+            Activo = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+        db.Add(estado);
+        return estado;
     }
 
     public async Task ResolverRevisionAsync(Guid ejecucionPasoId, RevisionDecision decision, Guid revisorUserId, string? comentario, CancellationToken ct)

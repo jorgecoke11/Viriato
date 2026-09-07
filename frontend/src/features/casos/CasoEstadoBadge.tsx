@@ -8,6 +8,9 @@ const styles: Record<string, string> = {
   Cancelado: 'bg-gray-200 text-gray-600',
   Pendiente: 'bg-gray-100 text-gray-700',
   Omitido: 'bg-gray-100 text-gray-400',
+  Completada: 'bg-green-100 text-green-700',
+  Fallida: 'bg-red-100 text-red-700',
+  Cancelada: 'bg-gray-200 text-gray-600',
 }
 
 const labels: Record<string, string> = {
@@ -20,6 +23,9 @@ const labels: Record<string, string> = {
   Cancelado: 'Cancelado',
   Pendiente: 'Pendiente',
   Omitido: 'Omitido',
+  Completada: 'Completada',
+  Fallida: 'Fallida',
+  Cancelada: 'Cancelada',
 }
 
 export function CasoEstadoBadge({ estado }: { estado: string }) {

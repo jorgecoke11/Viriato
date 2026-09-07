@@ -11,7 +11,8 @@ public static class Permissions
     public const string CasosRead = "casos.read";
     public const string CasosManage = "casos.manage";
     public const string CasosReview = "casos.review";
+    public const string RpaManage = "rpa.manage";
 
     public static IReadOnlyList<string> All { get; } =
-        [UsersRead, UsersManage, RolesManage, MarketsManage, FlujosRead, FlujosManage, CasosRead, CasosManage, CasosReview];
+        [UsersRead, UsersManage, RolesManage, MarketsManage, FlujosRead, FlujosManage, CasosRead, CasosManage, CasosReview, RpaManage];
 }

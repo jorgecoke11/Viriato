@@ -25,7 +25,11 @@ async function rawFetch(path: string, options: RequestInit): Promise<Response> {
   const token = getAccessToken()
   const headers = new Headers(options.headers)
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  // FormData bodies must NOT get an explicit Content-Type: the browser sets one itself with the
+  // multipart boundary, and overriding it here would send a body the server can't parse as either.
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   return fetch(`${API_BASE}${path}`, {
     ...options,

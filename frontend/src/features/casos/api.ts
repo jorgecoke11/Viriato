@@ -124,6 +124,48 @@ export interface CasoTimelineItemDto {
   contenidoJson: string | null
 }
 
+export interface DocumentoClasificacionDto {
+  id: string
+  documentoId: string
+  tipoDocumentoId: string
+  tipoDocumentoNombre: string
+  paginaDesde: number
+  paginaHasta: number
+  createdAt: string
+}
+
+export interface DocumentoDto {
+  id: string
+  casoId: string
+  ejecucionPasoId: string | null
+  nombre: string
+  contentType: string
+  tamanoBytes: number
+  hash: string | null
+  createdAt: string
+  clasificaciones: DocumentoClasificacionDto[]
+}
+
+export interface TipoDocumentoDto {
+  id: string
+  nombre: string
+  descripcion: string | null
+  activo: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateTipoDocumentoInput {
+  nombre: string
+  descripcion?: string | null
+}
+
+export interface UpdateTipoDocumentoInput {
+  nombre?: string
+  descripcion?: string | null
+  activo?: boolean
+}
+
 export type EvidenciaTipo = 'Screenshot' | 'Video' | 'ArchivoGenerado' | 'DatosExtraidos' | 'Otro'
 
 export interface EvidenciaDto {
@@ -237,11 +279,42 @@ export const getEjecucion = (casoId: string, ejecucionId: string) =>
 
 export const documentoContenidoPath = (documentoId: string) => `/documentos/${documentoId}/contenido`
 
+export const listDocumentos = (casoId: string) => apiFetch<DocumentoDto[]>(`/casos/${casoId}/documentos`)
+
+export const uploadDocumento = (casoId: string, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch<DocumentoDto>(`/casos/${casoId}/documentos`, { method: 'POST', body: formData })
+}
+
+export const listTiposDocumento = (filters: Record<string, string> = {}) =>
+  apiFetch<PagedResult<TipoDocumentoDto>>(`/tipos-documento${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+
+export const createTipoDocumento = (input: CreateTipoDocumentoInput) =>
+  apiFetch<TipoDocumentoDto>('/tipos-documento', { method: 'POST', body: JSON.stringify(input) })
+
+export const updateTipoDocumento = (id: string, input: UpdateTipoDocumentoInput) =>
+  apiFetch<TipoDocumentoDto>(`/tipos-documento/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+
+export const deleteTipoDocumento = (id: string) => apiFetch<void>(`/tipos-documento/${id}`, { method: 'DELETE' })
+
+export const createClasificacion = (documentoId: string, input: { tipoDocumentoId: string; paginaDesde: number; paginaHasta: number }) =>
+  apiFetch<DocumentoClasificacionDto>(`/documentos/${documentoId}/clasificaciones`, { method: 'POST', body: JSON.stringify(input) })
+
+export const updateClasificacion = (
+  documentoId: string,
+  id: string,
+  input: Partial<{ tipoDocumentoId: string; paginaDesde: number; paginaHasta: number }>,
+) => apiFetch<DocumentoClasificacionDto>(`/documentos/${documentoId}/clasificaciones/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+
+export const deleteClasificacion = (documentoId: string, id: string) =>
+  apiFetch<void>(`/documentos/${documentoId}/clasificaciones/${id}`, { method: 'DELETE' })
+
 export const pausarCaso = (id: string) => apiFetch<void>(`/casos/${id}/pausar`, { method: 'POST' })
 
 export const reanudarCaso = (id: string) => apiFetch<void>(`/casos/${id}/reanudar`, { method: 'POST' })
 
 export const cancelarCaso = (id: string) => apiFetch<void>(`/casos/${id}/cancelar`, { method: 'POST' })
 
-export const reintentarPaso = (casoId: string, ejecucionPasoId: string) =>
-  apiFetch<void>(`/casos/${casoId}/pasos/${ejecucionPasoId}/reintentar`, { method: 'POST' })
+export const reprocesarPaso = (casoId: string, ejecucionPasoId: string) =>
+  apiFetch<void>(`/casos/${casoId}/pasos/${ejecucionPasoId}/reprocesar`, { method: 'POST' })

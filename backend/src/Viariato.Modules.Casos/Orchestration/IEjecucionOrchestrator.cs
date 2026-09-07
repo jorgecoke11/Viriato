@@ -17,9 +17,17 @@ public interface IEjecucionOrchestrator
     /// next — advance to the following step, finish the Ejecucion, or park it waiting.</summary>
     Task AvanzarAsync(Guid ejecucionPasoId, CancellationToken ct);
 
-    /// <summary>Retries the latest failed attempt of a step by creating a new attempt row — the
-    /// failed one is never mutated.</summary>
-    Task ReintentarPasoAsync(Guid ejecucionPasoId, CancellationToken ct);
+    /// <summary>Reprocesses the latest attempt of a step — whether it ended Completado, Fallido or
+    /// Cancelado — by creating a new attempt row and redispatching it; the old one is never mutated.
+    /// This also re-opens the owning Ejecucion/Caso back to EnProgreso, even if the Caso had already
+    /// finished.</summary>
+    Task ReprocesarPasoAsync(Guid ejecucionPasoId, CancellationToken ct);
+
+    /// <summary>Closes the Caso right now as Completado, called explicitly by whichever step's worker
+    /// knows it is the true end of the cycle — deliberately skips the normal Orden-position walk
+    /// (<see cref="AvanzarAsync"/> would instead look for the next FlujoPasoDef), so it also finishes a
+    /// Caso whose Flujo still has steps defined after this one.</summary>
+    Task CompletarCasoAsync(Guid ejecucionPasoId, CancellationToken ct);
 
     Task PausarAsync(Guid casoId, CancellationToken ct);
 

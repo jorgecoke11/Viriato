@@ -25,6 +25,10 @@ public sealed class ReplacePasosRequestValidator : AbstractValidator<ReplacePaso
                 .NotNull()
                 .When(p => string.Equals(p.TipoPaso, nameof(TipoPaso.Agente), StringComparison.OrdinalIgnoreCase))
                 .WithMessage("Un paso de tipo Agente requiere AgenteDefinicionId.");
+            paso.RuleFor(p => p.ServicioId)
+                .NotNull()
+                .When(p => string.Equals(p.TipoPaso, nameof(TipoPaso.Rpa), StringComparison.OrdinalIgnoreCase))
+                .WithMessage("Un paso de tipo Rpa requiere ServicioId.");
         });
 
         RuleFor(x => x.Pasos)

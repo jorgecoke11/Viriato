@@ -116,6 +116,60 @@ export interface UpdateFlujoRequest {
   activo?: boolean
 }
 
+export type TipoPaso = 'Rpa' | 'Agente' | 'Api' | 'Interno' | 'Decision' | 'Espera' | 'RevisionHumana'
+
+export type FlujoVersionEstado = 'Borrador' | 'Publicada' | 'Archivada'
+
+export interface FlujoVersionDto {
+  id: string
+  flujoId: string
+  numeroVersion: number
+  estado: FlujoVersionEstado
+  notas: string | null
+  createdAt: string
+  publishedAt: string | null
+}
+
+export interface FlujoPasoDefDto {
+  id: string
+  flujoVersionId: string
+  orden: number
+  nombre: string
+  tipoPaso: TipoPaso
+  agenteDefinicionId: string | null
+  servicioId: string | null
+  configuracionJson: string | null
+}
+
+export interface FlujoVersionDetailDto extends FlujoVersionDto {
+  pasos: FlujoPasoDefDto[]
+}
+
+export interface CreateFlujoVersionRequest {
+  notas?: string | null
+}
+
+export interface FlujoPasoDefInput {
+  orden: number
+  nombre: string
+  tipoPaso: TipoPaso
+  agenteDefinicionId?: string | null
+  servicioId?: string | null
+  configuracionJson?: string | null
+}
+
+export interface ReplacePasosRequest {
+  pasos: FlujoPasoDefInput[]
+}
+
+export interface AgenteDefinicionDto {
+  id: string
+  nombre: string
+  descripcion: string | null
+  modelo: string
+  activo: boolean
+}
+
 const buildQuery = (params: Record<string, string | undefined>) => {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
@@ -182,3 +236,26 @@ export const updateFlujoTipoCaso = (flujoId: string, id: string, request: Update
     method: 'PATCH',
     body: JSON.stringify(request),
   })
+
+export const listFlujoVersiones = (flujoId: string) => apiFetch<FlujoVersionDto[]>(`/flujos/${flujoId}/versiones`)
+
+export const getFlujoVersion = (flujoId: string, versionId: string) =>
+  apiFetch<FlujoVersionDetailDto>(`/flujos/${flujoId}/versiones/${versionId}`)
+
+export const createFlujoVersion = (flujoId: string, request: CreateFlujoVersionRequest) =>
+  apiFetch<FlujoVersionDto>(`/flujos/${flujoId}/versiones`, { method: 'POST', body: JSON.stringify(request) })
+
+export const replacePasos = (flujoId: string, versionId: string, request: ReplacePasosRequest) =>
+  apiFetch<FlujoVersionDetailDto>(`/flujos/${flujoId}/versiones/${versionId}/pasos`, {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  })
+
+export const publicarFlujoVersion = (flujoId: string, versionId: string) =>
+  apiFetch<FlujoVersionDto>(`/flujos/${flujoId}/versiones/${versionId}/publicar`, { method: 'POST' })
+
+export const archivarFlujoVersion = (flujoId: string, versionId: string) =>
+  apiFetch<FlujoVersionDto>(`/flujos/${flujoId}/versiones/${versionId}/archivar`, { method: 'POST' })
+
+export const listAgentes = (filters: Record<string, string> = {}) =>
+  apiFetch<PagedResult<AgenteDefinicionDto>>(`/agentes${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)

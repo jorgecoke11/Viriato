@@ -7,4 +7,5 @@ public sealed record FlujoPasoDefDto(
     string Nombre,
     string TipoPaso,
     Guid? AgenteDefinicionId,
+    Guid? ServicioId,
     string? ConfiguracionJson);

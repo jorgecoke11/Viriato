@@ -11,13 +11,14 @@ import { duration, ease } from '../../lib/motion/tokens'
 import { useToast } from '../../lib/toast/useToast'
 import { useAuth } from '../auth/useAuth'
 import * as casosApi from './api'
+import { CasoDocumentos } from './CasoDocumentos'
 import { CasoEjecuciones } from './CasoEjecuciones'
 import { CasoEstadoBadge } from './CasoEstadoBadge'
 import { CasoTimelineUnificado } from './CasoTimelineUnificado'
 
 const ESTADOS_ACTIVOS = ['Iniciado', 'EnProgreso', 'Pausado', 'EsperandoRevisionHumana']
 
-type Tab = 'timeline' | 'ejecuciones'
+type Tab = 'timeline' | 'ejecuciones' | 'documentos'
 
 function DatosNegocioIcon() {
   return (
@@ -164,6 +165,7 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
           tabs={[
             { value: 'timeline', label: 'Timeline' },
             { value: 'ejecuciones', label: 'Ejecuciones' },
+            { value: 'documentos', label: 'Documentos' },
           ]}
           active={tab}
           onChange={setTab}
@@ -192,6 +194,19 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
             >
               <Card className="mt-4">
                 <CasoEjecuciones casoId={caso.id} ejecucionActualId={caso.ejecucionActual?.id ?? null} />
+              </Card>
+            </motion.div>
+          )}
+
+          {tab === 'documentos' && (
+            <motion.div
+              key="documentos"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
+              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+            >
+              <Card className="mt-4">
+                <CasoDocumentos casoId={caso.id} />
               </Card>
             </motion.div>
           )}

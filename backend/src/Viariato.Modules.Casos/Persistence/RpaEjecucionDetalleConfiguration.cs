@@ -22,5 +22,6 @@ public sealed class RpaEjecucionDetalleConfiguration : IEntityTypeConfiguration<
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(d => d.EjecucionPasoId).IsUnique();
+        builder.HasIndex(d => d.DespliegueId);
     }
 }

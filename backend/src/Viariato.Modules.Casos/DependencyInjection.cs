@@ -1,6 +1,8 @@
+using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Viariato.Infrastructure;
+using Viariato.Modules.Casos.Contracts;
 using Viariato.Modules.Casos.Orchestration;
 using Viariato.Modules.Casos.Orchestration.Ejecutores;
 using Viariato.Modules.Casos.Persistence;
@@ -30,6 +32,10 @@ public static class DependencyInjection
         services.AddSingleton<StartCasoRequestValidator>();
         services.AddSingleton<UpdateCasoDatosRequestValidator>();
         services.AddSingleton<ResolverRevisionRequestValidator>();
+        services.AddSingleton<IValidator<CreateTipoDocumentoRequest>, CreateTipoDocumentoRequestValidator>();
+        services.AddSingleton<IValidator<UpdateTipoDocumentoRequest>, UpdateTipoDocumentoRequestValidator>();
+        services.AddSingleton<CreateDocumentoClasificacionRequestValidator>();
+        services.AddSingleton<UpdateDocumentoClasificacionRequestValidator>();
 
         return services;
     }

@@ -8,6 +8,7 @@
     <ProjectReference Include="..\Viariato.Modules.Ops\Viariato.Modules.Ops.csproj" />
     <ProjectReference Include="..\Viariato.Modules.Flujos\Viariato.Modules.Flujos.csproj" />
     <ProjectReference Include="..\Viariato.Modules.Casos\Viariato.Modules.Casos.csproj" />
+    <ProjectReference Include="..\Viariato.Modules.RpaFleet\Viariato.Modules.RpaFleet.csproj" />
   </ItemGroup>
 
   <ItemGroup>

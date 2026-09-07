@@ -6,6 +6,7 @@ using Viariato.Infrastructure;
 using Viariato.Modules.Flujos.Contracts;
 using Viariato.Modules.Flujos.Domain;
 using Viariato.Modules.Flujos.Validation;
+using Viariato.Modules.RpaFleet.Domain;
 using Viariato.Shared;
 using Viariato.Shared.Authorization;
 using Viariato.Shared.Http;
@@ -123,6 +124,16 @@ internal static class FlujoVersionesEndpoints
             }
         }
 
+        if (request.Pasos.Any(p => p.ServicioId is not null))
+        {
+            var servicioIds = request.Pasos.Where(p => p.ServicioId is not null).Select(p => p.ServicioId!.Value).ToList();
+            var serviciosExistentes = await db.Set<Servicio>().Where(s => servicioIds.Contains(s.Id)).Select(s => s.Id).ToListAsync(ct);
+            if (serviciosExistentes.Count != servicioIds.Distinct().Count())
+            {
+                return ProblemResults.Conflict(http, "Uno o más ServicioId no existen.");
+            }
+        }
+
         db.RemoveRange(version.Pasos);
         version.Pasos.Clear();
 
@@ -137,6 +148,7 @@ internal static class FlujoVersionesEndpoints
             Nombre = input.Nombre,
             TipoPaso = Enum.Parse<TipoPaso>(input.TipoPaso, ignoreCase: true),
             AgenteDefinicionId = input.AgenteDefinicionId,
+            ServicioId = input.ServicioId,
             ConfiguracionJson = input.ConfiguracionJson,
             CreatedAt = DateTimeOffset.UtcNow,
         }).ToList();

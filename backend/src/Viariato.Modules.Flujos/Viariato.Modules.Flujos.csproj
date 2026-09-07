@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Viariato.Shared\Viariato.Shared.csproj" />
     <ProjectReference Include="..\Viariato.Infrastructure\Viariato.Infrastructure.csproj" />
+    <ProjectReference Include="..\Viariato.Modules.RpaFleet\Viariato.Modules.RpaFleet.csproj" />
   </ItemGroup>
 
   <ItemGroup>

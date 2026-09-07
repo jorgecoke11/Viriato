@@ -8,8 +8,11 @@ public static class CasosModuleEndpoints
     {
         endpoints.MapCasosCoreEndpoints();
         endpoints.MapDocumentosEndpoints();
+        endpoints.MapTiposDocumentoEndpoints();
+        endpoints.MapDocumentoClasificacionesEndpoints();
         endpoints.MapEvidenciasEndpoints();
         endpoints.MapRevisionesEndpoints();
+        endpoints.MapRpaWorkerEndpoints();
 
         return endpoints;
     }

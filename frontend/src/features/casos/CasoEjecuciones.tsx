@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { ApiError } from '../../lib/apiClient'
 import { collapseVariants } from '../../lib/motion/variants'
 import { useToast } from '../../lib/toast/useToast'
@@ -9,6 +10,8 @@ import { useAuth } from '../auth/useAuth'
 import * as casosApi from './api'
 import type { EjecucionPasoDto } from './api'
 import { CasoEstadoBadge } from './CasoEstadoBadge'
+
+const ESTADOS_REPROCESABLES = ['Completado', 'Fallido', 'Cancelado']
 
 // One RPA transitioning into a second RPA is two Ejecuciones, not one step within the same Ejecucion —
 // this lists them all; expanding one shows its own step-by-step progress, scoped to that Ejecucion only.
@@ -77,21 +80,23 @@ function EjecucionPasos({ casoId, ejecucionId, soloLectura }: { casoId: string; 
   const { can } = useAuth()
   const { showToast } = useToast()
   const queryClient = useQueryClient()
+  const [pendingReprocesar, setPendingReprocesar] = useState<EjecucionPasoDto | null>(null)
 
   const query = useQuery({
     queryKey: ['caso-ejecucion', casoId, ejecucionId],
     queryFn: () => casosApi.getEjecucion(casoId, ejecucionId),
   })
 
-  const reintentar = useMutation({
-    mutationFn: (ejecucionPasoId: string) => casosApi.reintentarPaso(casoId, ejecucionPasoId),
+  const reprocesar = useMutation({
+    mutationFn: (ejecucionPasoId: string) => casosApi.reprocesarPaso(casoId, ejecucionPasoId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['caso-ejecucion', casoId, ejecucionId] })
       queryClient.invalidateQueries({ queryKey: ['caso-ejecuciones', casoId] })
       queryClient.invalidateQueries({ queryKey: ['caso', casoId] })
-      showToast('success', 'Paso reintentado.')
+      setPendingReprocesar(null)
+      showToast('success', 'Paso reprocesado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo reintentar el paso.'),
+    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo reprocesar el paso.'),
   })
 
   if (query.isLoading) return <p className="text-sm text-gray-500">Cargando pasos…</p>
@@ -102,6 +107,17 @@ function EjecucionPasos({ casoId, ejecucionId, soloLectura }: { casoId: string; 
 
   const esUltimoIntento = (paso: EjecucionPasoDto) =>
     !pasos.some((p) => p.flujoPasoDefId === paso.flujoPasoDefId && p.numeroIntento > paso.numeroIntento)
+
+  function iniciarReprocesar(paso: EjecucionPasoDto) {
+    // Retrying a Fallido step is low-stakes (it just didn't work yet) — but reprocessing one that
+    // already succeeded or was cancelled can trigger real-world side effects a second time (a robot
+    // repeating an action), so those two get an explicit confirmation first.
+    if (paso.estado === 'Fallido') {
+      reprocesar.mutate(paso.id)
+    } else {
+      setPendingReprocesar(paso)
+    }
+  }
 
   return (
     <ul className="flex flex-col gap-2">
@@ -114,14 +130,25 @@ function EjecucionPasos({ casoId, ejecucionId, soloLectura }: { casoId: string; 
           </div>
           <div className="flex items-center gap-3">
             {paso.errorMensaje && <span className="text-xs text-red-600">{paso.errorMensaje}</span>}
-            {!soloLectura && can('casos.manage') && paso.estado === 'Fallido' && esUltimoIntento(paso) && (
-              <Button variant="ghost" disabled={reintentar.isPending} onClick={() => reintentar.mutate(paso.id)}>
-                {reintentar.isPending ? 'Reintentando…' : 'Reintentar'}
+            {!soloLectura && can('casos.manage') && ESTADOS_REPROCESABLES.includes(paso.estado) && esUltimoIntento(paso) && (
+              <Button variant="ghost" disabled={reprocesar.isPending} onClick={() => iniciarReprocesar(paso)}>
+                {reprocesar.isPending ? 'Reprocesando…' : 'Reprocesar'}
               </Button>
             )}
           </div>
         </li>
       ))}
+
+      <ConfirmDialog
+        open={pendingReprocesar !== null}
+        title="Reprocesar paso"
+        message="Este paso ya se dio por resuelto. Reprocesarlo crea un nuevo intento y vuelve a ponerlo en la cola — si lo ejecuta un robot, puede repetir acciones reales. ¿Continuar?"
+        confirmLabel="Reprocesar"
+        pendingLabel="Reprocesando…"
+        pending={reprocesar.isPending}
+        onConfirm={() => pendingReprocesar && reprocesar.mutate(pendingReprocesar.id)}
+        onCancel={() => setPendingReprocesar(null)}
+      />
     </ul>
   )
 }

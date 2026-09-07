@@ -26,4 +26,6 @@ public sealed class Documento
     public Guid? UploadedByUserId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    public ICollection<DocumentoClasificacion> Clasificaciones { get; set; } = new List<DocumentoClasificacion>();
 }

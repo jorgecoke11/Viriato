@@ -26,6 +26,12 @@ public sealed class FlujoPasoDef
 
     public AgenteDefinicion? AgenteDefinicion { get; set; }
 
+    /// <summary>Only meaningful when TipoPaso is Rpa — which registered servicio is responsible for
+    /// this step, and therefore whose queue it lands in.</summary>
+    public Guid? ServicioId { get; set; }
+
+    public RpaFleet.Domain.Servicio? Servicio { get; set; }
+
     public string? ConfiguracionJson { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }

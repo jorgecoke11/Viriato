@@ -8,6 +8,7 @@ import { CasoDetailPage } from '../features/casos/pages/CasoDetailPage'
 import { CasosListPage } from '../features/casos/pages/CasosListPage'
 import { DashboardPage } from '../features/casos/pages/DashboardPage'
 import { NuevoCasoPage } from '../features/casos/pages/NuevoCasoPage'
+import { TiposDocumentoPage } from '../features/casos/pages/TiposDocumentoPage'
 import { FlujoDetailPage } from '../features/flujos/pages/FlujoDetailPage'
 import { FlujosListPage } from '../features/flujos/pages/FlujosListPage'
 import { StorageConfigsPage } from '../features/flujos/pages/StorageConfigsPage'
@@ -16,6 +17,9 @@ import { CompanyDetailPage } from '../features/markets/pages/CompanyDetailPage'
 import { TrabajoDetailPage } from '../features/ops/pages/TrabajoDetailPage'
 import { TrabajosPage } from '../features/ops/pages/TrabajosPage'
 import { ProfilePage } from '../features/profile/pages/ProfilePage'
+import { DespliguesPage } from '../features/rpa/pages/DespliguesPage'
+import { EquiposPage } from '../features/rpa/pages/EquiposPage'
+import { ServiciosPage } from '../features/rpa/pages/ServiciosPage'
 import { AppLayout } from './AppLayout'
 import { HomePage } from './HomePage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -104,6 +108,38 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <StorageConfigsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/tipos-documento',
+        element: (
+          <ProtectedRoute>
+            <TiposDocumentoPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/rpa/equipos',
+        element: (
+          <ProtectedRoute>
+            <EquiposPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/rpa/servicios',
+        element: (
+          <ProtectedRoute>
+            <ServiciosPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/rpa/despliegues',
+        element: (
+          <ProtectedRoute>
+            <DespliguesPage />
           </ProtectedRoute>
         ),
       },

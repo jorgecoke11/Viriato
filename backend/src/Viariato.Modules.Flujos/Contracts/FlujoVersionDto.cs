@@ -26,6 +26,7 @@ public sealed record FlujoPasoDefInput(
     string Nombre,
     string TipoPaso,
     Guid? AgenteDefinicionId,
+    Guid? ServicioId,
     string? ConfiguracionJson);
 
 public sealed record ReplacePasosRequest(IReadOnlyList<FlujoPasoDefInput> Pasos);

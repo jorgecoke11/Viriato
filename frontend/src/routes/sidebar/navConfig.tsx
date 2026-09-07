@@ -1,4 +1,19 @@
-import { Activity, GitBranch, HardDrive, KeyRound, LayoutDashboard, LineChart, List, ListChecks, Settings, ShieldCheck, Users } from 'lucide-react'
+import {
+  Activity,
+  Bot,
+  Cpu,
+  FileText,
+  GitBranch,
+  HardDrive,
+  KeyRound,
+  LayoutDashboard,
+  LineChart,
+  List,
+  ListChecks,
+  Settings,
+  ShieldCheck,
+  Users,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 
 export interface NavLinkNode {
@@ -49,6 +64,18 @@ export const navTree: NavNode[] = [
     children: [
       { type: 'link', to: '/admin/flujos', label: 'Procesos', icon: <GitBranch size={18} />, permission: 'flujos.manage' },
       { type: 'link', to: '/admin/almacenamiento', label: 'Almacenamiento', icon: <HardDrive size={18} />, permission: 'flujos.manage' },
+      { type: 'link', to: '/admin/tipos-documento', label: 'Tipos de documento', icon: <FileText size={18} />, permission: 'casos.manage' },
+    ],
+  },
+  {
+    type: 'group',
+    id: 'rpa',
+    label: 'RPA',
+    icon: <Bot size={18} />,
+    children: [
+      { type: 'link', to: '/admin/rpa/equipos', label: 'Equipos', icon: <Cpu size={18} />, permission: 'rpa.manage' },
+      { type: 'link', to: '/admin/rpa/servicios', label: 'Servicios', icon: <Bot size={18} />, permission: 'rpa.manage' },
+      { type: 'link', to: '/admin/rpa/despliegues', label: 'Despliegues', icon: <GitBranch size={18} />, permission: 'rpa.manage' },
     ],
   },
   {

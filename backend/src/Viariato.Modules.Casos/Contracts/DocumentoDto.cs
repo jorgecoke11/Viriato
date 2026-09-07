@@ -8,4 +8,5 @@ public sealed record DocumentoDto(
     string ContentType,
     long TamanoBytes,
     string? Hash,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<DocumentoClasificacionDto> Clasificaciones);

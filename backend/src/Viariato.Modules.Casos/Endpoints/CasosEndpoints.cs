@@ -45,7 +45,7 @@ internal static class CasosEndpoints
         manage.MapPost("/{id:guid}/pausar", PausarAsync);
         manage.MapPost("/{id:guid}/reanudar", ReanudarAsync);
         manage.MapPost("/{id:guid}/cancelar", CancelarAsync);
-        manage.MapPost("/{id:guid}/pasos/{ejecucionPasoId:guid}/reintentar", ReintentarPasoAsync);
+        manage.MapPost("/{id:guid}/pasos/{ejecucionPasoId:guid}/reprocesar", ReprocesarPasoAsync);
     }
 
     /// <summary>Null means access is granted; otherwise this is the response to return (NotFound,
@@ -517,9 +517,9 @@ internal static class CasosEndpoints
     private static Task<IResult> CancelarAsync(Guid id, IEjecucionOrchestrator orchestrator, AppDbContext db, HttpContext http, CancellationToken ct) =>
         ConAccesoAsync(db, http, id, ct, () => EjecutarComandoAsync(orchestrator.CancelarAsync(id, ct), http, () => Results.NoContent()));
 
-    private static Task<IResult> ReintentarPasoAsync(
+    private static Task<IResult> ReprocesarPasoAsync(
         Guid id, Guid ejecucionPasoId, IEjecucionOrchestrator orchestrator, AppDbContext db, HttpContext http, CancellationToken ct) =>
-        ConAccesoAsync(db, http, id, ct, () => EjecutarComandoAsync(orchestrator.ReintentarPasoAsync(ejecucionPasoId, ct), http, () => Results.NoContent()));
+        ConAccesoAsync(db, http, id, ct, () => EjecutarComandoAsync(orchestrator.ReprocesarPasoAsync(ejecucionPasoId, ct), http, () => Results.NoContent()));
 
     /// <summary>Shared "load the Caso, enforce assignment, then run the command" wrapper for the
     /// orchestrator-delegating endpoints, which otherwise only take the Caso's id.</summary>

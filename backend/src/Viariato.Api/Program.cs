@@ -17,6 +17,9 @@ using Viariato.Modules.Flujos;
 using Viariato.Modules.Flujos.Endpoints;
 using Viariato.Modules.Ops;
 using Viariato.Modules.Ops.Endpoints;
+using Viariato.Modules.RpaFleet;
+using Viariato.Modules.RpaFleet.Auth;
+using Viariato.Modules.RpaFleet.Endpoints;
 using Viariato.Modules.Users;
 using Viariato.Modules.Users.Endpoints;
 using Viariato.Shared.Authorization;
@@ -33,6 +36,7 @@ builder.Services.AddUsersModule(builder.Configuration);
 builder.Services.AddOpsModule(builder.Configuration);
 builder.Services.AddMarketsModule(builder.Configuration);
 builder.Services.AddFlujosModule(builder.Configuration);
+builder.Services.AddRpaFleetModule(builder.Configuration);
 builder.Services.AddCasosModule(builder.Configuration);
 builder.Services.AddOpenApi();
 
@@ -63,7 +67,8 @@ builder.Services.AddOptions<DocumentStorageOptions>()
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer();
+    .AddJwtBearer()
+    .AddRpaFleetApiKeyScheme();
 
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<IOptions<JwtOptions>>((bearerOptions, jwtOptions) =>
@@ -139,6 +144,7 @@ app.MapUsersEndpoints();
 app.MapOpsEndpoints();
 app.MapMarketsEndpoints();
 app.MapFlujosEndpoints();
+app.MapRpaFleetEndpoints();
 app.MapCasosEndpoints();
 
 app.Run();

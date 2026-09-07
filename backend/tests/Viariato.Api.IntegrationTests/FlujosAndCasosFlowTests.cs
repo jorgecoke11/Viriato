@@ -152,7 +152,7 @@ public sealed class FlujosAndCasosFlowTests(ViariatoApiFactory factory) : IClass
         var trasRechazo = await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}");
         Assert.Equal("Fallido", trasRechazo.GetProperty("estado").GetString());
 
-        var reintento = await client.PostAsync($"/api/v1/casos/{casoId}/pasos/{pasoId}/reintentar", null);
+        var reintento = await client.PostAsync($"/api/v1/casos/{casoId}/pasos/{pasoId}/reprocesar", null);
         Assert.Equal(HttpStatusCode.NoContent, reintento.StatusCode);
 
         var nuevoPasoId = await FindPendingRevisionPasoIdAsync(client, casoId);
