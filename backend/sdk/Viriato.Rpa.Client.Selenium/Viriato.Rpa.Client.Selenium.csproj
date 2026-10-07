@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- LTS on purpose: ships to external RPA-robot processes, same as Viriato.Rpa.Client. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Viriato.Rpa.Client.Selenium</RootNamespace>
+    <PackageId>Viriato.Rpa.Client.Selenium</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Viriato</Authors>
+    <RepositoryUrl>https://github.com/jorgecoke11/Viriato</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>Utilidades de navegador (Selenium + Edge) para robots RPA de Viriato: esperas, clics con reintentos, scroll por JS, iframes y capturas.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- Separate from Viriato.Rpa.Client on purpose: a robot that never opens a browser must not install Selenium. -->
+  <ItemGroup>
+    <PackageReference Include="Selenium.WebDriver" Version="4.35.0" />
+    <PackageReference Include="Selenium.Support" Version="4.35.0" />
+  </ItemGroup>
+
+</Project>

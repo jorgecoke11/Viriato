@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Opcional: solo hace falta si vas a configurar un proceso para guardar sus
+  # documentos en S3 en vez de en disco local (ver StorageConfigsPage en el front).
+  minio:
+    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: src/Viariato.Api/Dockerfile
+      args:
+        # Pasa la versión real al construir, p.ej.:
+        #   APP_VERSION=$(cat VERSION) GIT_SHA=$(git rev-parse --short HEAD) docker compose -f docker-compose.prod.yml up -d --build
+        APP_VERSION: ${APP_VERSION:-0.0.0}
+        GIT_SHA: ${GIT_SHA:-unknown}
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS}
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Jwt__SigningKey: ${Jwt__SigningKey}
+      Jwt__AccessTokenMinutes: ${Jwt__AccessTokenMinutes}
+      Auth__RefreshTokenDays: ${Auth__RefreshTokenDays}
+      Credenciales__ClaveCifrado: ${Credenciales__ClaveCifrado}
+      # Solo importa si algo llama a la API desde un origen distinto al dominio
+      # servido por "web" (p.ej. un cliente aparte) — el front normal pasa por
+      # el mismo origen vía el reverse proxy de Caddy, así que no depende de esto.
+      Cors__AllowedOrigins: https://${DOMAIN}
+      Bootstrap__AdminEmail: ${Bootstrap__AdminEmail}
+      Bootstrap__AdminPassword: ${Bootstrap__AdminPassword}
+      Markets__UserAgent: ${Markets__UserAgent}
+      Markets__SyncRequestDelayMs: ${Markets__SyncRequestDelayMs}
+      Markets__DiscountRatePercent: ${Markets__DiscountRatePercent}
+      # Raíz por defecto de los archivos. Cada proceso puede apuntar a otra ruta (siempre
+      # dentro de /data/storage o de otro volumen montado aquí) desde la pantalla Almacenamiento.
+      DocumentStorage__LocalPath: /data/storage
+    volumes:
+      # Carpeta normal del PC (no un volumen interno de Docker) para poder verla y copiarla.
+      - ${STORAGE_HOST_PATH:?define STORAGE_HOST_PATH en .env}:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Copia diaria de Postgres + archivos; sube a SFTP (p. ej. el hosting de Hostinger) si SFTP_HOST está definido.
+  backup:
+    build: ./ops/backup
+    environment:
+      TZ: ${TZ:-Europe/Madrid}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_INCLUDE_EVIDENCIAS: ${BACKUP_INCLUDE_EVIDENCIAS:-false}
+      SFTP_HOST: ${SFTP_HOST:-}
+      SFTP_PORT: ${SFTP_PORT:-22}
+      SFTP_USER: ${SFTP_USER:-}
+      SFTP_PASSWORD: ${SFTP_PASSWORD:-}
+      SFTP_REMOTE_DIR: ${SFTP_REMOTE_DIR:-viriato-backups}
+    volumes:
+      - ${STORAGE_HOST_PATH:?define STORAGE_HOST_PATH en .env}:/data/storage:ro
+      - ${BACKUPS_HOST_PATH:?define BACKUPS_HOST_PATH en .env}:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+    environment:
+      DOMAIN: ${DOMAIN}
+      CADDY_EMAIL: ${CADDY_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

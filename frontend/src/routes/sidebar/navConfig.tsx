@@ -76,6 +76,7 @@ export const navTree: NavNode[] = [
       { type: 'link', to: '/admin/rpa/equipos', label: 'Equipos', icon: <Cpu size={18} />, permission: 'rpa.manage' },
       { type: 'link', to: '/admin/rpa/servicios', label: 'Servicios', icon: <Bot size={18} />, permission: 'rpa.manage' },
       { type: 'link', to: '/admin/rpa/despliegues', label: 'Despliegues', icon: <GitBranch size={18} />, permission: 'rpa.manage' },
+      { type: 'link', to: '/admin/rpa/credenciales', label: 'Credenciales', icon: <KeyRound size={18} />, permission: 'rpa.manage' },
     ],
   },
   {

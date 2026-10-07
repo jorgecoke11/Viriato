@@ -195,6 +195,51 @@ public sealed class FlujosAndCasosFlowTests(ViariatoApiFactory factory) : IClass
         Assert.Equal(HttpStatusCode.OK, ownerGet.StatusCode);
     }
 
+    [Fact]
+    public async Task UnaEvidenciaConArchivo_NoApareceComoDocumentoNiDuplicadaEnLaLineaDeTiempo()
+    {
+        var (client, userId) = await CreateAuthorizedClientAsync();
+        var flujoId = await ExtractIdAsync(await client.PostAsJsonAsync("/api/v1/flujos", new { nombre = $"Flujo {Guid.NewGuid():N}", descripcion = (string?)null }));
+        await AsignarFlujoAsync(client, flujoId, userId);
+        var versionId = await ExtractIdAsync(await client.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/versiones", new { notas = (string?)null }));
+        await client.PutAsJsonAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/pasos", new
+        {
+            pasos = new[] { new { orden = 1, nombre = "Unico paso", tipoPaso = "Interno", agenteDefinicionId = (Guid?)null, configuracionJson = (string?)null } },
+        });
+        await client.PostAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/publicar", null);
+        var casoResponse = await client.PostAsJsonAsync("/api/v1/casos", new { flujoId, flujoVersionId = (Guid?)null, titulo = "Caso con archivos", datosJson = (string?)null });
+        var casoId = await ExtractIdAsync(casoResponse);
+
+        var ejecuciones = await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/ejecuciones");
+        var ejecucionId = ejecuciones[0].GetProperty("id").GetGuid();
+        var ejecucion = await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/ejecuciones/{ejecucionId}");
+        var pasoId = ejecucion.GetProperty("pasos")[0].GetProperty("id").GetGuid();
+
+        using var documentoForm = new MultipartFormDataContent { { new ByteArrayContent("dni"u8.ToArray()), "file", "dni.txt" } };
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/v1/casos/{casoId}/documentos", documentoForm)).StatusCode);
+
+        using var evidenciaForm = new MultipartFormDataContent
+        {
+            { new StringContent("Screenshot"), "tipo" },
+            { new StringContent("Captura del portal"), "titulo" },
+            { new ByteArrayContent("png"u8.ToArray()), "file", "captura.png" },
+        };
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/v1/casos/{casoId}/pasos/{pasoId}/evidencias", evidenciaForm)).StatusCode);
+
+        var documentos = await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/documentos");
+        Assert.Equal(1, documentos.GetArrayLength());
+        Assert.Equal("dni.txt", documentos[0].GetProperty("nombre").GetString());
+
+        var timeline = (await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/timeline")).EnumerateArray().ToList();
+        Assert.Single(timeline, item => item.GetProperty("tipo").GetString() == "Documento");
+        var evidencia = Assert.Single(timeline, item => item.GetProperty("tipo").GetString() == "Evidencia");
+
+        // The detail the timeline expands to show: which step produced it and what the file is.
+        Assert.Equal("Unico paso", evidencia.GetProperty("pasoNombre").GetString());
+        Assert.Equal("captura.png", evidencia.GetProperty("nombreArchivo").GetString());
+        Assert.Equal(3, evidencia.GetProperty("tamanoBytes").GetInt64());
+    }
+
     private static async Task<Guid> FindPendingRevisionPasoIdAsync(HttpClient client, Guid casoId)
     {
         var pendientes = await client.GetFromJsonAsync<JsonElement>("/api/v1/revisiones?estado=pendiente");

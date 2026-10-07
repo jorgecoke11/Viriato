@@ -17,6 +17,7 @@ export function DespliguesPage() {
   const [equipoId, setEquipoId] = useState('')
   const [servicioId, setServicioId] = useState('')
   const [flujoId, setFlujoId] = useState('')
+  const [flujoDestinoId, setFlujoDestinoId] = useState('')
   const [revelado, setRevelado] = useState<DespliegueConApiKeyDto | null>(null)
   const [pendingDelete, setPendingDelete] = useState<DespliegueDto | null>(null)
 
@@ -28,20 +29,21 @@ export function DespliguesPage() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['despliegues'] })
 
   const createMutation = useMutation({
-    mutationFn: () => rpaApi.createDespliegue({ equipoId, servicioId, flujoId }),
+    mutationFn: () => rpaApi.createDespliegue({ equipoId, servicioId, flujoId, ...(flujoDestinoId ? { flujoDestinoId } : {}) }),
     onSuccess: (result) => {
       invalidate()
       setShowNuevo(false)
       setEquipoId('')
       setServicioId('')
       setFlujoId('')
+      setFlujoDestinoId('')
       setRevelado(result)
     },
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el despliegue.'),
   })
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, encendido }: { id: string; encendido: boolean }) => rpaApi.updateDespliegue(id, { encendido }),
+    mutationFn: ({ id, ...cambios }: { id: string } & rpaApi.UpdateDespliegueInput) => rpaApi.updateDespliegue(id, cambios),
     onSuccess: () => {
       invalidate()
       showToast('success', 'Despliegue actualizado.')
@@ -92,12 +94,13 @@ export function DespliguesPage() {
       </div>
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[860px] text-left text-sm">
+        <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="border-b border-gray-200 text-gray-500">
             <tr>
               <th className="px-4 py-3 font-medium">Equipo</th>
               <th className="px-4 py-3 font-medium">Servicio</th>
               <th className="px-4 py-3 font-medium">Proceso</th>
+              <th className="px-4 py-3 font-medium">Puede crear casos en</th>
               <th className="px-4 py-3 font-medium">Encendido</th>
               <th className="px-4 py-3 font-medium">Clave</th>
               <th className="px-4 py-3 font-medium">Último uso</th>
@@ -110,6 +113,28 @@ export function DespliguesPage() {
                 <td className="px-4 py-3">{despliegue.equipoNombre}</td>
                 <td className="px-4 py-3">{despliegue.servicioNombre}</td>
                 <td className="px-4 py-3">{nombreFlujo(despliegue.flujoId)}</td>
+                <td className="px-4 py-3">
+                  <select
+                    aria-label={`Proceso en el que ${despliegue.servicioNombre} puede crear casos`}
+                    className="max-w-[200px] rounded-lg border border-gray-300 px-2 py-1 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    value={despliegue.flujoDestinoId ?? ''}
+                    disabled={toggleMutation.isPending}
+                    onChange={(e) =>
+                      toggleMutation.mutate(
+                        e.target.value
+                          ? { id: despliegue.id, flujoDestinoId: e.target.value }
+                          : { id: despliegue.id, quitarFlujoDestino: true },
+                      )
+                    }
+                  >
+                    <option value="">Ninguno</option>
+                    {flujos.map((flujo) => (
+                      <option key={flujo.id} value={flujo.id}>
+                        {flujo.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td className="px-4 py-3">
                   <label className="inline-flex items-center gap-2">
                     <input
@@ -217,6 +242,24 @@ export function DespliguesPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Puede crear casos en (opcional)</label>
+            <select
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              value={flujoDestinoId}
+              onChange={(e) => setFlujoDestinoId(e.target.value)}
+            >
+              <option value="">Ninguno</option>
+              {flujos.map((flujo) => (
+                <option key={flujo.id} value={flujo.id}>
+                  {flujo.nombre}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500">
+              Solo para robots que lanzan casos de otro proceso. Sin esto, el robot no puede crear ninguno.
+            </p>
           </div>
         </div>
       </Modal>

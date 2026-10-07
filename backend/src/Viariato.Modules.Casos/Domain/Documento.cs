@@ -2,7 +2,9 @@ namespace Viariato.Modules.Casos.Domain;
 
 /// <summary>A file attached to a Caso's expediente (e.g. a DNI scan) — distinct from an
 /// <see cref="Evidencia"/>, which proves what happened *during processing*, not source material.
-/// Storage is abstracted behind <c>IDocumentStorage</c>; this row only ever holds an opaque key.</summary>
+/// Storage is abstracted behind <c>IDocumentStorage</c>; this row only ever holds an opaque key.
+/// An Evidencia's file is stored through this same row (see <see cref="Evidencia.DocumentoId"/>), but
+/// is not a document of the expediente: queries that list documents must exclude those.</summary>
 public sealed class Documento
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();

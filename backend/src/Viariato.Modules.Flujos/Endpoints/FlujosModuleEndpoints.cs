@@ -9,6 +9,7 @@ public static class FlujosModuleEndpoints
         endpoints.MapFlujosCrudEndpoints();
         endpoints.MapFlujoVersionesEndpoints();
         endpoints.MapFlujoEstadosEndpoints();
+        endpoints.MapFlujoParametrosEndpoints();
         endpoints.MapFlujoTiposCasoEndpoints();
         endpoints.MapAgentesEndpoints();
         endpoints.MapAsignacionesEndpoints();

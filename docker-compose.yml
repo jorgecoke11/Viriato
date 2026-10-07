@@ -50,6 +50,7 @@ services:
       Jwt__SigningKey: ${Jwt__SigningKey}
       Jwt__AccessTokenMinutes: ${Jwt__AccessTokenMinutes}
       Auth__RefreshTokenDays: ${Auth__RefreshTokenDays}
+      Credenciales__ClaveCifrado: ${Credenciales__ClaveCifrado}
       Cors__AllowedOrigins: ${Cors__AllowedOrigins}
       Bootstrap__AdminEmail: ${Bootstrap__AdminEmail}
       Bootstrap__AdminPassword: ${Bootstrap__AdminPassword}
@@ -58,6 +59,10 @@ services:
       Markets__DiscountRatePercent: ${Markets__DiscountRatePercent}
     ports:
       - "8080:8080"
+    volumes:
+      # Sin esto, los documentos subidos en local se perderían cada vez que se
+      # reconstruye el contenedor (p.ej. `docker compose up --build api`).
+      - documents_data:/app/data/documents
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,3 +85,4 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  documents_data:

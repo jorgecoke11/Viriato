@@ -943,6 +943,52 @@ namespace Viariato.Infrastructure.Migrations
                     b.ToTable("flujo_estado_defs", "flujos");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoParametro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("codigo");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<Guid>("FlujoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id")
+                        .HasName("pk_flujo_parametros");
+
+                    b.HasIndex("FlujoId", "Codigo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_flujo_parametros_flujo_id_codigo");
+
+                    b.ToTable("flujo_parametros", "flujos");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoPasoDef", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1022,6 +1068,10 @@ namespace Viariato.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("EsquemaDatosJson")
+                        .HasColumnType("text")
+                        .HasColumnName("esquema_datos_json");
 
                     b.Property<Guid>("FlujoId")
                         .HasColumnType("uuid")
@@ -1186,6 +1236,68 @@ namespace Viariato.Infrastructure.Migrations
                     b.ToTable("storage_configs", "flujos");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.Credencial", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("activo");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("PasswordCifrado")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("password_cifrado");
+
+                    b.Property<Guid?>("ServicioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("servicio_id");
+
+                    b.Property<DateTimeOffset?>("UltimoAccesoAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_acceso_at");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Usuario")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("usuario");
+
+                    b.HasKey("Id")
+                        .HasName("pk_credenciales");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("ix_credenciales_nombre");
+
+                    b.HasIndex("ServicioId")
+                        .HasDatabaseName("ix_credenciales_servicio_id");
+
+                    b.ToTable("credenciales", "rpafleet");
+                });
+
             modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.Despliegue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1216,6 +1328,10 @@ namespace Viariato.Infrastructure.Migrations
                     b.Property<Guid>("EquipoId")
                         .HasColumnType("uuid")
                         .HasColumnName("equipo_id");
+
+                    b.Property<Guid?>("FlujoDestinoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_destino_id");
 
                     b.Property<Guid>("FlujoId")
                         .HasColumnType("uuid")
@@ -1897,6 +2013,18 @@ namespace Viariato.Infrastructure.Migrations
                     b.Navigation("Flujo");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoParametro", b =>
+                {
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", "Flujo")
+                        .WithMany()
+                        .HasForeignKey("FlujoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_flujo_parametros_flujos_flujo_id");
+
+                    b.Navigation("Flujo");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoPasoDef", b =>
                 {
                     b.HasOne("Viariato.Modules.Flujos.Domain.AgenteDefinicion", "AgenteDefinicion")
@@ -1947,6 +2075,17 @@ namespace Viariato.Infrastructure.Migrations
                         .HasConstraintName("fk_flujo_versiones_flujos_flujo_id");
 
                     b.Navigation("Flujo");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.Credencial", b =>
+                {
+                    b.HasOne("Viariato.Modules.RpaFleet.Domain.Servicio", "Servicio")
+                        .WithMany()
+                        .HasForeignKey("ServicioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_credenciales_servicio_servicio_id");
+
+                    b.Navigation("Servicio");
                 });
 
             modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.Despliegue", b =>

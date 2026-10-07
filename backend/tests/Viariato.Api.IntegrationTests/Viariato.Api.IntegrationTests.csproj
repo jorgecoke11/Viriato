@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Viariato.Api\Viariato.Api.csproj" />
+    <ProjectReference Include="..\..\sdk\Viriato.Rpa.Client\Viriato.Rpa.Client.csproj" />
   </ItemGroup>
 
 </Project>

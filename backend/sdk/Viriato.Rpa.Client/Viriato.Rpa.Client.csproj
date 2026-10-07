@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- LTS on purpose: this ships to external RPA-robot processes with their own, longer-lived
+         update cadence — it must not be tied to the Api's own (non-LTS) runtime version. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Viriato.Rpa.Client</RootNamespace>
+    <PackageId>Viriato.Rpa.Client</PackageId>
+    <Version>0.6.0</Version>
+    <Authors>Viriato</Authors>
+    <RepositoryUrl>https://github.com/jorgecoke11/Viriato</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>Cliente .NET de la API de robots (RPA) de Viriato: cola de trabajo, completar/fallar pasos, evidencias y estado de negocio.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Viariato.ApiContracts\Viariato.ApiContracts.csproj" />
+  </ItemGroup>
+
+</Project>

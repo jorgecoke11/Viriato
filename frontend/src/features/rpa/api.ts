@@ -48,6 +48,8 @@ export interface DespliegueDto {
   servicioId: string
   servicioNombre: string
   flujoId: string
+  /** The one process this robot may create Casos in; null when it may not create any. */
+  flujoDestinoId: string | null
   encendido: boolean
   apiKeyPrefix: string
   createdAt: string
@@ -64,10 +66,45 @@ export interface CreateDespliegueInput {
   equipoId: string
   servicioId: string
   flujoId: string
+  flujoDestinoId?: string
 }
 
 export interface UpdateDespliegueInput {
   encendido?: boolean
+  flujoDestinoId?: string
+  /** True removes the permission to create Casos. */
+  quitarFlujoDestino?: boolean
+}
+
+/** Never carries the password: it is write-only from the web, and only reaches a robot. */
+export interface CredencialDto {
+  id: string
+  nombre: string
+  descripcion: string | null
+  usuario: string | null
+  servicioId: string | null
+  servicioNombre: string | null
+  activo: boolean
+  ultimoAccesoAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateCredencialInput {
+  nombre: string
+  descripcion?: string | null
+  usuario?: string | null
+  password: string
+  servicioId?: string | null
+}
+
+/** A full replacement of what is editable: null servicioId = any robot, empty password = keep the stored one. */
+export interface UpdateCredencialInput {
+  descripcion: string | null
+  usuario: string | null
+  servicioId: string | null
+  activo: boolean
+  password?: string | null
 }
 
 const buildQuery = (params: Record<string, string | undefined>) => {
@@ -114,3 +151,13 @@ export const regenerarClaveDespliegue = (id: string) =>
   apiFetch<DespliegueConApiKeyDto>(`/despliegues/${id}/regenerar-clave`, { method: 'POST' })
 
 export const deleteDespliegue = (id: string) => apiFetch<void>(`/despliegues/${id}`, { method: 'DELETE' })
+
+export const listCredenciales = () => apiFetch<PagedResult<CredencialDto>>(`/credenciales${buildQuery({ pageSize: '100' })}`)
+
+export const createCredencial = (input: CreateCredencialInput) =>
+  apiFetch<CredencialDto>('/credenciales', { method: 'POST', body: JSON.stringify(input) })
+
+export const updateCredencial = (id: string, input: UpdateCredencialInput) =>
+  apiFetch<CredencialDto>(`/credenciales/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+
+export const deleteCredencial = (id: string) => apiFetch<void>(`/credenciales/${id}`, { method: 'DELETE' })

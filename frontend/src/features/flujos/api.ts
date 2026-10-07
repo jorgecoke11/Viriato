@@ -90,6 +90,8 @@ export interface FlujoTipoCasoDefDto {
   nombre: string
   orden: number
   activo: boolean
+  /** The form of this type's business data (a JSON schema as text), or null when the data is free-form JSON. */
+  esquemaDatosJson: string | null
   createdAt: string
   updatedAt: string
 }
@@ -97,12 +99,16 @@ export interface FlujoTipoCasoDefDto {
 export interface CreateFlujoTipoCasoRequest {
   nombre: string
   orden: number
+  esquemaDatosJson?: string
 }
 
 export interface UpdateFlujoTipoCasoRequest {
   nombre?: string
   orden?: number
   activo?: boolean
+  esquemaDatosJson?: string
+  /** True removes the form: the data goes back to free-form JSON. */
+  quitarEsquema?: boolean
 }
 
 export interface CreateFlujoRequest {
@@ -259,3 +265,36 @@ export const archivarFlujoVersion = (flujoId: string, versionId: string) =>
 
 export const listAgentes = (filters: Record<string, string> = {}) =>
   apiFetch<PagedResult<AgenteDefinicionDto>>(`/agentes${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+
+export interface FlujoParametroDto {
+  id: string
+  flujoId: string
+  codigo: string
+  valor: string
+  descripcion: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateFlujoParametroRequest {
+  codigo: string
+  valor: string
+  descripcion?: string | null
+}
+
+/** The code is the key a robot asks by, so it cannot change; both fields are always replaced. */
+export interface UpdateFlujoParametroRequest {
+  valor: string
+  descripcion: string | null
+}
+
+export const listFlujoParametros = (flujoId: string) => apiFetch<FlujoParametroDto[]>(`/flujos/${flujoId}/parametros`)
+
+export const createFlujoParametro = (flujoId: string, request: CreateFlujoParametroRequest) =>
+  apiFetch<FlujoParametroDto>(`/flujos/${flujoId}/parametros`, { method: 'POST', body: JSON.stringify(request) })
+
+export const updateFlujoParametro = (flujoId: string, id: string, request: UpdateFlujoParametroRequest) =>
+  apiFetch<FlujoParametroDto>(`/flujos/${flujoId}/parametros/${id}`, { method: 'PATCH', body: JSON.stringify(request) })
+
+export const deleteFlujoParametro = (flujoId: string, id: string) =>
+  apiFetch<void>(`/flujos/${flujoId}/parametros/${id}`, { method: 'DELETE' })

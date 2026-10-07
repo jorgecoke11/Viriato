@@ -13,7 +13,11 @@ public sealed record CasoTimelineItemDto(
     string? EstadoCodigo,
     Guid? DocumentoId,
     string? EvidenciaTipo,
-    string? ContenidoJson);
+    string? ContenidoJson,
+    string? PasoNombre = null,
+    string? NombreArchivo = null,
+    string? ContentType = null,
+    long? TamanoBytes = null);
 
 public static class CasoTimelineItemTipo
 {

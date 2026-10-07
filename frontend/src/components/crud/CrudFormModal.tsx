@@ -45,8 +45,17 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
     setValues((prev) => ({ ...prev, [name]: value }))
   }
 
+  function mensajeDeValidacion(field: CrudField<TValues>): string | null {
+    const value = values[field.name]
+    return field.validate && typeof value === 'string' && value !== '' ? field.validate(value) : null
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    const hayErrores = fields
+      .filter((field) => !field.visibleWhen || field.visibleWhen(values))
+      .some((field) => mensajeDeValidacion(field) !== null)
+    if (hayErrores) return
     onSubmit(values)
   }
 
@@ -69,8 +78,11 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
       }
     >
       <form id={formId} className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        {frozen.fields.map((field) => {
+        {frozen.fields
+          .filter((field) => !field.visibleWhen || field.visibleWhen(values))
+          .map((field) => {
           const value = values[field.name]
+          const required = typeof field.required === 'function' ? field.required(values) : field.required
 
           if (field.type === 'checkbox') {
             return (
@@ -95,7 +107,7 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
                   className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                   value={String(value ?? '')}
                   disabled={field.disabled}
-                  required={field.required}
+                  required={required}
                   onChange={(e) => handleChange(field.name, e.target.value)}
                 >
                   {field.options?.map((opt) => (
@@ -114,12 +126,19 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
               <div key={field.name} className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">{field.label}</label>
                 <textarea
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                    mensajeDeValidacion(field)
+                      ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+                      : 'border-gray-300 focus:border-indigo-400 focus:ring-indigo-100'
+                  } ${field.mono ? 'font-mono text-xs' : ''}`}
+                  rows={field.rows ?? 3}
+                  spellCheck={field.mono ? false : undefined}
                   value={String(value ?? '')}
-                  required={field.required}
+                  required={required}
                   disabled={field.disabled}
                   onChange={(e) => handleChange(field.name, e.target.value)}
                 />
+                {mensajeDeValidacion(field) && <p className="text-xs text-red-600">{mensajeDeValidacion(field)}</p>}
                 {field.helpText && <p className="text-xs text-gray-500">{field.helpText}</p>}
               </div>
             )
@@ -132,7 +151,7 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
                 name={field.name}
                 type={field.type === 'number' ? 'number' : field.type === 'password' ? 'password' : 'text'}
                 value={String(value ?? '')}
-                required={field.required}
+                required={required}
                 disabled={field.disabled}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />

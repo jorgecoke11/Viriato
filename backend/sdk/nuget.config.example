@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cópialo como "nuget.config" en la carpeta de tu proyecto de robot (o de su solución) para poder
+  hacer `dotnet add package Viriato.Rpa.Client` desde el feed privado de GitHub Packages.
+
+  Necesita un token clásico de GitHub con permiso read:packages en la variable de entorno
+  GITHUB_PACKAGES_TOKEN. No pongas el token escrito aquí: este archivo se suele subir al repo.
+-->
+<configuration>
+  <packageSources>
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="viriato-github" value="https://nuget.pkg.github.com/jorgecoke11/index.json" />
+  </packageSources>
+  <packageSourceCredentials>
+    <viriato-github>
+      <add key="Username" value="jorgecoke11" />
+      <add key="ClearTextPassword" value="%GITHUB_PACKAGES_TOKEN%" />
+    </viriato-github>
+  </packageSourceCredentials>
+  <!-- Los paquetes de Viriato solo se buscan en GitHub; todo lo demás, solo en nuget.org. -->
+  <packageSourceMapping>
+    <packageSource key="viriato-github">
+      <package pattern="Viriato.*" />
+      <package pattern="Viariato.*" />
+    </packageSource>
+    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+  </packageSourceMapping>
+</configuration>

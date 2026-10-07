@@ -7,7 +7,9 @@ import { Input } from '../../../components/ui/Input'
 import { ApiError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../../flujos/api'
+import * as rpaApi from '../../rpa/api'
 import * as casosApi from '../api'
+import { DatosCasoInput } from '../DatosCasoInput'
 
 export function NuevoCasoPage() {
   const navigate = useNavigate()
@@ -19,12 +21,29 @@ export function NuevoCasoPage() {
   const [flujoId, setFlujoId] = useState(() => searchParams.get('flujoId') ?? '')
   const [estadoNegocioInicialId, setEstadoNegocioInicialId] = useState('')
   const [tipoCasoId, setTipoCasoId] = useState('')
+  const [pasoInicialId, setPasoInicialId] = useState('')
   const [titulo, setTitulo] = useState('')
   const [datosJson, setDatosJson] = useState('')
-  const [datosJsonError, setDatosJsonError] = useState<string | null>(null)
+  const [datosErrores, setDatosErrores] = useState<string[]>([])
+  const [intentoEnvio, setIntentoEnvio] = useState(false)
 
   const flujosQuery = useQuery({ queryKey: ['flujos-asignados'], queryFn: casosApi.listFlujosAsignados })
   const flujosDisponibles = (flujosQuery.data ?? []).filter((f) => f.versionActivaId)
+  const flujoSeleccionado = flujosDisponibles.find((f) => f.id === flujoId)
+
+  const versionQuery = useQuery({
+    queryKey: ['flujo-version-activa', flujoSeleccionado?.versionActivaId],
+    queryFn: () => casosApi.getFlujoVersion(flujoId, flujoSeleccionado!.versionActivaId!),
+    enabled: Boolean(flujoId && flujoSeleccionado?.versionActivaId),
+  })
+  const serviciosQuery = useQuery({ queryKey: ['servicios-all'], queryFn: () => rpaApi.listServicios() })
+
+  // Only servicio-backed (Rpa) steps are offered as a starting point — everything else (Api,
+  // Decision, Interno…) is plumbing the flow author wires up, not something a case creator picks.
+  const pasosDeServicio = (versionQuery.data?.pasos ?? [])
+    .filter((p) => p.tipoPaso === 'Rpa' && p.servicioId)
+    .sort((a, b) => a.orden - b.orden)
+  const nombreServicio = (servicioId: string) => serviciosQuery.data?.items.find((s) => s.id === servicioId)?.nombre ?? '—'
 
   const tiposCasoQuery = useQuery({
     queryKey: ['flujo-tipos-caso', flujoId],
@@ -48,6 +67,7 @@ export function NuevoCasoPage() {
         datosJson: datosJson.trim() || null,
         estadoNegocioInicialId: estadoNegocioInicialId || null,
         tipoCasoId: tipoCasoId || null,
+        pasoInicialId: pasoInicialId || null,
       }),
     onSuccess: (caso) => {
       showToast('success', 'Caso creado correctamente.')
@@ -56,23 +76,31 @@ export function NuevoCasoPage() {
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),
   })
 
+  const tipoSeleccionado = tiposCaso.find((t) => t.id === tipoCasoId)
+
   const handleFlujoChange = (value: string) => {
     setFlujoId(value)
     setEstadoNegocioInicialId('')
     setTipoCasoId('')
+    setPasoInicialId('')
+    setDatosJson('')
+    setDatosErrores([])
+    setIntentoEnvio(false)
+  }
+
+  // Each type can have its own form, so changing it starts the data over.
+  const handleTipoChange = (value: string) => {
+    setTipoCasoId(value)
+    setDatosJson('')
+    setDatosErrores([])
+    setIntentoEnvio(false)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setDatosJsonError(null)
-
-    if (datosJson.trim()) {
-      try {
-        JSON.parse(datosJson)
-      } catch {
-        setDatosJsonError('El JSON no es válido — revisa la sintaxis.')
-        return
-      }
+    if (datosErrores.length > 0) {
+      setIntentoEnvio(true)
+      return
     }
 
     crear.mutate()
@@ -128,13 +156,37 @@ export function NuevoCasoPage() {
                 id="tipoCaso"
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                 value={tipoCasoId}
-                onChange={(e) => setTipoCasoId(e.target.value)}
+                onChange={(e) => handleTipoChange(e.target.value)}
               >
                 <option value="">Sin tipo</option>
                 {tiposCaso.map((t) => (
                   <option key={t.id} value={t.id}>{t.nombre}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {flujoId && pasosDeServicio.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="pasoInicial" className="text-sm font-medium text-gray-700">Servicio a lanzar primero</label>
+              <select
+                id="pasoInicial"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                value={pasoInicialId}
+                onChange={(e) => setPasoInicialId(e.target.value)}
+                disabled={versionQuery.isLoading || serviciosQuery.isLoading}
+              >
+                <option value="">Primer paso del flujo (por defecto)</option>
+                {pasosDeServicio.map((paso) => (
+                  <option key={paso.id} value={paso.id}>
+                    {paso.nombre} ({nombreServicio(paso.servicioId!)})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500">
+                Si el caso ya viene con parte del trabajo hecho, puedes arrancarlo directamente en ese servicio —
+                los pasos anteriores quedan marcados como omitidos.
+              </p>
             </div>
           )}
 
@@ -159,24 +211,16 @@ export function NuevoCasoPage() {
             </div>
           )}
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="datosJson" className="text-sm font-medium text-gray-700">
-              Datos de negocio <span className="font-normal text-gray-400">(opcional)</span>
-            </label>
-            <textarea
-              id="datosJson"
-              rows={5}
-              className="rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              value={datosJson}
-              onChange={(e) => {
-                setDatosJson(e.target.value)
-                setDatosJsonError(null)
-              }}
-              placeholder={'{\n  "cliente": "ACME Corp"\n}'}
-            />
-            <p className="text-xs text-gray-500">JSON con los datos iniciales del caso — puedes dejarlo vacío y añadirlo más tarde.</p>
-            {datosJsonError && <span className="text-sm text-red-600">{datosJsonError}</span>}
-          </div>
+          <DatosCasoInput
+            key={`${flujoId}-${tipoCasoId}`}
+            esquemaJson={tipoSeleccionado?.esquemaDatosJson}
+            value={datosJson}
+            onChange={(json, errores) => {
+              setDatosJson(json)
+              setDatosErrores(errores)
+            }}
+            mostrarErrores={intentoEnvio}
+          />
 
           <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
             <Button type="submit" disabled={!puedeEnviar}>

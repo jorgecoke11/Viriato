@@ -43,7 +43,8 @@ internal static class EvidenciaCreation
         {
             await using var stream = file.OpenReadStream();
             await using var storage = await storageResolver.ResolveForFlujoAsync(flujoId, ct);
-            var storageKey = await storage.SaveAsync(stream, file.FileName, ct);
+            var now = DateTimeOffset.UtcNow;
+            var storageKey = await storage.SaveAsync(stream, file.FileName, StorageFolders.Evidencias(casoId, now), ct);
 
             var documento = new Documento
             {
@@ -54,7 +55,7 @@ internal static class EvidenciaCreation
                 TamanoBytes = file.Length,
                 StorageKey = storageKey,
                 UploadedByUserId = uploadedByUserId,
-                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedAt = now,
             };
             db.Add(documento);
             await db.SaveChangesAsync(ct);

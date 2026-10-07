@@ -8,7 +8,10 @@ namespace Viariato.Modules.Casos.Storage;
 /// </summary>
 public interface IDocumentStorage : IAsyncDisposable
 {
-    Task<string> SaveAsync(Stream content, string suggestedFileName, CancellationToken ct);
+    /// <param name="folder">Relative, '/'-separated folder the file is organised under (see
+    /// <see cref="StorageFolders"/>); null stores it at the storage root, which is how files saved
+    /// before folders existed are still found.</param>
+    Task<string> SaveAsync(Stream content, string suggestedFileName, string? folder, CancellationToken ct);
 
     Task<Stream> OpenReadAsync(string storageKey, CancellationToken ct);
 

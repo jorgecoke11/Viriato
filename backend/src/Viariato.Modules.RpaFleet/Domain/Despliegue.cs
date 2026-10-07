@@ -27,6 +27,12 @@ public sealed class Despliegue
 
     public Guid FlujoId { get; set; }
 
+    /// <summary>The one process this Despliegue's robot may create Casos in (a "launcher" robot such as the
+    /// one that fans a request out into one Caso per product). Null — the default — means it may not create
+    /// any: the worker API otherwise only ever touches the Casos it was handed. Bare Guid for the same
+    /// module-cycle reason as <see cref="FlujoId"/>.</summary>
+    public Guid? FlujoDestinoId { get; set; }
+
     /// <summary>Master on/off switch a worker checks before pulling from the queue.</summary>
     public bool Encendido { get; set; } = true;
 

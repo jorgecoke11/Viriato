@@ -355,15 +355,24 @@ internal static class CasosEndpoints
             return new CasoTimelineItemDto(e.Id, CasoTimelineItemTipo.EstadoCambiado, e.OccurredAt, titulo, codigo, null, null, null);
         }).ToList();
 
+        // Evidencia files already appear below as Evidencia items — listing their backing Documento row
+        // too would show every screenshot twice.
         var documentos = await db.Set<Documento>().AsNoTracking()
-            .Where(d => d.CasoId == id)
-            .Select(d => new CasoTimelineItemDto(d.Id, CasoTimelineItemTipo.Documento, d.CreatedAt, d.Nombre, null, d.Id, null, null))
+            .Where(d => d.CasoId == id && !db.Set<Evidencia>().Any(e => e.DocumentoId == d.Id))
+            .Select(d => new CasoTimelineItemDto(
+                d.Id, CasoTimelineItemTipo.Documento, d.CreatedAt, d.Nombre, null, d.Id, null, null,
+                db.Set<EjecucionPaso>().Where(p => p.Id == d.EjecucionPasoId).Select(p => p.FlujoPasoDef!.Nombre).FirstOrDefault(),
+                d.Nombre, d.ContentType, d.TamanoBytes))
             .ToListAsync(ct);
 
         var evidencias = await db.Set<Evidencia>().AsNoTracking()
             .Where(e => e.CasoId == id)
             .Select(e => new CasoTimelineItemDto(
-                e.Id, CasoTimelineItemTipo.Evidencia, e.CreatedAt, e.Titulo, null, e.DocumentoId, e.Tipo.ToString(), e.ContenidoJson))
+                e.Id, CasoTimelineItemTipo.Evidencia, e.CreatedAt, e.Titulo, null, e.DocumentoId, e.Tipo.ToString(), e.ContenidoJson,
+                db.Set<EjecucionPaso>().Where(p => p.Id == e.EjecucionPasoId).Select(p => p.FlujoPasoDef!.Nombre).FirstOrDefault(),
+                db.Set<Documento>().Where(d => d.Id == e.DocumentoId).Select(d => d.Nombre).FirstOrDefault(),
+                db.Set<Documento>().Where(d => d.Id == e.DocumentoId).Select(d => d.ContentType).FirstOrDefault(),
+                db.Set<Documento>().Where(d => d.Id == e.DocumentoId).Select(d => (long?)d.TamanoBytes).FirstOrDefault()))
             .ToListAsync(ct);
 
         var timeline = cambiosEstado.Concat(documentos).Concat(evidencias)
@@ -431,6 +440,21 @@ internal static class CasosEndpoints
             }
         }
 
+        if (await DatosPorTipo.RechazarSiNoCumpleAsync(db, request.TipoCasoId, request.DatosJson, ct) is { } datosRechazados)
+        {
+            return datosRechazados;
+        }
+
+        if (request.PasoInicialId is not null)
+        {
+            var pasoInicialPerteneceALaVersion = await db.Set<FlujoPasoDef>()
+                .AnyAsync(p => p.Id == request.PasoInicialId && p.FlujoVersionId == version.Id, ct);
+            if (!pasoInicialPerteneceALaVersion)
+            {
+                return ProblemResults.Conflict(http, "El paso inicial indicado no pertenece a esta versión del flujo.");
+            }
+        }
+
         var now = DateTimeOffset.UtcNow;
         var caso = new Caso
         {
@@ -461,10 +485,10 @@ internal static class CasosEndpoints
 
         try
         {
-            // Case creation always starts execution at the flow's first step — the caller only
-            // chooses the business state the Caso begins in, which is separate from the engine's
-            // own progress (see Caso.EstadoNegocioActualId).
-            await orchestrator.IniciarCasoAsync(caso.Id, pasoInicialId: null, ct);
+            // Defaults to the flow's first step when PasoInicialId is null — the caller can instead
+            // pick which servicio-backed step to launch first (e.g. skipping a preamble already done
+            // elsewhere); everything before it is recorded as Omitido (see IniciarCasoAsync).
+            await orchestrator.IniciarCasoAsync(caso.Id, request.PasoInicialId, ct);
         }
         catch (InvalidOperationException ex)
         {
@@ -491,6 +515,7 @@ internal static class CasosEndpoints
         var caso = await db.Set<Caso>().FirstOrDefaultAsync(c => c.Id == id, ct);
         if (caso is null) return ProblemResults.NotFound(http, "Caso no encontrado.");
         if (await RequireAccesoAsync(db, http, caso.FlujoId, ct) is { } denied) return denied;
+        if (await DatosPorTipo.RechazarSiNoCumpleAsync(db, caso.TipoCasoId, request.DatosJson, ct) is { } datosRechazados) return datosRechazados;
 
         caso.DatosJson = request.DatosJson;
         caso.UpdatedAt = DateTimeOffset.UtcNow;

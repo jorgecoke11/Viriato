@@ -11,10 +11,10 @@ interface ModalProps {
   /** Pinned below the scrollable body — e.g. Cancelar/Guardar — so actions stay reachable even when
    * the body itself scrolls. Omit for modals with no actions of their own (media viewers, etc.). */
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
-const sizeClasses = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-3xl' }
+const sizeClasses = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-3xl', xl: 'max-w-5xl' }
 
 export function Modal({ open, title, onClose, children, footer, size = 'md' }: ModalProps) {
   // The caller typically clears its underlying data the instant it sets `open` to false, but the

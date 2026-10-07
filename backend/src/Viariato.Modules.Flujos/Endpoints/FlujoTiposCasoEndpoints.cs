@@ -65,6 +65,7 @@ internal static class FlujoTiposCasoEndpoints
             FlujoId = flujoId,
             Nombre = request.Nombre,
             Orden = request.Orden,
+            EsquemaDatosJson = string.IsNullOrWhiteSpace(request.EsquemaDatosJson) ? null : request.EsquemaDatosJson,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -93,6 +94,8 @@ internal static class FlujoTiposCasoEndpoints
         if (request.Nombre is not null) tipo.Nombre = request.Nombre;
         if (request.Orden is not null) tipo.Orden = request.Orden.Value;
         if (request.Activo is not null) tipo.Activo = request.Activo.Value;
+        if (request.QuitarEsquema) tipo.EsquemaDatosJson = null;
+        else if (!string.IsNullOrWhiteSpace(request.EsquemaDatosJson)) tipo.EsquemaDatosJson = request.EsquemaDatosJson;
         tipo.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);

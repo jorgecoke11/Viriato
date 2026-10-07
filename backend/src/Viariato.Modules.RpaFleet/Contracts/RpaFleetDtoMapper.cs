@@ -17,6 +17,7 @@ public static class RpaFleetDtoMapper
         despliegue.ServicioId,
         despliegue.Servicio?.Nombre ?? string.Empty,
         despliegue.FlujoId,
+        despliegue.FlujoDestinoId,
         despliegue.Encendido,
         despliegue.ApiKeyPrefix,
         despliegue.CreatedAt,

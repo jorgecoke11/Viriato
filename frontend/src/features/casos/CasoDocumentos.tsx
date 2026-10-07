@@ -2,22 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type ChangeEvent } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { ApiError, apiFetchBlob } from '../../lib/apiClient'
+import { ApiError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as casosApi from './api'
 import type { DocumentoDto, TipoDocumentoDto } from './api'
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  const units = ['KB', 'MB', 'GB']
-  let value = bytes / 1024
-  let unitIndex = 0
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024
-    unitIndex += 1
-  }
-  return `${value.toFixed(1)} ${units[unitIndex]}`
-}
+import { descargarDocumento, formatBytes } from './fileUtils'
 
 export function CasoDocumentos({ casoId }: { casoId: string }) {
   const queryClient = useQueryClient()
@@ -101,13 +90,7 @@ function DocumentoCard({ documento, tipos, casoId }: { documento: DocumentoDto; 
   async function handleDownload() {
     setDownloading(true)
     try {
-      const blob = await apiFetchBlob(casosApi.documentoContenidoPath(documento.id))
-      const url = URL.createObjectURL(blob)
-      const link = window.document.createElement('a')
-      link.href = url
-      link.download = documento.nombre
-      link.click()
-      URL.revokeObjectURL(url)
+      await descargarDocumento(documento.id, documento.nombre)
     } catch {
       showToast('error', 'No se pudo descargar el documento.')
     } finally {

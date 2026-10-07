@@ -33,18 +33,37 @@ function useAuthenticatedMediaUrl(path: string) {
   return { url, error }
 }
 
-export function AuthenticatedImage({ path, alt }: { path: string; alt: string }) {
-  const { url, error } = useAuthenticatedMediaUrl(path)
-
-  if (error) return <p className="text-xs text-red-600">No se pudo cargar la imagen.</p>
-  if (!url) return <p className="text-xs text-gray-400">Cargando imagen…</p>
-  return <img src={url} alt={alt} className="max-h-80 rounded-md border border-gray-200" />
+interface MediaProps {
+  path: string
+  className?: string
 }
 
-export function AuthenticatedVideo({ path }: { path: string }) {
+export function AuthenticatedImage({ path, alt, className, onClick }: MediaProps & { alt: string; onClick?: () => void }) {
+  const { url, error } = useAuthenticatedMediaUrl(path)
+  // The blob can download fine and still not be a decodable image (corrupt or mislabelled file) —
+  // without this the user just sees an empty box and no explanation.
+  const [undecodable, setUndecodable] = useState(false)
+
+  useEffect(() => setUndecodable(false), [url])
+
+  if (error) return <p className="text-xs text-red-600">No se pudo cargar la imagen.</p>
+  if (undecodable) return <p className="text-xs text-red-600">El archivo no es una imagen válida, así que no se puede mostrar. Puedes descargarlo.</p>
+  if (!url) return <p className="text-xs text-gray-400">Cargando imagen…</p>
+  return (
+    <img
+      src={url}
+      alt={alt}
+      onError={() => setUndecodable(true)}
+      onClick={onClick}
+      className={className ?? 'max-h-80 rounded-md border border-gray-200'}
+    />
+  )
+}
+
+export function AuthenticatedVideo({ path, className }: MediaProps) {
   const { url, error } = useAuthenticatedMediaUrl(path)
 
   if (error) return <p className="text-xs text-red-600">No se pudo cargar el vídeo.</p>
   if (!url) return <p className="text-xs text-gray-400">Cargando vídeo…</p>
-  return <video src={url} controls className="max-h-80 rounded-md border border-gray-200" />
+  return <video src={url} controls className={className ?? 'max-h-80 rounded-md border border-gray-200'} />
 }

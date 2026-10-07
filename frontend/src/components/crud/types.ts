@@ -20,10 +20,20 @@ export interface CrudField<TValues> {
   name: keyof TValues & string
   label: string
   type?: CrudFieldType
-  required?: boolean
+  /** A function lets a field's obligatoriness depend on other fields' current values. */
+  required?: boolean | ((values: TValues) => boolean)
   disabled?: boolean
   options?: CrudFieldOption[]
   helpText?: string
+  /** Returns a message while the (text) value is not acceptable, or null. Shown under the field as the user
+   * types, and the form cannot be submitted until it returns null for every visible field. */
+  validate?: (value: string) => string | null
+  /** Textarea only: monospaced text, for code-like values such as JSON. */
+  mono?: boolean
+  /** Textarea only: visible lines (default 3). */
+  rows?: number
+  /** When set, the field is only rendered while this returns true for the form's current values. */
+  visibleWhen?: (values: TValues) => boolean
 }
 
 export interface CrudFormConfig<T, TFormValues extends Record<string, string | boolean>, TCreate, TUpdate> {

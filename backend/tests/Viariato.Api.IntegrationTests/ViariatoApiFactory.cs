@@ -31,6 +31,7 @@ public sealed class ViariatoApiFactory : WebApplicationFactory<Program>, IAsyncL
                 ["Jwt:SigningKey"] = new string('t', 32),
                 ["Jwt:AccessTokenMinutes"] = "15",
                 ["Auth:RefreshTokenDays"] = "30",
+                ["Credenciales:ClaveCifrado"] = Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i + 1)).ToArray()),
                 // Same 15-minute window as production, but a high ceiling so a multi-step
                 // integration flow doesn't trip the very rate limiting it's meant to exercise.
                 ["RateLimiting:Auth:PermitLimit"] = "1000",

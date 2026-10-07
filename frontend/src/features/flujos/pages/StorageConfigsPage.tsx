@@ -19,9 +19,12 @@ interface StorageConfigFormValues {
 }
 
 const PROVEEDOR_OPTIONS = [
-  { value: 'S3Compatible', label: 'S3-compatible (MinIO, S3, R2, B2)' },
   { value: 'Local', label: 'Disco local' },
+  { value: 'S3Compatible', label: 'S3-compatible (MinIO, S3, R2, B2)' },
 ]
+
+const LOCAL_PATH_HELP =
+  'Es la ruta dentro del contenedor de la API (p. ej. /data/storage/expedientes) y debe colgar de una carpeta montada en docker-compose; si no, los archivos se pierden al recrear el contenedor. Dentro se organiza solo: documentos/ y evidencias/ por año, mes y caso.'
 
 const columns: CrudColumn<StorageConfigDto>[] = [
   { key: 'nombre', label: 'Nombre', render: (s) => s.nombre },
@@ -43,6 +46,9 @@ const columns: CrudColumn<StorageConfigDto>[] = [
   { key: 'activo', label: 'Activo', render: (s) => (s.activo ? 'Sí' : 'No') },
 ]
 
+const isLocal = (values: StorageConfigFormValues) => values.proveedor === 'Local'
+const isS3 = (values: StorageConfigFormValues) => values.proveedor === 'S3Compatible'
+
 const createFields: CrudFormConfig<
   StorageConfigDto,
   StorageConfigFormValues,
@@ -51,14 +57,14 @@ const createFields: CrudFormConfig<
 >['createFields'] = [
   { name: 'nombre', label: 'Nombre', required: true },
   { name: 'proveedor', label: 'Proveedor', type: 'select', required: true, options: PROVEEDOR_OPTIONS },
-  { name: 'endpoint', label: 'Endpoint', helpText: 'Solo para S3-compatible, ej. https://minio.tu-dominio.com' },
-  { name: 'bucketName', label: 'Bucket', helpText: 'Solo para S3-compatible' },
-  { name: 'region', label: 'Región', helpText: 'Solo para S3-compatible. MinIO no la usa pero el SDK pide un valor, ej. us-east-1' },
-  { name: 'accessKey', label: 'Access key', type: 'password', helpText: 'Solo para S3-compatible' },
-  { name: 'secretKey', label: 'Secret key', type: 'password', helpText: 'Solo para S3-compatible' },
-  { name: 'usePathStyle', label: 'Direccionamiento por path (necesario para MinIO)', type: 'checkbox' },
-  { name: 'useSsl', label: 'Usar SSL', type: 'checkbox' },
-  { name: 'localPath', label: 'Ruta local', helpText: 'Solo para almacenamiento en disco local' },
+  { name: 'localPath', label: 'Ruta local', required: isLocal, visibleWhen: isLocal, helpText: LOCAL_PATH_HELP },
+  { name: 'endpoint', label: 'Endpoint', required: isS3, visibleWhen: isS3, helpText: 'Ej. https://minio.tu-dominio.com' },
+  { name: 'bucketName', label: 'Bucket', required: isS3, visibleWhen: isS3 },
+  { name: 'region', label: 'Región', visibleWhen: isS3, helpText: 'MinIO no la usa pero el SDK pide un valor, ej. us-east-1' },
+  { name: 'accessKey', label: 'Access key', type: 'password', required: isS3, visibleWhen: isS3 },
+  { name: 'secretKey', label: 'Secret key', type: 'password', required: isS3, visibleWhen: isS3 },
+  { name: 'usePathStyle', label: 'Direccionamiento por path (necesario para MinIO)', type: 'checkbox', visibleWhen: isS3 },
+  { name: 'useSsl', label: 'Usar SSL', type: 'checkbox', visibleWhen: isS3 },
 ]
 
 const editFields: CrudFormConfig<
@@ -68,14 +74,14 @@ const editFields: CrudFormConfig<
   flujosApi.UpdateStorageConfigRequest
 >['editFields'] = [
   { name: 'nombre', label: 'Nombre', required: true },
-  { name: 'endpoint', label: 'Endpoint', helpText: 'Solo para S3-compatible' },
-  { name: 'bucketName', label: 'Bucket', helpText: 'Solo para S3-compatible' },
-  { name: 'region', label: 'Región', helpText: 'Solo para S3-compatible' },
-  { name: 'accessKey', label: 'Access key', type: 'password', helpText: 'Déjalo en blanco para no cambiarla' },
-  { name: 'secretKey', label: 'Secret key', type: 'password', helpText: 'Déjala en blanco para no cambiarla' },
-  { name: 'usePathStyle', label: 'Direccionamiento por path (necesario para MinIO)', type: 'checkbox' },
-  { name: 'useSsl', label: 'Usar SSL', type: 'checkbox' },
-  { name: 'localPath', label: 'Ruta local', helpText: 'Solo para almacenamiento en disco local' },
+  { name: 'localPath', label: 'Ruta local', required: isLocal, visibleWhen: isLocal, helpText: LOCAL_PATH_HELP },
+  { name: 'endpoint', label: 'Endpoint', visibleWhen: isS3 },
+  { name: 'bucketName', label: 'Bucket', visibleWhen: isS3 },
+  { name: 'region', label: 'Región', visibleWhen: isS3 },
+  { name: 'accessKey', label: 'Access key', type: 'password', visibleWhen: isS3, helpText: 'Déjalo en blanco para no cambiarla' },
+  { name: 'secretKey', label: 'Secret key', type: 'password', visibleWhen: isS3, helpText: 'Déjala en blanco para no cambiarla' },
+  { name: 'usePathStyle', label: 'Direccionamiento por path (necesario para MinIO)', type: 'checkbox', visibleWhen: isS3 },
+  { name: 'useSsl', label: 'Usar SSL', type: 'checkbox', visibleWhen: isS3 },
   { name: 'activo', label: 'Activo', type: 'checkbox' },
 ]
 
@@ -89,7 +95,7 @@ const form: CrudFormConfig<
   editFields,
   emptyValues: {
     nombre: '',
-    proveedor: 'S3Compatible',
+    proveedor: 'Local',
     endpoint: '',
     region: '',
     bucketName: '',
@@ -113,30 +119,48 @@ const form: CrudFormConfig<
     localPath: config.localPath ?? '',
     activo: config.activo,
   }),
-  toCreateInput: (values) => ({
-    nombre: values.nombre,
-    proveedor: values.proveedor,
-    endpoint: values.endpoint || null,
-    region: values.region || null,
-    bucketName: values.bucketName || null,
-    accessKey: values.accessKey || null,
-    secretKey: values.secretKey || null,
-    usePathStyle: values.usePathStyle,
-    useSsl: values.useSsl,
-    localPath: values.localPath || null,
-  }),
-  toUpdateInput: (values) => ({
-    nombre: values.nombre,
-    endpoint: values.endpoint || null,
-    region: values.region || null,
-    bucketName: values.bucketName || null,
-    accessKey: values.accessKey || undefined,
-    secretKey: values.secretKey || undefined,
-    usePathStyle: values.usePathStyle,
-    useSsl: values.useSsl,
-    localPath: values.localPath || null,
-    activo: values.activo,
-  }),
+  // Only what belongs to the chosen provider is sent: values typed under the other one and then
+  // abandoned by switching the select must not leak into the saved config.
+  toCreateInput: (values) =>
+    isLocal(values)
+      ? {
+          nombre: values.nombre,
+          proveedor: values.proveedor,
+          endpoint: null,
+          region: null,
+          bucketName: null,
+          accessKey: null,
+          secretKey: null,
+          usePathStyle: false,
+          useSsl: false,
+          localPath: values.localPath || null,
+        }
+      : {
+          nombre: values.nombre,
+          proveedor: values.proveedor,
+          endpoint: values.endpoint || null,
+          region: values.region || null,
+          bucketName: values.bucketName || null,
+          accessKey: values.accessKey || null,
+          secretKey: values.secretKey || null,
+          usePathStyle: values.usePathStyle,
+          useSsl: values.useSsl,
+          localPath: null,
+        },
+  toUpdateInput: (values) =>
+    isLocal(values)
+      ? { nombre: values.nombre, localPath: values.localPath || null, activo: values.activo }
+      : {
+          nombre: values.nombre,
+          endpoint: values.endpoint || null,
+          region: values.region || null,
+          bucketName: values.bucketName || null,
+          accessKey: values.accessKey || undefined,
+          secretKey: values.secretKey || undefined,
+          usePathStyle: values.usePathStyle,
+          useSsl: values.useSsl,
+          activo: values.activo,
+        },
 }
 
 export function StorageConfigsPage() {

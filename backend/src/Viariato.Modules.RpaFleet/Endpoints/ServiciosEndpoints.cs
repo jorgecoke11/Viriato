@@ -46,7 +46,10 @@ internal static class ServiciosEndpoints
             BeforeDelete = async (ctx, ct) =>
             {
                 var enUso = await ctx.Db.Set<Despliegue>().AnyAsync(d => d.ServicioId == ctx.Entity.Id, ct);
-                return enUso ? ProblemResults.Conflict(ctx.Http, "No se puede eliminar un servicio con despliegues.") : null;
+                if (enUso) return ProblemResults.Conflict(ctx.Http, "No se puede eliminar un servicio con despliegues.");
+
+                var conCredenciales = await ctx.Db.Set<Credencial>().AnyAsync(c => c.ServicioId == ctx.Entity.Id, ct);
+                return conCredenciales ? ProblemResults.Conflict(ctx.Http, "No se puede eliminar un servicio con credenciales asociadas.") : null;
             },
         });
     }

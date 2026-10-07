@@ -4,7 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Viariato.Infrastructure;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Contracts;
+using Viariato.Modules.RpaFleet.Options;
 using Viariato.Modules.RpaFleet.Persistence;
+using Viariato.Modules.RpaFleet.Security;
 using Viariato.Modules.RpaFleet.Validation;
 
 namespace Viariato.Modules.RpaFleet;
@@ -21,6 +23,15 @@ public static class DependencyInjection
         services.AddSingleton<IValidator<CreateServicioRequest>, CreateServicioRequestValidator>();
         services.AddSingleton<IValidator<UpdateServicioRequest>, UpdateServicioRequestValidator>();
         services.AddSingleton<CreateDespliegueRequestValidator>();
+        services.AddSingleton<CreateCredencialRequestValidator>();
+        services.AddSingleton<UpdateCredencialRequestValidator>();
+
+        // Fails the API at startup, not at the first credential saved, if the master key is missing or malformed.
+        services.AddOptions<CredencialesOptions>()
+            .Bind(configuration.GetSection(CredencialesOptions.SectionName))
+            .Validate(o => CredencialesOptions.EsClaveValida(o.ClaveCifrado), CredencialesOptions.MensajeClaveInvalida)
+            .ValidateOnStart();
+        services.AddSingleton<ICredencialProtector, AesGcmCredencialProtector>();
 
         return services;
     }

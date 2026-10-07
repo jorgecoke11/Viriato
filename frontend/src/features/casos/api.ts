@@ -114,6 +114,12 @@ export interface EjecucionResumenDto {
 export type CasoTimelineItemTipo = 'EstadoCambiado' | 'Documento' | 'Evidencia'
 
 export interface CasoTimelineItemDto {
+  /** Step this item came from (evidencias, and documents produced by a step); null otherwise. */
+  pasoNombre: string | null
+  /** File details when the item has a stored file (documents and evidencias with an attachment). */
+  nombreArchivo: string | null
+  contentType: string | null
+  tamanoBytes: number | null
   id: string
   tipo: CasoTimelineItemTipo
   occurredAt: string
@@ -186,6 +192,7 @@ export interface FlujoPasoDefDto {
   nombre: string
   tipoPaso: string
   agenteDefinicionId: string | null
+  servicioId: string | null
   configuracionJson: string | null
 }
 
@@ -206,6 +213,7 @@ export interface StartCasoRequest {
   datosJson?: string | null
   estadoNegocioInicialId?: string | null
   tipoCasoId?: string | null
+  pasoInicialId?: string | null
 }
 
 export interface ListCasosFilters {
@@ -265,6 +273,7 @@ export const startCaso = (request: StartCasoRequest) =>
       datosJson: request.datosJson ?? null,
       estadoNegocioInicialId: request.estadoNegocioInicialId ?? null,
       tipoCasoId: request.tipoCasoId ?? null,
+      pasoInicialId: request.pasoInicialId ?? null,
     }),
   })
 

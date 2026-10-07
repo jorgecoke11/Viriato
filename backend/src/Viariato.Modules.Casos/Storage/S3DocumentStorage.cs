@@ -12,11 +12,12 @@ namespace Viariato.Modules.Casos.Storage;
 /// </summary>
 public sealed class S3DocumentStorage(IAmazonS3 client, string bucketName) : IDocumentStorage
 {
-    public async Task<string> SaveAsync(Stream content, string suggestedFileName, CancellationToken ct)
+    public async Task<string> SaveAsync(Stream content, string suggestedFileName, string? folder, CancellationToken ct)
     {
         await EnsureBucketExistsAsync(ct);
 
-        var storageKey = $"{Guid.CreateVersion7():N}{Path.GetExtension(suggestedFileName)}";
+        var fileName = $"{Guid.CreateVersion7():N}{Path.GetExtension(suggestedFileName)}";
+        var storageKey = string.IsNullOrEmpty(folder) ? fileName : $"{folder}/{fileName}";
         await client.PutObjectAsync(new PutObjectRequest
         {
             BucketName = bucketName,

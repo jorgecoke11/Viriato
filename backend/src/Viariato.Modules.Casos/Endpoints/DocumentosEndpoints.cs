@@ -35,9 +35,11 @@ internal static class DocumentosEndpoints
             return ProblemResults.NotFound(http, "Caso no encontrado.");
         }
 
+        // Evidencia files are stored through a Documento row too, but they are not documents of the
+        // expediente — they belong to the timeline, never to this list.
         var documentos = await db.Set<Documento>().AsNoTracking()
             .Include(d => d.Clasificaciones).ThenInclude(c => c.TipoDocumento)
-            .Where(d => d.CasoId == casoId)
+            .Where(d => d.CasoId == casoId && !db.Set<Evidencia>().Any(e => e.DocumentoId == d.Id))
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync(ct);
 
@@ -63,7 +65,8 @@ internal static class DocumentosEndpoints
 
         await using var stream = file.OpenReadStream();
         await using var storage = await storageResolver.ResolveForFlujoAsync(caso.FlujoId, ct);
-        var storageKey = await storage.SaveAsync(stream, file.FileName, ct);
+        var now = DateTimeOffset.UtcNow;
+        var storageKey = await storage.SaveAsync(stream, file.FileName, StorageFolders.Documentos(casoId, now), ct);
 
         var documento = new Documento
         {
@@ -73,7 +76,7 @@ internal static class DocumentosEndpoints
             TamanoBytes = file.Length,
             StorageKey = storageKey,
             UploadedByUserId = http.User.GetUserId(),
-            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = now,
         };
 
         db.Add(documento);

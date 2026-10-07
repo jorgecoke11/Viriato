@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddKeyedScoped<IPasoEjecutor, RevisionHumanaPasoEjecutor>(TipoPaso.RevisionHumana);
 
         services.AddSingleton<StartCasoRequestValidator>();
+        services.AddSingleton<CrearCasoRobotRequestValidator>();
         services.AddSingleton<UpdateCasoDatosRequestValidator>();
         services.AddSingleton<ResolverRevisionRequestValidator>();
         services.AddSingleton<IValidator<CreateTipoDocumentoRequest>, CreateTipoDocumentoRequestValidator>();

@@ -20,6 +20,11 @@ public sealed class FlujoTipoCasoDef
 
     public bool Activo { get; set; } = true;
 
+    /// <summary>The form of this type's business data, as a schema (see <c>EsquemaDatos</c>), or null when the data is
+    /// free-form JSON. Kept as text rather than jsonb on purpose: jsonb reorders keys, and the order of
+    /// <c>properties</c> is the order of the fields in the form.</summary>
+    public string? EsquemaDatosJson { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

@@ -83,6 +83,7 @@ internal static class DespliguesEndpoints
             EquipoId = request.EquipoId,
             ServicioId = request.ServicioId,
             FlujoId = request.FlujoId,
+            FlujoDestinoId = request.FlujoDestinoId,
             ApiKeyHash = hash,
             ApiKeyPrefix = prefix,
             CreatedAt = now,
@@ -102,6 +103,8 @@ internal static class DespliguesEndpoints
         if (despliegue is null) return ProblemResults.NotFound(http, "Despliegue no encontrado.");
 
         if (request.Encendido is not null) despliegue.Encendido = request.Encendido.Value;
+        if (request.QuitarFlujoDestino) despliegue.FlujoDestinoId = null;
+        else if (request.FlujoDestinoId is not null) despliegue.FlujoDestinoId = request.FlujoDestinoId;
         despliegue.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);

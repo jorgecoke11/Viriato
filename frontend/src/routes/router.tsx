@@ -17,6 +17,7 @@ import { CompanyDetailPage } from '../features/markets/pages/CompanyDetailPage'
 import { TrabajoDetailPage } from '../features/ops/pages/TrabajoDetailPage'
 import { TrabajosPage } from '../features/ops/pages/TrabajosPage'
 import { ProfilePage } from '../features/profile/pages/ProfilePage'
+import { CredencialesPage } from '../features/rpa/pages/CredencialesPage'
 import { DespliguesPage } from '../features/rpa/pages/DespliguesPage'
 import { EquiposPage } from '../features/rpa/pages/EquiposPage'
 import { ServiciosPage } from '../features/rpa/pages/ServiciosPage'
@@ -132,6 +133,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ServiciosPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/rpa/credenciales',
+        element: (
+          <ProtectedRoute>
+            <CredencialesPage />
           </ProtectedRoute>
         ),
       },

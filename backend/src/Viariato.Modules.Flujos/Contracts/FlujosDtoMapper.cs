@@ -53,7 +53,7 @@ public static class FlujosDtoMapper
         estado.CreatedAt, estado.UpdatedAt);
 
     public static FlujoTipoCasoDefDto ToDto(this FlujoTipoCasoDef tipo) => new(
-        tipo.Id, tipo.FlujoId, tipo.Nombre, tipo.Orden, tipo.Activo, tipo.CreatedAt, tipo.UpdatedAt);
+        tipo.Id, tipo.FlujoId, tipo.Nombre, tipo.Orden, tipo.Activo, tipo.EsquemaDatosJson, tipo.CreatedAt, tipo.UpdatedAt);
 
     public static StorageConfigDto ToDto(this StorageConfig config) => new(
         config.Id,
