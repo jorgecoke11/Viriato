@@ -79,19 +79,19 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-gray-200 text-gray-500">
+          <thead className="border-b border-gray-200 bg-gray-50/70">
             <tr>
-              <th className="px-4 py-3 font-medium">Nº</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 font-medium">Notas</th>
-              <th className="px-4 py-3 font-medium">Creada</th>
-              <th className="px-4 py-3 font-medium">Publicada</th>
-              <th className="px-4 py-3 font-medium">Acciones</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Nº</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Estado</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Notas</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Creada</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Publicada</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {versiones.map((version) => (
-              <tr key={version.id} className="border-b border-gray-100 last:border-0">
+              <tr key={version.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/70">
                 <td className="px-4 py-3">v{version.numeroVersion}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estadoBadge[version.estado]}`}>
@@ -152,7 +152,7 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-gray-700">Notas (opcional)</label>
           <textarea
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="field"
             rows={3}
             value={notas}
             onChange={(e) => setNotas(e.target.value)}

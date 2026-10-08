@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Input } from '../../../components/ui/Input'
@@ -10,6 +10,7 @@ import * as flujosApi from '../../flujos/api'
 import * as rpaApi from '../../rpa/api'
 import * as casosApi from '../api'
 import { DatosCasoInput } from '../DatosCasoInput'
+import { BackLink } from '../../../components/ui/BackLink'
 
 export function NuevoCasoPage() {
   const navigate = useNavigate()
@@ -110,10 +111,10 @@ export function NuevoCasoPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link to="/casos/lista" className="text-sm text-gray-500 hover:text-gray-900">← Listado</Link>
+      <BackLink to="/casos/lista">Listado</BackLink>
 
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Nuevo caso</h1>
+        <h1 className="page-title">Nuevo caso</h1>
         <p className="text-sm text-gray-500">Elige el flujo y, si lo necesitas, en qué estado de negocio debe arrancar.</p>
       </div>
 
@@ -124,7 +125,7 @@ export function NuevoCasoPage() {
             <select
               id="flujo"
               required
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={flujoId}
               onChange={(e) => handleFlujoChange(e.target.value)}
             >
@@ -154,7 +155,7 @@ export function NuevoCasoPage() {
               <label htmlFor="tipoCaso" className="text-sm font-medium text-gray-700">Tipo de caso</label>
               <select
                 id="tipoCaso"
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="field"
                 value={tipoCasoId}
                 onChange={(e) => handleTipoChange(e.target.value)}
               >
@@ -171,7 +172,7 @@ export function NuevoCasoPage() {
               <label htmlFor="pasoInicial" className="text-sm font-medium text-gray-700">Servicio a lanzar primero</label>
               <select
                 id="pasoInicial"
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="field"
                 value={pasoInicialId}
                 onChange={(e) => setPasoInicialId(e.target.value)}
                 disabled={versionQuery.isLoading || serviciosQuery.isLoading}
@@ -195,7 +196,7 @@ export function NuevoCasoPage() {
               <label htmlFor="estadoNegocioInicial" className="text-sm font-medium text-gray-700">Estado de negocio inicial</label>
               <select
                 id="estadoNegocioInicial"
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="field"
                 value={estadoNegocioInicialId}
                 onChange={(e) => setEstadoNegocioInicialId(e.target.value)}
                 disabled={estadosQuery.isLoading}

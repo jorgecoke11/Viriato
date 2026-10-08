@@ -36,6 +36,9 @@ public sealed class ViariatoApiFactory : WebApplicationFactory<Program>, IAsyncL
                 // integration flow doesn't trip the very rate limiting it's meant to exercise.
                 ["RateLimiting:Auth:PermitLimit"] = "1000",
                 ["RateLimiting:Auth:WindowMinutes"] = "15",
+                // The background sweep that cancels overdue steps is run by hand in the tests that need it: left to its
+                // own schedule it could cancel a Caso in the middle of a test that is looking at it overdue.
+                ["Despacho:BarridoSegundos"] = "3600",
             });
         });
     }

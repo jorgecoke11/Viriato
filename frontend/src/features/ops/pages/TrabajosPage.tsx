@@ -22,7 +22,7 @@ export function TrabajosPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Trabajos</h1>
+        <h1 className="page-title">Trabajos</h1>
         <p className="text-sm text-gray-500">
           Monitor genérico de cualquier scraping o script lanzado en la plataforma.
         </p>
@@ -35,7 +35,7 @@ export function TrabajosPage() {
           <label htmlFor="status" className="text-sm font-medium text-gray-700">Estado</label>
           <select
             id="status"
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="field"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -48,20 +48,20 @@ export function TrabajosPage() {
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-gray-200 text-gray-500">
+          <thead className="border-b border-gray-200 bg-gray-50/70">
             <tr>
-              <th className="px-4 py-3 font-medium">Proceso</th>
-              <th className="px-4 py-3 font-medium">Sujeto</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 font-medium">Progreso</th>
-              <th className="px-4 py-3 font-medium">Resumen</th>
-              <th className="px-4 py-3 font-medium">Iniciado</th>
-              <th className="px-4 py-3 font-medium" />
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Proceso</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Sujeto</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Estado</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Progreso</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Resumen</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Iniciado</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase" />
             </tr>
           </thead>
           <tbody>
             {query.data?.items.map((t) => (
-              <tr key={t.id} className="border-b border-gray-100 last:border-0">
+              <tr key={t.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/70">
                 <td className="px-4 py-3 font-mono text-xs">{t.processCode}</td>
                 <td className="px-4 py-3 text-gray-600">
                   {t.subjectType ? `${t.subjectType}: ${t.subjectKey}` : '—'}

@@ -101,10 +101,10 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
 
           if (field.type === 'select') {
             return (
-              <div key={field.name} className="flex flex-col gap-1">
+              <div key={field.name} className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">{field.label}</label>
                 <select
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="field"
                   value={String(value ?? '')}
                   disabled={field.disabled}
                   required={required}
@@ -123,14 +123,11 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
 
           if (field.type === 'textarea') {
             return (
-              <div key={field.name} className="flex flex-col gap-1">
+              <div key={field.name} className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">{field.label}</label>
                 <textarea
-                  className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                    mensajeDeValidacion(field)
-                      ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                      : 'border-gray-300 focus:border-indigo-400 focus:ring-indigo-100'
-                  } ${field.mono ? 'font-mono text-xs' : ''}`}
+                  className={`field ${field.mono ? 'font-mono text-xs' : ''}`}
+                  aria-invalid={mensajeDeValidacion(field) ? true : undefined}
                   rows={field.rows ?? 3}
                   spellCheck={field.mono ? false : undefined}
                   value={String(value ?? '')}
@@ -145,7 +142,7 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
           }
 
           return (
-            <div key={field.name} className="flex flex-col gap-1">
+            <div key={field.name} className="flex flex-col gap-1.5">
               <Input
                 label={field.label}
                 name={field.name}
@@ -153,6 +150,7 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
                 value={String(value ?? '')}
                 required={required}
                 disabled={field.disabled}
+                error={mensajeDeValidacion(field) ?? undefined}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />
               {field.helpText && <p className="text-xs text-gray-500">{field.helpText}</p>}

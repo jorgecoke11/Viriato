@@ -1,7 +1,12 @@
+import { ListOrdered } from 'lucide-react'
+import { useState } from 'react'
 import { CrudPage } from '../../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../../components/crud/types'
 import * as rpaApi from '../api'
 import type { EquipoDto } from '../api'
+import { ActivoBadge } from '../../../components/ui/ActivoBadge'
+import { IconButton } from '../../../components/ui/IconButton'
+import { DespachoEquipoModal } from '../despacho/DespachoEquipoModal'
 
 interface EquipoFormValues {
   [key: string]: string | boolean
@@ -13,7 +18,7 @@ interface EquipoFormValues {
 const columns: CrudColumn<EquipoDto>[] = [
   { key: 'nombre', label: 'Nombre', render: (e) => e.nombre },
   { key: 'descripcion', label: 'Descripción', render: (e) => e.descripcion ?? '—' },
-  { key: 'activo', label: 'Activo', render: (e) => (e.activo ? 'Sí' : 'No') },
+  { key: 'activo', label: 'Activo', render: (e) => <ActivoBadge activo={e.activo} /> },
 ]
 
 const createFields: CrudFormConfig<EquipoDto, EquipoFormValues, rpaApi.CreateEquipoInput, rpaApi.UpdateEquipoInput>['createFields'] = [
@@ -37,7 +42,10 @@ const form: CrudFormConfig<EquipoDto, EquipoFormValues, rpaApi.CreateEquipoInput
 }
 
 export function EquiposPage() {
+  const [despachando, setDespachando] = useState<EquipoDto | null>(null)
+
   return (
+    <>
     <CrudPage<EquipoDto, EquipoFormValues, rpaApi.CreateEquipoInput, rpaApi.UpdateEquipoInput>
       title="Equipos"
       resourceKey="equipos-crud"
@@ -45,6 +53,11 @@ export function EquiposPage() {
       columns={columns}
       form={form}
       filters={{ mode: 'general', placeholder: 'Nombre del equipo…' }}
+      renderRowExtra={(equipo) => (
+        <IconButton size="sm" label={`Despacho de ${equipo.nombre}: orden de los servicios`} onClick={() => setDespachando(equipo)}>
+          <ListOrdered size={16} />
+        </IconButton>
+      )}
       api={{
         list: rpaApi.listEquipos,
         create: rpaApi.createEquipo,
@@ -55,5 +68,7 @@ export function EquiposPage() {
         message: '¿Seguro que quieres eliminar este equipo? Esta acción no se puede deshacer.',
       }}
     />
+    <DespachoEquipoModal equipo={despachando ? { id: despachando.id, nombre: despachando.nombre } : null} onClose={() => setDespachando(null)} />
+    </>
   )
 }

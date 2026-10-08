@@ -1,25 +1,42 @@
-import { forwardRef, type InputHTMLAttributes } from 'react'
+import { forwardRef, useId, type InputHTMLAttributes } from 'react'
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   label: string
   error?: string
+  /** Help shown under the field while it has no error. */
+  hint?: string
 }
 
-export const Input = forwardRef<HTMLInputElement, Props>(({ label, error, id, className = '', ...props }, ref) => {
-  const inputId = id ?? props.name
+export const Input = forwardRef<HTMLInputElement, Props>(({ label, error, hint, id, className = '', ...props }, ref) => {
+  const generatedId = useId()
+  const inputId = id ?? props.name ?? generatedId
+  const describedBy = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
         {label}
+        {props.required && <span className="text-red-500" aria-hidden="true"> *</span>}
       </label>
       <input
         ref={ref}
         id={inputId}
-        className={`rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 ${className}`}
+        className={`field ${className}`}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
         {...props}
       />
-      {error && <span className="text-sm text-red-600">{error}</span>}
+      {error ? (
+        <span id={`${inputId}-error`} className="text-sm text-red-600">
+          {error}
+        </span>
+      ) : (
+        hint && (
+          <span id={`${inputId}-hint`} className="text-xs text-gray-500">
+            {hint}
+          </span>
+        )
+      )}
     </div>
   )
 })

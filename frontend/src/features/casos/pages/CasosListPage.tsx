@@ -6,9 +6,18 @@ import { Card } from '../../../components/ui/Card'
 import { Input } from '../../../components/ui/Input'
 import { useAuth } from '../../auth/useAuth'
 import * as casosApi from '../api'
-import { CasoEstadoBadge } from '../CasoEstadoBadge'
+import { CasosTabla } from '../CasosTabla'
 
-const ESTADOS = ['', 'Iniciado', 'EnProgreso', 'Pausado', 'EsperandoRevisionHumana', 'Completado', 'Fallido', 'Cancelado']
+const ESTADOS: { value: string; label: string }[] = [
+  { value: '', label: 'Todos' },
+  { value: 'Iniciado', label: 'Iniciado' },
+  { value: 'EnProgreso', label: 'En progreso' },
+  { value: 'Pausado', label: 'Pausado' },
+  { value: 'EsperandoRevisionHumana', label: 'Esperando revisión' },
+  { value: 'Completado', label: 'Completado' },
+  { value: 'Fallido', label: 'Fallido' },
+  { value: 'Cancelado', label: 'Cancelado' },
+]
 
 export function CasosListPage() {
   const navigate = useNavigate()
@@ -38,7 +47,7 @@ export function CasosListPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Casos</h1>
+          <h1 className="page-title">Casos</h1>
           {flujoId && (
             <p className="text-sm text-gray-500">
               Filtrando por flujo: <span className="font-medium text-gray-700">{flujoNombre ?? flujoId}</span>{' '}
@@ -59,42 +68,19 @@ export function CasosListPage() {
           <label htmlFor="estado" className="text-sm font-medium text-gray-700">Estado</label>
           <select
             id="estado"
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="field"
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
           >
             {ESTADOS.map((e) => (
-              <option key={e} value={e}>{e || 'Todos'}</option>
+              <option key={e.value} value={e.value}>{e.label}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-gray-200 text-gray-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">Título</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 font-medium">Creado</th>
-              <th className="px-4 py-3 font-medium">Finalizado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {query.data?.items.map((c) => (
-              <tr
-                key={c.id}
-                className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
-                onClick={() => navigate(`/casos/${c.id}`)}
-              >
-                <td className="px-4 py-3 font-medium text-gray-900">{c.titulo}</td>
-                <td className="px-4 py-3"><CasoEstadoBadge estado={c.estado} /></td>
-                <td className="px-4 py-3 text-gray-500">{new Date(c.createdAt).toLocaleString()}</td>
-                <td className="px-4 py-3 text-gray-500">{c.completedAt ? new Date(c.completedAt).toLocaleString() : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Card className="overflow-hidden p-0">
+        {query.data && query.data.items.length > 0 && <CasosTabla casos={query.data.items} />}
 
         {query.isLoading && <p className="p-4 text-sm text-gray-500">Cargando casos…</p>}
 

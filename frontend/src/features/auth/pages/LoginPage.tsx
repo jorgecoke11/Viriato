@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
-import { Card } from '../../../components/ui/Card'
 import { Input } from '../../../components/ui/Input'
 import { ApiError } from '../../../lib/apiClient'
 import { useAuth } from '../useAuth'
+import { AuthShell } from './AuthShell'
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, status } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -17,6 +17,9 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/'
+
+  // Already signed in (a bookmark, the back button): nothing to do here.
+  if (status === 'authenticated') return <Navigate to={redirectTo} replace />
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -33,40 +36,46 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="mb-6 text-xl font-semibold text-gray-900">Iniciar sesión</h1>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input
-            label="Contraseña"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Entrando…' : 'Entrar'}
-          </Button>
-        </form>
-        <p className="mt-4 text-sm text-gray-500">
+    <AuthShell
+      titulo="Iniciar sesión"
+      descripcion="Entra con tu cuenta para ver tus procesos."
+      pie={
+        <>
           ¿No tienes cuenta?{' '}
           <Link to="/registro" className="font-medium text-indigo-600 hover:underline">
             Regístrate
           </Link>
-        </p>
-      </Card>
-    </div>
+        </>
+      }
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <Input
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          label="Contraseña"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {error && (
+          <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={submitting} className="mt-1">
+          {submitting ? 'Entrando…' : 'Entrar'}
+        </Button>
+      </form>
+    </AuthShell>
   )
 }

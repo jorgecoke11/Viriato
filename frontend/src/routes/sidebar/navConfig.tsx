@@ -7,6 +7,7 @@ import {
   HardDrive,
   KeyRound,
   LayoutDashboard,
+  LayoutTemplate,
   LineChart,
   List,
   ListChecks,
@@ -21,6 +22,8 @@ export interface NavLinkNode {
   to: string
   label: string
   icon: ReactNode
+  /** Active only on exactly this path (its sibling "/casos/lista" lives under it and must not light it up too). */
+  end?: boolean
   /** Hidden unless the current user has this permission. Absent = visible to everyone. */
   permission?: string
 }
@@ -50,7 +53,7 @@ export const navTree: NavNode[] = [
     label: 'Monitorización',
     icon: <Activity size={18} />,
     children: [
-      { type: 'link', to: '/casos', label: 'Panel', icon: <LayoutDashboard size={18} /> },
+      { type: 'link', to: '/casos', label: 'Panel', icon: <LayoutDashboard size={18} />, end: true },
       { type: 'link', to: '/casos/lista', label: 'Listado', icon: <List size={18} /> },
     ],
   },
@@ -76,6 +79,7 @@ export const navTree: NavNode[] = [
       { type: 'link', to: '/admin/rpa/equipos', label: 'Equipos', icon: <Cpu size={18} />, permission: 'rpa.manage' },
       { type: 'link', to: '/admin/rpa/servicios', label: 'Servicios', icon: <Bot size={18} />, permission: 'rpa.manage' },
       { type: 'link', to: '/admin/rpa/despliegues', label: 'Despliegues', icon: <GitBranch size={18} />, permission: 'rpa.manage' },
+      { type: 'link', to: '/admin/rpa/plantillas-despacho', label: 'Plantillas de despacho', icon: <LayoutTemplate size={18} />, permission: 'rpa.manage' },
       { type: 'link', to: '/admin/rpa/credenciales', label: 'Credenciales', icon: <KeyRound size={18} />, permission: 'rpa.manage' },
     ],
   },

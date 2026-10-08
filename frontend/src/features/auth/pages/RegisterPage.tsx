@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
-import { Card } from '../../../components/ui/Card'
 import { Input } from '../../../components/ui/Input'
 import { ApiError } from '../../../lib/apiClient'
 import { useAuth } from '../useAuth'
+import { AuthShell } from './AuthShell'
 
 export function RegisterPage() {
-  const { register } = useAuth()
+  const { register, status } = useAuth()
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
@@ -15,6 +15,8 @@ export function RegisterPage() {
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  if (status === 'authenticated') return <Navigate to="/" replace />
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -31,49 +33,56 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="mb-6 text-xl font-semibold text-gray-900">Crear cuenta</h1>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <Input
-            label="Nombre"
-            name="displayName"
-            autoComplete="name"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            required
-          />
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input
-            label="Contraseña"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={12}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Creando cuenta…' : 'Crear cuenta'}
-          </Button>
-        </form>
-        <p className="mt-4 text-sm text-gray-500">
+    <AuthShell
+      titulo="Crear cuenta"
+      descripcion="Solo te llevará un minuto."
+      pie={
+        <>
           ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="font-medium text-gray-900 hover:underline">
+          <Link to="/login" className="font-medium text-indigo-600 hover:underline">
             Inicia sesión
           </Link>
-        </p>
-      </Card>
-    </div>
+        </>
+      }
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <Input
+          label="Nombre"
+          name="displayName"
+          autoComplete="name"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          required
+        />
+        <Input
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          label="Contraseña"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          minLength={12}
+          hint="Al menos 12 caracteres."
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {error && (
+          <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={submitting} className="mt-1">
+          {submitting ? 'Creando cuenta…' : 'Crear cuenta'}
+        </Button>
+      </form>
+    </AuthShell>
   )
 }

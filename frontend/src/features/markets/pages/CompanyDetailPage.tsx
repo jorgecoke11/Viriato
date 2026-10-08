@@ -5,6 +5,7 @@ import * as marketsApi from '../api'
 import type { CriterionResult } from '../api'
 import { PriceSparkline } from '../PriceSparkline'
 import { GrahamScoreBadge, SignalBadge } from '../SignalBadge'
+import { BackLink } from '../../../components/ui/BackLink'
 
 const criterionStyles: Record<CriterionResult, string> = {
   Pass: 'text-green-700',
@@ -44,9 +45,7 @@ export function CompanyDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link to="/mercados" className="text-sm text-gray-500 hover:text-gray-900">
-        ← Mercados
-      </Link>
+      <BackLink to="/mercados">Mercados</BackLink>
 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -101,19 +100,19 @@ export function CompanyDetailPage() {
         <Card className="overflow-x-auto p-0">
           <h2 className="px-4 pt-4 text-sm font-medium text-gray-700">Fundamentales por año</h2>
           <table className="mt-2 w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-gray-200 text-gray-500">
+            <thead className="border-b border-gray-200 bg-gray-50/70">
               <tr>
-                <th className="px-4 py-3 font-medium">Año</th>
-                <th className="px-4 py-3 font-medium">EPS</th>
-                <th className="px-4 py-3 font-medium">Valor contable/acción</th>
-                <th className="px-4 py-3 font-medium">Dividendo/acción</th>
-                <th className="px-4 py-3 font-medium">Activo corriente</th>
-                <th className="px-4 py-3 font-medium">Pasivo corriente</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Año</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">EPS</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Valor contable/acción</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Dividendo/acción</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Activo corriente</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Pasivo corriente</th>
               </tr>
             </thead>
             <tbody>
               {[...analysis.fundamentalsHistory].reverse().map((y) => (
-                <tr key={y.fiscalYear} className="border-b border-gray-100 last:border-0">
+                <tr key={y.fiscalYear} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/70">
                   <td className="px-4 py-3 font-medium text-gray-900">{y.fiscalYear}</td>
                   <td className="px-4 py-3 text-gray-600">{fmt(y.eps, 2)}</td>
                   <td className="px-4 py-3 text-gray-600">{fmt(y.bookValuePerShare, 2)}</td>

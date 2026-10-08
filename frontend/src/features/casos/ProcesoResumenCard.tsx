@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CalendarRange, ChevronDown, Plus, Workflow } from 'lucide-react'
+import { Activity, ArrowRight, CalendarRange, CheckCheck, ChevronRight, Plus, Workflow } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/useAuth'
+import { IconButton } from '../../components/ui/IconButton'
 import { spring } from '../../lib/motion/tokens'
 import { collapseVariants } from '../../lib/motion/variants'
+import { useAuth } from '../auth/useAuth'
 import * as casosApi from './api'
-import type { EstadoConteoDto, TipoCasoConteoDto, FlujoResumenDto } from './api'
+import type { EstadoConteoDto, FlujoResumenDto, TipoCasoConteoDto } from './api'
 import { describeFiltro, filtroToParams, type FinalizadosFiltro } from './finalizadosFiltro'
 import { FinalizadosFiltroModal } from './FinalizadosFiltroModal'
 import { NuevoCasoModal } from './NuevoCasoModal'
@@ -16,95 +17,83 @@ export type TipoCasoFiltro =
   | { kind: 'bucket'; bucket: 'en-curso' | 'finalizado' }
   | { kind: 'estado'; codigo: string | null; display: string }
 
-// One consistent rule for the whole hierarchy: finalized = blue (it's "settled", it joins the same
-// blue the process header is branded in), still-moving = white/neutral (it hasn't earned that color
-// yet). Applied identically to the summary chips and to each expanded estado row.
+// One rule for the whole card: still moving = blue, settled = green. The same two colours the state badges use
+// everywhere else (En progreso / Completado), and each chip also carries its own icon, so it never rests on colour.
 function ConteoChip({ count, variant, onClick }: { count: number; variant: 'en-curso' | 'finalizado'; onClick: () => void }) {
+  const enCurso = variant === 'en-curso'
+  const Icon = enCurso ? Activity : CheckCheck
+  const label = enCurso ? 'En curso' : 'Finalizados'
+
   return (
     <button
       type="button"
       disabled={count === 0}
-      title={variant === 'en-curso' ? 'En curso' : 'Finalizados'}
-      aria-label={`${variant === 'en-curso' ? 'En curso' : 'Finalizados'}: ${count}`}
-      className={`min-w-[1.75rem] rounded-full px-2 py-1 text-center text-xs font-semibold transition-colors disabled:opacity-40 ${
-        variant === 'en-curso'
-          ? 'border border-blue-200 bg-white text-blue-700 enabled:hover:bg-blue-50'
-          : 'bg-blue-600 text-white enabled:hover:bg-blue-700'
-      }`}
+      title={label}
+      aria-label={`${label}: ${count}`}
+      className={`inline-flex min-w-[3.25rem] items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+        count === 0
+          ? 'bg-gray-100 text-gray-400'
+          : enCurso
+            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            : 'bg-green-100 text-green-700 hover:bg-green-200'
+      } disabled:cursor-default`}
       onClick={(e) => {
         e.stopPropagation()
         onClick()
       }}
     >
-      {count}
+      <Icon size={12} aria-hidden="true" />
+      <span className="num">{count}</span>
     </button>
   )
 }
 
-function TipoCasoAccordion({
-  tipo,
-  onSelect,
-}: {
-  tipo: TipoCasoConteoDto
-  onSelect: (filtro: TipoCasoFiltro) => void
-}) {
+function TipoCasoRow({ tipo, onSelect }: { tipo: TipoCasoConteoDto; onSelect: (filtro: TipoCasoFiltro) => void }) {
   const [open, setOpen] = useState(false)
   const porEstado = [...tipo.porEstado].sort((a, b) => a.orden - b.orden)
+  const total = tipo.enCurso + tipo.finalizados
 
   return (
-    <div className="overflow-hidden rounded-xl border border-blue-100 border-l-4 border-l-blue-500 bg-blue-50/70">
-      <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
+    <div className={`rounded-xl transition-colors ${open ? 'bg-gray-50' : 'hover:bg-gray-50/70'}`}>
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
         >
-          <span className="min-w-0 truncate text-base font-bold text-blue-950">{tipo.nombre}</span>
+          <motion.span className="shrink-0 text-gray-400" animate={{ rotate: open ? 90 : 0 }} transition={spring.snappy}>
+            <ChevronRight size={16} aria-hidden="true" />
+          </motion.span>
+          <span className="min-w-0 truncate text-sm font-medium text-gray-900">{tipo.nombre}</span>
+          <span className="num shrink-0 text-xs text-gray-400">{total}</span>
         </button>
         <span className="flex shrink-0 items-center gap-1.5">
           <ConteoChip count={tipo.enCurso} variant="en-curso" onClick={() => onSelect({ kind: 'bucket', bucket: 'en-curso' })} />
           <ConteoChip count={tipo.finalizados} variant="finalizado" onClick={() => onSelect({ kind: 'bucket', bucket: 'finalizado' })} />
-          <button
-            type="button"
-            aria-label={open ? 'Contraer' : 'Expandir'}
-            aria-expanded={open}
-            className="rounded p-0.5 text-blue-400 hover:text-blue-700"
-            onClick={() => setOpen((o) => !o)}
-          >
-            <motion.span className="block" animate={{ rotate: open ? 180 : 0 }} transition={spring.snappy}>
-              <ChevronDown size={16} />
-            </motion.span>
-          </button>
         </span>
       </div>
 
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div
-            className="overflow-hidden"
-            variants={collapseVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-          >
-            <div className="flex flex-col gap-1.5 border-t border-blue-100 px-4 py-3">
+          <motion.div className="overflow-hidden" variants={collapseVariants} initial="initial" animate="animate" exit="exit">
+            <div className="flex flex-col gap-1 px-3 pb-3 pl-9">
               {porEstado.length === 0 ? (
-                <p className="text-sm text-gray-500">Sin casos.</p>
+                <p className="py-1 text-sm text-gray-500">Sin casos.</p>
               ) : (
                 porEstado.map((estado: EstadoConteoDto) => (
                   <button
                     key={estado.codigo ?? 'sin-estado'}
                     type="button"
-                    className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm font-medium transition-colors ${
-                      estado.esFinal
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-left text-sm hover:border-gray-300 hover:bg-gray-50"
                     onClick={() => onSelect({ kind: 'estado', codigo: estado.codigo, display: estado.display })}
                   >
-                    <span>{estado.display}</span>
-                    <span className="font-semibold">{estado.count}</span>
+                    <span
+                      aria-hidden="true"
+                      className={`h-2 w-2 shrink-0 rounded-full ${estado.esFinal ? 'bg-green-500' : 'bg-blue-500'}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-gray-700">{estado.display}</span>
+                    <span className="num font-mono text-xs font-medium text-gray-900">{estado.count}</span>
                   </button>
                 ))
               )}
@@ -116,15 +105,39 @@ function TipoCasoAccordion({
   )
 }
 
-// The client-facing read on a process: identity (name, total) lives on a branded gradient header —
-// but only the header, so the gradient reads as "this is the process" rather than bleeding into
-// everything inside it. Below it, a plain white body holds one accordion per Tipo de caso, each with
-// its own lighter, still-blue-but-distinct treatment — a subtler echo of the header, not a repeat of it.
-//
-// Actions that trigger something *for this specific process* (today: starting a new Caso) live as
-// icon buttons in this same header, next to the identity block — never as a standalone item in the
-// sidebar. "Proceso -> its actions", not "menu -> a global action that happens to need a process
-// picker". The trailing icon-button row is exactly where the next such action would go too.
+// The proportion of what is still moving against what is settled, as one slim bar with its legend.
+function ProgresoBarra({ enCurso, finalizados }: { enCurso: number; finalizados: number }) {
+  const total = enCurso + finalizados
+  const pct = (n: number) => (total === 0 ? 0 : (n / total) * 100)
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div
+        role="img"
+        aria-label={`${enCurso} en curso y ${finalizados} finalizados`}
+        className="flex h-2 overflow-hidden rounded-full bg-gray-100"
+      >
+        <div className="bg-green-500" style={{ width: `${pct(finalizados)}%` }} />
+        <div className="bg-blue-500" style={{ width: `${pct(enCurso)}%` }} />
+      </div>
+      <div className="flex items-center gap-4 text-xs text-gray-500">
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-blue-500" />
+          En curso <span className="num font-mono font-medium text-gray-800">{enCurso}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-green-500" />
+          Finalizados <span className="num font-mono font-medium text-gray-800">{finalizados}</span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// The read on one process: who it is (name, how many cases), how they split between moving and settled, and one
+// row per Tipo de caso to dig into. Actions that act *on this process* (today: start a new Caso, pick which
+// finished cases to count) are icon buttons in the header, next to its name — never an item in the sidebar:
+// "process -> its actions", not "menu -> a global action that happens to need a process picker".
 export function ProcesoResumenCard({
   resumen,
   modoGlobal,
@@ -132,7 +145,9 @@ export function ProcesoResumenCard({
 }: {
   resumen: FlujoResumenDto
   modoGlobal: FinalizadosFiltro
-  onSelectTipo: (tipo: TipoCasoConteoDto, filtro: TipoCasoFiltro) => void
+  /** `modo` is the finished-Casos window the card is showing right now — its own if it broke away from the
+   * panel-wide one — so whatever opens next lists what was counted, not everything. */
+  onSelectTipo: (tipo: TipoCasoConteoDto, filtro: TipoCasoFiltro, modo: FinalizadosFiltro) => void
 }) {
   const navigate = useNavigate()
   const { can } = useAuth()
@@ -151,69 +166,64 @@ export function ProcesoResumenCard({
 
   const activo = overrideModo !== null ? (overrideQuery.data ?? resumen) : resumen
   const tipos = [...activo.porTipo].sort((a, b) => a.orden - b.orden)
+  const enCurso = tipos.reduce((suma, t) => suma + t.enCurso, 0)
+  const finalizados = tipos.reduce((suma, t) => suma + t.finalizados, 0)
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-950 px-6 py-5">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
-          <Workflow size={22} />
+    <section
+      aria-label={resumen.flujoNombre}
+      className="flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-surface shadow-card"
+    >
+      <div className="flex items-start gap-3 px-5 pt-5">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+          <Workflow size={22} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold text-white">{resumen.flujoNombre}</h2>
-          <p className="text-sm text-blue-100">
-            {activo.total} {activo.total === 1 ? 'caso' : 'casos'}
+          <h2 className="truncate text-base font-semibold text-gray-900" title={resumen.flujoNombre}>
+            {resumen.flujoNombre}
+          </h2>
+          <p className="text-sm text-gray-500">
+            <span className="num font-mono font-medium text-gray-800">{activo.total}</span> {activo.total === 1 ? 'caso' : 'casos'}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            title={overrideModo ? `Finalizados: ${describeFiltro(overrideModo)} (propio)` : `Finalizados: ${describeFiltro(modoGlobal)} (general)`}
-            aria-label="Filtrar finalizados de este proceso"
+        <div className="-mt-1 -mr-1 flex shrink-0 items-center gap-1">
+          <IconButton
+            label={overrideModo ? `Finalizados: ${describeFiltro(overrideModo)} (propio)` : `Finalizados: ${describeFiltro(modoGlobal)} (general)`}
             onClick={() => setShowFiltroModal(true)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 text-white transition-colors hover:bg-white/25"
           >
             <CalendarRange size={18} />
-            {overrideModo !== null && (
-              <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-300" />
-            )}
-          </button>
+            {overrideModo !== null && <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-surface" />}
+          </IconButton>
           {can('casos.manage') && (
-            <button
-              type="button"
-              title="Añadir caso"
-              aria-label={`Añadir caso a ${resumen.flujoNombre}`}
-              onClick={() => setShowNuevoCaso(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 text-white transition-colors hover:bg-white/25"
-            >
+            <IconButton variant="primary" label={`Añadir caso a ${resumen.flujoNombre}`} onClick={() => setShowNuevoCaso(true)}>
               <Plus size={18} />
-            </button>
+            </IconButton>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 p-6">
-        {tipos.length === 0 ? (
-          <p className="text-sm text-gray-500">Sin casos en este rango.</p>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {tipos.map((tipo) => (
-              <TipoCasoAccordion
-                key={tipo.tipoCasoId ?? 'sin-tipo'}
-                tipo={tipo}
-                onSelect={(filtro) => onSelectTipo(tipo, filtro)}
-              />
-            ))}
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="self-start text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline"
-          onClick={() => navigate(`/casos/lista?flujoId=${resumen.flujoId}`)}
-        >
-          Ver todos los casos →
-        </button>
+      <div className="px-5 pt-4">
+        <ProgresoBarra enCurso={enCurso} finalizados={finalizados} />
       </div>
+
+      <div className="flex flex-1 flex-col gap-0.5 px-2 pt-3 pb-2">
+        {tipos.length === 0 ? (
+          <p className="px-3 py-2 text-sm text-gray-500">Sin casos en este rango.</p>
+        ) : (
+          tipos.map((tipo) => (
+            <TipoCasoRow key={tipo.tipoCasoId ?? 'sin-tipo'} tipo={tipo} onSelect={(filtro) => onSelectTipo(tipo, filtro, overrideModo ?? modoGlobal)} />
+          ))
+        )}
+      </div>
+
+      <button
+        type="button"
+        className="group flex items-center justify-between border-t border-gray-100 px-5 py-3 text-sm font-medium text-indigo-600 hover:bg-gray-50"
+        onClick={() => navigate(`/casos/lista?flujoId=${resumen.flujoId}`)}
+      >
+        Ver todos los casos
+        <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </button>
 
       <NuevoCasoModal
         open={showNuevoCaso}
@@ -230,6 +240,6 @@ export function ProcesoResumenCard({
         onClose={() => setShowFiltroModal(false)}
         onUseGlobal={overrideModo !== null ? () => setOverrideModo(null) : undefined}
       />
-    </div>
+    </section>
   )
 }

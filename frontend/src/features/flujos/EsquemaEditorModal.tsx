@@ -41,6 +41,8 @@ export function EsquemaEditorModal({ open, tipoNombre, esquemaInicial, guardando
   const [mostrarEjemplo, setMostrarEjemplo] = useState(false)
   const [errorEjemplo, setErrorEjemplo] = useState<string | null>(null)
   const [estado, setEstado] = useState<EstadoFormulario>({})
+  // The preview only scolds once someone has typed in it: an untouched, empty form is not an error.
+  const [tocado, setTocado] = useState(false)
   const datosPrevios = useRef<Record<string, unknown>>({})
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function EsquemaEditorModal({ open, tipoNombre, esquemaInicial, guardando
       setMostrarEjemplo(false)
       setErrorEjemplo(null)
       datosPrevios.current = {}
+      setTocado(false)
     }
   }, [open, esquemaInicial])
 
@@ -155,7 +158,7 @@ export function EsquemaEditorModal({ open, tipoNombre, esquemaInicial, guardando
               </p>
               <textarea
                 rows={5}
-                className="rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="field font-mono text-xs"
                 value={ejemplo}
                 onChange={(e) => setEjemplo(e.target.value)}
                 placeholder={'{\n  "beneficio": 15,\n  "actualizar": true,\n  "producto": "Lavadoras"\n}'}
@@ -171,9 +174,8 @@ export function EsquemaEditorModal({ open, tipoNombre, esquemaInicial, guardando
           <textarea
             id="esquema-json"
             rows={mostrarEjemplo ? 12 : 20}
-            className={`rounded-lg border px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 ${
-              resultado && !resultado.ok ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-gray-300 focus:border-indigo-400 focus:ring-indigo-100'
-            }`}
+            className="field font-mono text-xs"
+            aria-invalid={resultado && !resultado.ok ? true : undefined}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             spellCheck={false}
@@ -206,9 +208,10 @@ export function EsquemaEditorModal({ open, tipoNombre, esquemaInicial, guardando
                   estado={estado}
                   onChange={(nuevo) => {
                     setEstado(nuevo)
+                    setTocado(true)
                     datosPrevios.current = aDatos(esquema, nuevo)
                   }}
-                  errores={erroresPorRuta}
+                  errores={tocado ? erroresPorRuta : {}}
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -216,7 +219,9 @@ export function EsquemaEditorModal({ open, tipoNombre, esquemaInicial, guardando
                 <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 font-mono text-xs text-gray-800">
                   {Object.keys(datos).length > 0 ? JSON.stringify(datos, null, 2) : '{}'}
                 </pre>
-                {problemas.length > 0 && <p className="text-xs text-amber-700">Con estos valores el formulario avisaría: {problemas[0].completo}</p>}
+                {tocado && problemas.length > 0 && (
+                  <p className="text-xs text-amber-700">Con estos valores el formulario avisaría: {problemas[0].completo}</p>
+                )}
               </div>
             </>
           ) : (

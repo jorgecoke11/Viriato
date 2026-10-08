@@ -8,7 +8,7 @@ public static class RpaFleetDtoMapper
         equipo.Id, equipo.Nombre, equipo.Descripcion, equipo.Activo, equipo.CreatedAt, equipo.UpdatedAt);
 
     public static ServicioDto ToDto(this Servicio servicio) => new(
-        servicio.Id, servicio.Nombre, servicio.Descripcion, servicio.Activo, servicio.CreatedAt, servicio.UpdatedAt);
+        servicio.Id, servicio.Nombre, servicio.Descripcion, servicio.Activo, servicio.MaxEjecucionesGlobales, servicio.TiempoMaximoMinutos, servicio.CreatedAt, servicio.UpdatedAt);
 
     public static DespliegueDto ToDto(this Despliegue despliegue) => new(
         despliegue.Id,

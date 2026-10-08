@@ -61,11 +61,13 @@ function flattenLinks(nodes: NavNode[]): Extract<NavNode, { type: 'link' }>[] {
   return nodes.flatMap((node) => (node.type === 'link' ? [node] : flattenLinks(node.children)))
 }
 
+// The rail is dark in both themes, so these use the side-* tokens. The active link gets a soft brand wash and a
+// bar on its left edge, so it is told apart by shape as well as colour.
 export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+  `relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
     isActive
-      ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-sm'
-      : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+      ? 'bg-indigo-500/15 text-side-strong before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-side-accent [&>svg]:text-side-accent'
+      : 'text-side-text hover:bg-side-hover hover:text-side-strong'
   }`
 
 export function NavTree({
@@ -91,12 +93,13 @@ export function NavTree({
           <NavLink
             key={link.to}
             to={link.to}
+            end={link.end}
             title={link.label}
             aria-label={link.label}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
-                isActive ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-sm' : 'text-gray-500 hover:bg-blue-50 hover:text-blue-700'
+              `flex h-10 w-10 items-center justify-center rounded-lg ${
+                isActive ? 'bg-indigo-500/15 text-side-accent' : 'text-side-text hover:bg-side-hover hover:text-side-strong'
               }`
             }
           >
@@ -110,11 +113,11 @@ export function NavTree({
   const searching = normalizedQuery !== ''
 
   return (
-    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3">
+    <nav aria-label="Principal" className="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-3 pb-2">
       {visible.map((node) => {
         if (node.type === 'link') {
           return (
-            <NavLink key={node.to} to={node.to} className={navLinkClass} onClick={onNavigate}>
+            <NavLink key={node.to} to={node.to} end={node.end} className={navLinkClass} onClick={onNavigate}>
               {node.icon}
               {node.label}
             </NavLink>
@@ -124,28 +127,27 @@ export function NavTree({
         const open = searching || (openGroups[node.id] ?? true)
 
         return (
-          <div key={node.id} className="mt-1 first:mt-0">
+          <div key={node.id} className="mt-2 first:mt-0">
             <button
               type="button"
               title={node.label}
-              className="flex w-full items-center gap-2 rounded-lg border-l-4 border-l-blue-500 bg-blue-50/70 px-3 py-2 text-left"
+              className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-side-text hover:text-side-strong"
               aria-expanded={open}
               onClick={() => setOpenGroups((prev) => ({ ...prev, [node.id]: !open }))}
             >
-              {node.icon}
-              <span className="min-w-0 flex-1 truncate text-sm font-bold text-blue-950">{node.label}</span>
-              <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring.snappy} className="shrink-0 text-blue-400">
-                <ChevronDown size={16} />
+              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.08em] uppercase">{node.label}</span>
+              <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring.snappy} className="shrink-0 opacity-70 group-hover:opacity-100">
+                <ChevronDown size={14} />
               </motion.span>
             </button>
 
             <AnimatePresence initial={false}>
               {open && (
                 <motion.div variants={collapseVariants} initial="initial" animate="animate" exit="exit" className="overflow-hidden">
-                  <div className="flex flex-col gap-1 py-1 pl-4">
+                  <div className="flex flex-col gap-0.5 pb-1">
                     {node.children.map((child) =>
                       child.type === 'link' ? (
-                        <NavLink key={child.to} to={child.to} className={navLinkClass} onClick={onNavigate}>
+                        <NavLink key={child.to} to={child.to} end={child.end} className={navLinkClass} onClick={onNavigate}>
                           {child.icon}
                           {child.label}
                         </NavLink>
@@ -159,7 +161,7 @@ export function NavTree({
         )
       })}
 
-      {visible.length === 0 && <p className="px-3 py-2 text-sm text-gray-400">Sin resultados.</p>}
+      {visible.length === 0 && <p className="px-3 py-2 text-sm text-side-text">Sin resultados.</p>}
     </nav>
   )
 }

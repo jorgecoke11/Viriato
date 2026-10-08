@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Viariato.ApiContracts;
 using Viariato.Infrastructure;
 using Viariato.Infrastructure.Trabajos;
@@ -201,42 +202,64 @@ internal static class RpaWorkerEndpoints
         return Results.Ok(new CasoCreadoDto(caso.Id, caso.Titulo));
     }
 
-    private static async Task<IResult> ClaimSiguienteAsync(ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
+    /// <summary>Any value will do: it only has to be the same everywhere. Held while a claim is decided.</summary>
+    private const long CerrojoDeDespacho = 7_204_601;
+
+    /// <summary>
+    /// Hands the next step to the robot that asks — if it is that robot's turn. Robots of one machine do not each
+    /// grab whatever is oldest in their own queue: the machine has a limit on how many steps run at once and an
+    /// order for its services (see <see cref="Despacho.Despachador"/>), and a service can be capped across machines,
+    /// so the answer to "give me work" can be "not you, not yet" (204, the same as an empty queue — the robot just
+    /// asks again in a few seconds). A step handed out may stay in execution as long as its service's maximum time
+    /// allows; past that the platform cancels its Caso (see <see cref="Despacho.ControlDePasos"/>).
+    /// </summary>
+    private static async Task<IResult> ClaimSiguienteAsync(
+        ClaimsPrincipal principal,
+        AppDbContext db,
+        IOptions<Despacho.DespachoOptions> opciones,
+        HttpContext http,
+        CancellationToken ct)
     {
         var despliegueId = principal.GetDespliegueId();
-        var servicioId = principal.GetServicioId();
-        var flujoId = principal.GetFlujoId();
 
         var despliegue = await db.Set<Despliegue>().AsNoTracking().FirstOrDefaultAsync(d => d.Id == despliegueId, ct);
         if (despliegue is null) return ProblemResults.NotFound(http, "Despliegue no encontrado.");
         if (!despliegue.Encendido) return ProblemResults.Conflict(http, "El despliegue está apagado.");
 
-        // Optimistic claim: pick the oldest unclaimed candidate, then a conditional UPDATE ... WHERE
-        // DespliegueId IS NULL. If a concurrent poller won the race (0 rows affected), move to the
-        // next candidate — cheap enough at this volume without raw-SQL row locking.
+        var config = opciones.Value;
+        var ahora = DateTimeOffset.UtcNow;
+
+        // One decision at a time for the whole platform: a service's global cap spans machines, and nothing narrower
+        // than a platform-wide lock keeps two machines from both taking its last slot. A decision takes milliseconds.
+        await using var transaccion = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock({CerrojoDeDespacho})", ct);
+
+        // Optimistic claim on top of that, for a step taken by something that does not take the lock: if it was
+        // taken first (0 rows affected), look again.
         for (var intento = 0; intento < 5; intento++)
         {
-            var candidato = await (
-                from detalle in db.Set<RpaEjecucionDetalle>().AsNoTracking()
-                join paso in db.Set<EjecucionPaso>().AsNoTracking() on detalle.EjecucionPasoId equals paso.Id
-                join pasoDef in db.Set<FlujoPasoDef>().AsNoTracking() on paso.FlujoPasoDefId equals pasoDef.Id
-                join flujoVersion in db.Set<FlujoVersion>().AsNoTracking() on pasoDef.FlujoVersionId equals flujoVersion.Id
-                where detalle.DespliegueId == null && paso.Estado == EjecucionPasoEstado.EnProgreso
-                    && pasoDef.ServicioId == servicioId && flujoVersion.FlujoId == flujoId
-                orderby detalle.Id
-                select detalle.Id
-            ).FirstOrDefaultAsync(ct);
+            var estado = await Despacho.DespachoEquipo.CargarAsync(db, despliegue.EquipoId, despliegueId, ahora, config, ct);
 
-            if (candidato == Guid.Empty)
+            if (estado.EnEjecucion >= estado.Equipo.MaxEjecucionesSimultaneas)
             {
+                await transaccion.CommitAsync(ct);
                 return Results.NoContent();
             }
 
+            var elegido = Despacho.Despachador.Elegir(estado.Candidatos, estado.Orden, estado.Equipo.Politica, estado.UltimoServicioId);
+            if (elegido is null || elegido.DespliegueId != despliegueId)
+            {
+                await transaccion.CommitAsync(ct);
+                return Results.NoContent();
+            }
+
+            var reclamadoEn = DateTimeOffset.UtcNow;
+
             var filasActualizadas = await db.Set<RpaEjecucionDetalle>()
-                .Where(d => d.Id == candidato && d.DespliegueId == null)
+                .Where(d => d.Id == elegido.DetalleId && d.DespliegueId == null)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(d => d.DespliegueId, despliegueId)
-                    .SetProperty(d => d.ClaimedAt, DateTimeOffset.UtcNow), ct);
+                    .SetProperty(d => d.ClaimedAt, reclamadoEn), ct);
 
             if (filasActualizadas == 0)
             {
@@ -250,16 +273,38 @@ internal static class RpaWorkerEndpoints
                 join pasoDef in db.Set<FlujoPasoDef>().AsNoTracking() on paso.FlujoPasoDefId equals pasoDef.Id
                 join flujoVersion in db.Set<FlujoVersion>().AsNoTracking() on pasoDef.FlujoVersionId equals flujoVersion.Id
                 join flujo in db.Set<Flujo>().AsNoTracking() on flujoVersion.FlujoId equals flujo.Id
-                where detalle.Id == candidato
+                where detalle.Id == elegido.DetalleId
                 select new EjecucionAsignadaDto(
                     paso.Id, caso.Id, caso.Titulo, flujo.Nombre, detalle.AplicacionObjetivo, detalle.ParametrosEntrada, caso.DatosJson,
                     caso.TipoCaso == null ? null : caso.TipoCaso.Nombre)
             ).FirstAsync(ct);
 
+            await transaccion.CommitAsync(ct);
             return Results.Ok(asignado);
         }
 
+        await transaccion.CommitAsync(ct);
         return ProblemResults.Conflict(http, "No se pudo reservar un elemento de la cola; inténtalo de nuevo.");
+    }
+
+    /// <summary>The one conditional update every way of settling a step goes through: it changes the step only if it
+    /// is still in progress, so a robot reporting at the very moment the platform cancels the Caso (or two reports at
+    /// once) cannot both win. False means somebody else settled it first.</summary>
+    private static async Task<bool> CerrarPasoAsync(
+        AppDbContext db, Guid pasoId, Guid detalleId, EjecucionPasoEstado nuevoEstado, string? error, string? parametrosSalida, CancellationToken ct)
+    {
+        var ahora = DateTimeOffset.UtcNow;
+        var filas = await db.Set<EjecucionPaso>()
+            .Where(p => p.Id == pasoId && p.Estado == EjecucionPasoEstado.EnProgreso)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.Estado, nuevoEstado)
+                .SetProperty(p => p.ErrorMensaje, error)
+                .SetProperty(p => p.FinishedAt, ahora), ct);
+        if (filas == 0) return false;
+
+        await db.Set<RpaEjecucionDetalle>().Where(d => d.Id == detalleId)
+            .ExecuteUpdateAsync(s => s.SetProperty(d => d.ParametrosSalida, parametrosSalida), ct);
+        return true;
     }
 
     private static async Task<IResult> CompletarAsync(
@@ -275,20 +320,15 @@ internal static class RpaWorkerEndpoints
         var detalle = await RpaWorkerAuthorization.RequireClaimedStepAsync(db, principal.GetDespliegueId(), id, ct);
         if (detalle is null) return ProblemResults.NotFound(http, "Paso no encontrado.");
 
-        var paso = await db.Set<EjecucionPaso>().FirstAsync(p => p.Id == id, ct);
-        if (paso.Estado != EjecucionPasoEstado.EnProgreso)
+        var trabajoId = await db.Set<EjecucionPaso>().AsNoTracking().Where(p => p.Id == id).Select(p => p.TrabajoId).FirstAsync(ct);
+        if (!await CerrarPasoAsync(db, id, detalle.Id, EjecucionPasoEstado.Completado, null, request.ParametrosSalida, ct))
         {
             return ProblemResults.Conflict(http, "Este paso ya no está en progreso.");
         }
 
-        detalle.ParametrosSalida = request.ParametrosSalida;
-        paso.Estado = EjecucionPasoEstado.Completado;
-        paso.FinishedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
-
-        if (paso.TrabajoId is { } trabajoId)
+        if (trabajoId is { } trabajo)
         {
-            await tracker.CompleteAsync(trabajoId, summary: "Completado por el robot.", ct: ct);
+            await tracker.CompleteAsync(trabajo, summary: "Completado por el robot.", ct: ct);
         }
 
         await orchestrator.AvanzarAsync(id, ct);
@@ -312,20 +352,15 @@ internal static class RpaWorkerEndpoints
         var detalle = await RpaWorkerAuthorization.RequireClaimedStepAsync(db, principal.GetDespliegueId(), id, ct);
         if (detalle is null) return ProblemResults.NotFound(http, "Paso no encontrado.");
 
-        var paso = await db.Set<EjecucionPaso>().FirstAsync(p => p.Id == id, ct);
-        if (paso.Estado != EjecucionPasoEstado.EnProgreso)
+        var trabajoId = await db.Set<EjecucionPaso>().AsNoTracking().Where(p => p.Id == id).Select(p => p.TrabajoId).FirstAsync(ct);
+        if (!await CerrarPasoAsync(db, id, detalle.Id, EjecucionPasoEstado.Completado, null, request.ParametrosSalida, ct))
         {
             return ProblemResults.Conflict(http, "Este paso ya no está en progreso.");
         }
 
-        detalle.ParametrosSalida = request.ParametrosSalida;
-        paso.Estado = EjecucionPasoEstado.Completado;
-        paso.FinishedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
-
-        if (paso.TrabajoId is { } trabajoId)
+        if (trabajoId is { } trabajo)
         {
-            await tracker.CompleteAsync(trabajoId, summary: "Completado por el robot.", ct: ct);
+            await tracker.CompleteAsync(trabajo, summary: "Completado por el robot.", ct: ct);
         }
 
         await orchestrator.CompletarCasoAsync(id, ct);
@@ -346,20 +381,15 @@ internal static class RpaWorkerEndpoints
         var detalle = await RpaWorkerAuthorization.RequireClaimedStepAsync(db, principal.GetDespliegueId(), id, ct);
         if (detalle is null) return ProblemResults.NotFound(http, "Paso no encontrado.");
 
-        var paso = await db.Set<EjecucionPaso>().FirstAsync(p => p.Id == id, ct);
-        if (paso.Estado != EjecucionPasoEstado.EnProgreso)
+        var trabajoId = await db.Set<EjecucionPaso>().AsNoTracking().Where(p => p.Id == id).Select(p => p.TrabajoId).FirstAsync(ct);
+        if (!await CerrarPasoAsync(db, id, detalle.Id, EjecucionPasoEstado.Fallido, request.Error, null, ct))
         {
             return ProblemResults.Conflict(http, "Este paso ya no está en progreso.");
         }
 
-        paso.Estado = EjecucionPasoEstado.Fallido;
-        paso.ErrorMensaje = request.Error;
-        paso.FinishedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
-
-        if (paso.TrabajoId is { } trabajoId)
+        if (trabajoId is { } trabajo)
         {
-            await tracker.FailAsync(trabajoId, request.Error, ct: ct);
+            await tracker.FailAsync(trabajo, request.Error, ct: ct);
         }
 
         await orchestrator.AvanzarAsync(id, ct);

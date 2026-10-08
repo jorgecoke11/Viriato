@@ -21,6 +21,8 @@ internal static class ServiciosEndpoints
             {
                 Nombre = request.Nombre,
                 Descripcion = request.Descripcion,
+                MaxEjecucionesGlobales = request.MaxEjecucionesGlobales,
+                TiempoMaximoMinutos = request.TiempoMaximoMinutos,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
             },
@@ -29,6 +31,10 @@ internal static class ServiciosEndpoints
                 if (request.Nombre is not null) servicio.Nombre = request.Nombre;
                 if (request.Descripcion is not null) servicio.Descripcion = request.Descripcion;
                 if (request.Activo is not null) servicio.Activo = request.Activo.Value;
+                if (request.QuitarLimiteGlobal) servicio.MaxEjecucionesGlobales = null;
+                else if (request.MaxEjecucionesGlobales is not null) servicio.MaxEjecucionesGlobales = request.MaxEjecucionesGlobales;
+                if (request.QuitarTiempoMaximo) servicio.TiempoMaximoMinutos = null;
+                else if (request.TiempoMaximoMinutos is not null) servicio.TiempoMaximoMinutos = request.TiempoMaximoMinutos;
                 servicio.UpdatedAt = DateTimeOffset.UtcNow;
             },
             Authorize = RpaFleetAuthorization.RequireManageAsync,

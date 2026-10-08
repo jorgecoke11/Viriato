@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 import { Card } from '../../../components/ui/Card'
+import { EmptyState } from '../../../components/ui/EmptyState'
+import { IconButton } from '../../../components/ui/IconButton'
+import { PageHeader } from '../../../components/ui/PageHeader'
+import { SkeletonRows } from '../../../components/ui/Skeleton'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
@@ -25,7 +31,7 @@ const emptyForm: FormState = { nombre: '', descripcion: '', usuario: '', passwor
 const NOMBRE_VALIDO = /^[a-z0-9][a-z0-9._-]*$/
 
 const selectClass =
-  'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100'
+  'field'
 
 export function CredencialesPage() {
   const queryClient = useQueryClient()
@@ -112,58 +118,73 @@ export function CredencialesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Credenciales</h1>
-        <Button onClick={abrirNueva}>Nueva</Button>
-      </div>
-
-      <p className="text-sm text-gray-500">
-        Los robots piden aquí los usuarios y contraseñas que necesitan, por su nombre. Las contraseñas se guardan cifradas y
-        no se pueden volver a ver: solo se pueden sustituir.
-      </p>
+      <PageHeader
+        title="Credenciales"
+        description="Los robots piden aquí los usuarios y contraseñas que necesitan, por su nombre. Las contraseñas se guardan cifradas y no se pueden volver a ver: solo se pueden sustituir."
+        actions={
+          <Button onClick={abrirNueva}>
+            <Plus size={16} />
+            Nueva
+          </Button>
+        }
+      />
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="border-b border-gray-200 text-gray-500">
+          <thead className="border-b border-gray-200 bg-gray-50/70">
             <tr>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Descripción</th>
-              <th className="px-4 py-3 font-medium">Usuario</th>
-              <th className="px-4 py-3 font-medium">Contraseña</th>
-              <th className="px-4 py-3 font-medium">Disponible para</th>
-              <th className="px-4 py-3 font-medium">Activa</th>
-              <th className="px-4 py-3 font-medium">Último acceso</th>
-              <th className="px-4 py-3 font-medium">Acciones</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Nombre</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Descripción</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Usuario</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Contraseña</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Disponible para</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Activa</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Último acceso</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {credenciales.map((credencial) => (
-              <tr key={credencial.id} className="border-b border-gray-100 last:border-0">
+              <tr key={credencial.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/70">
                 <td className="px-4 py-3 font-mono text-xs text-gray-800">{credencial.nombre}</td>
                 <td className="px-4 py-3 text-gray-600">{credencial.descripcion ?? '—'}</td>
                 <td className="px-4 py-3">{credencial.usuario ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-400">••••••••</td>
                 <td className="px-4 py-3">{credencial.servicioNombre ?? 'Todos los robots'}</td>
-                <td className="px-4 py-3">{credencial.activo ? 'Sí' : 'No'}</td>
+                <td className="px-4 py-3">
+                  <Badge tone={credencial.activo ? 'success' : 'neutral'}>{credencial.activo ? 'Activa' : 'Inactiva'}</Badge>
+                </td>
                 <td className="px-4 py-3 text-gray-500">
                   {credencial.ultimoAccesoAt ? new Date(credencial.ultimoAccesoAt).toLocaleString() : 'Nunca'}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <button type="button" className="text-gray-500 hover:text-gray-900" onClick={() => abrirEdicion(credencial)}>
-                      Editar
-                    </button>
-                    <button type="button" className="text-gray-500 hover:text-red-600" onClick={() => setPendingDelete(credencial)}>
-                      Eliminar
-                    </button>
+                  <div className="flex items-center gap-0.5">
+                    <IconButton size="sm" label="Editar" onClick={() => abrirEdicion(credencial)}>
+                      <Pencil size={16} />
+                    </IconButton>
+                    <IconButton size="sm" variant="danger" label="Eliminar" onClick={() => setPendingDelete(credencial)}>
+                      <Trash2 size={16} />
+                    </IconButton>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {credencialesQuery.isLoading && <p className="p-4 text-sm text-gray-500">Cargando…</p>}
-        {credencialesQuery.isSuccess && credenciales.length === 0 && <p className="p-4 text-sm text-gray-500">Sin credenciales.</p>}
+        {credencialesQuery.isLoading && <SkeletonRows />}
+        {credencialesQuery.isSuccess && credenciales.length === 0 && (
+          <EmptyState
+            icon={<KeyRound size={22} />}
+            title="Sin credenciales"
+            description="Guarda aquí el usuario y la contraseña que necesita un robot, y pídela por su nombre desde el robot."
+            action={
+              <Button variant="secondary" size="sm" onClick={abrirNueva}>
+                <Plus size={15} />
+                Nueva
+              </Button>
+            }
+          />
+        )}
       </Card>
 
       <Modal

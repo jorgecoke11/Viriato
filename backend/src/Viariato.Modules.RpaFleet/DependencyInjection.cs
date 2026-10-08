@@ -23,6 +23,8 @@ public static class DependencyInjection
         services.AddSingleton<IValidator<CreateServicioRequest>, CreateServicioRequestValidator>();
         services.AddSingleton<IValidator<UpdateServicioRequest>, UpdateServicioRequestValidator>();
         services.AddSingleton<CreateDespliegueRequestValidator>();
+        services.AddSingleton<IValidator<UpdateDespachoEquipoRequest>, UpdateDespachoEquipoRequestValidator>();
+        services.AddSingleton<IValidator<SavePlantillaDespachoRequest>, SavePlantillaDespachoRequestValidator>();
         services.AddSingleton<CreateCredencialRequestValidator>();
         services.AddSingleton<UpdateCredencialRequestValidator>();
 
