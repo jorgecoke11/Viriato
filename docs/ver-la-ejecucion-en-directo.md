@@ -38,14 +38,36 @@ Tres cosas, todas desde el caso en Viriato:
 
 La cámara pide el mismo permiso que ver el caso (`casos.read`): la vista es de solo mirar.
 
-## Poner la dirección de la vista (`VISTA_URL_PUBLICA`)
+## Verla también desde fuera (la forma recomendada)
+
+La vista se sirve por **la misma dirección de Viriato**, en `/vista/`: el Caddy de Viriato (`web`) le pasa al extractor las peticiones de
+`/vista/*`. Así comparte el HTTPS y el login de Cloudflare Access, no hace falta un segundo nombre en el túnel y no hay problema de
+contenido mixto ni de marcos. Probado: la página de noVNC, sus archivos y el websocket llegan por `/vista/` (el websocket responde 101).
+
+1. Viriato (con el `Caddyfile` nuevo: `docker compose … up -d --build web`) y el extractor tienen que estar **en el mismo PC**, y el extractor
+   en la red de Docker de Viriato. En el repositorio de los robots, `docker-compose.vista-publica.yml` lo hace:
+   ```powershell
+   docker compose -f docker-compose.yml -f docker-compose.vista-publica.yml up -d extractor
+   ```
+2. En el `.env` de los robots:
+   ```
+   VISTA_EN_DIRECTO=true
+   VISTA_URL_PUBLICA=https://app.viriato.org/vista/vnc.html?path=vista/websockify
+   VNC_PASSWORD=<una contraseña>
+   ```
+   (`path=vista/websockify` le dice a noVNC por dónde abrir el websocket; sin él lo buscaría en la raíz.)
+3. Quien mire entra con su login de Access, abre el caso en ejecución y ve el panel. Con `VNC_PASSWORD`, noVNC pide además esa contraseña.
+
+Límites: **un solo extractor** (con varias copias, el nombre `extractor` no sabría a cuál mandar) y los dos en el mismo PC. Si el extractor
+corre en otra máquina, cambia el destino con la variable `VISTA_UPSTREAM` del servicio `web` (por defecto `extractor:6080`).
+
+## Poner la dirección de la vista a mano (`VISTA_URL_PUBLICA`)
 
 La dirección se abre **desde el navegador de quien mira**, así que tiene que ser una que ese navegador alcance:
 
 - Viriato y robot en el **mismo PC**, entrando por `http://localhost:5173`: la de por defecto (`http://localhost:6080/vnc.html`).
-- Viriato **publicado por HTTPS** (Cloudflare Tunnel): un navegador no deja incrustar una página `http` dentro de una `https` (contenido mixto). Hay que
-  publicar la vista también por HTTPS —otro *Public hostname* del mismo túnel hacia `http://<robot>:6080`— y poner esa dirección en `VISTA_URL_PUBLICA`.
-  Protégela con **Cloudflare Access** y con `VNC_PASSWORD`: es la pantalla de un robot con las credenciales de un portal.
+- Viriato publicado por HTTPS: la de `/vista/` de arriba. Un navegador no deja incrustar una página `http` en una `https` (aunque `localhost`
+  suele permitirse), y un segundo nombre en el túnel necesitaría su propio Access.
 - El puerto 6080 solo se publica en `127.0.0.1` en el compose de los robots, a propósito.
 
 ## Para el desarrollador del robot
