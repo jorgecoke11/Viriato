@@ -186,7 +186,7 @@ const buildQuery = (params: Record<string, string | undefined>) => {
 }
 
 export const listFlujos = (filters: Record<string, string> = {}) =>
-  apiFetch<PagedResult<FlujoDto>>(`/flujos${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+  apiFetch<PagedResult<FlujoDto>>(`/flujos${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
 
 export const getFlujo = (id: string) => apiFetch<FlujoDto>(`/flujos/${id}`)
 
@@ -205,7 +205,7 @@ export const updateFlujoAlmacenamiento = (flujoId: string, storageConfigId: stri
   })
 
 export const listStorageConfigs = (filters: Record<string, string> = {}) =>
-  apiFetch<PagedResult<StorageConfigDto>>(`/storage-configs${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+  apiFetch<PagedResult<StorageConfigDto>>(`/storage-configs${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
 
 export const createStorageConfig = (request: CreateStorageConfigRequest) =>
   apiFetch<StorageConfigDto>('/storage-configs', { method: 'POST', body: JSON.stringify(request) })
@@ -264,7 +264,7 @@ export const archivarFlujoVersion = (flujoId: string, versionId: string) =>
   apiFetch<FlujoVersionDto>(`/flujos/${flujoId}/versiones/${versionId}/archivar`, { method: 'POST' })
 
 export const listAgentes = (filters: Record<string, string> = {}) =>
-  apiFetch<PagedResult<AgenteDefinicionDto>>(`/agentes${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+  apiFetch<PagedResult<AgenteDefinicionDto>>(`/agentes${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
 
 export interface FlujoParametroDto {
   id: string
@@ -274,18 +274,37 @@ export interface FlujoParametroDto {
   descripcion: string | null
   createdAt: string
   updatedAt: string
+  /** The people working the process may change the value from the dashboard. */
+  editablePorUsuario: boolean
+  /** What they see instead of the code. */
+  etiqueta: string | null
 }
 
 export interface CreateFlujoParametroRequest {
   codigo: string
   valor: string
   descripcion?: string | null
+  editablePorUsuario?: boolean
+  etiqueta?: string | null
 }
 
-/** The code is the key a robot asks by, so it cannot change; both fields are always replaced. */
+/** The code is the key a robot asks by, so it cannot change; the value and the description are always replaced. */
 export interface UpdateFlujoParametroRequest {
   valor: string
   descripcion: string | null
+  editablePorUsuario?: boolean
+  /** Empty clears it. */
+  etiqueta?: string | null
+}
+
+/** A parameter as the person working the process sees it. */
+export interface ParametroEditableDto {
+  id: string
+  codigo: string
+  etiqueta: string
+  descripcion: string | null
+  valor: string
+  updatedAt: string
 }
 
 export const listFlujoParametros = (flujoId: string) => apiFetch<FlujoParametroDto[]>(`/flujos/${flujoId}/parametros`)
@@ -296,5 +315,52 @@ export const createFlujoParametro = (flujoId: string, request: CreateFlujoParame
 export const updateFlujoParametro = (flujoId: string, id: string, request: UpdateFlujoParametroRequest) =>
   apiFetch<FlujoParametroDto>(`/flujos/${flujoId}/parametros/${id}`, { method: 'PATCH', body: JSON.stringify(request) })
 
+export const listParametrosEditables = (flujoId: string) => apiFetch<ParametroEditableDto[]>(`/flujos/${flujoId}/parametros-editables`)
+
+/** All the values together or none. */
+export const guardarParametrosEditables = (flujoId: string, valores: { id: string; valor: string }[]) =>
+  apiFetch<ParametroEditableDto[]>(`/flujos/${flujoId}/parametros-editables`, { method: 'PUT', body: JSON.stringify({ valores }) })
+
 export const deleteFlujoParametro = (flujoId: string, id: string) =>
   apiFetch<void>(`/flujos/${flujoId}/parametros/${id}`, { method: 'DELETE' })
+
+export interface CreadorDeCasoDto {
+  id: string
+  flujoId: string
+  nombre: string
+  descripcion: string | null
+  tipoCasoId: string | null
+  tipoCasoNombre: string | null
+  pasoInicialNombre: string | null
+  estadoNegocioInicialId: string | null
+  estadoNegocioInicialDisplay: string | null
+  plantillaTitulo: string
+  orden: number
+  activo: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** The whole creator, for creating and for replacing one: the optional references are cleared by sending them null. */
+export interface GuardarCreadorDeCasoRequest {
+  nombre: string
+  descripcion: string | null
+  tipoCasoId: string | null
+  pasoInicialNombre: string | null
+  estadoNegocioInicialId: string | null
+  /** Empty: the default template. */
+  plantillaTitulo: string | null
+  orden: number
+  activo: boolean
+}
+
+export const listCreadoresDeCaso = (flujoId: string) => apiFetch<CreadorDeCasoDto[]>(`/flujos/${flujoId}/creadores`)
+
+export const createCreadorDeCaso = (flujoId: string, request: GuardarCreadorDeCasoRequest) =>
+  apiFetch<CreadorDeCasoDto>(`/flujos/${flujoId}/creadores`, { method: 'POST', body: JSON.stringify(request) })
+
+export const replaceCreadorDeCaso = (flujoId: string, id: string, request: GuardarCreadorDeCasoRequest) =>
+  apiFetch<CreadorDeCasoDto>(`/flujos/${flujoId}/creadores/${id}`, { method: 'PUT', body: JSON.stringify(request) })
+
+export const deleteCreadorDeCaso = (flujoId: string, id: string) =>
+  apiFetch<void>(`/flujos/${flujoId}/creadores/${id}`, { method: 'DELETE' })

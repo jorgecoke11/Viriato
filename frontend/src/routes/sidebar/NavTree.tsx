@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../features/auth/useAuth'
 import { spring } from '../../lib/motion/tokens'
 import { collapseVariants } from '../../lib/motion/variants'
+import { EnlaceDeMenu, EnlaceDeMenuCompacto } from './EnlaceDeMenu'
 import type { NavNode } from './navConfig'
 
 // Built from character codes rather than a \u escape literal in a regex class, which is easy to
@@ -61,15 +61,6 @@ function flattenLinks(nodes: NavNode[]): Extract<NavNode, { type: 'link' }>[] {
   return nodes.flatMap((node) => (node.type === 'link' ? [node] : flattenLinks(node.children)))
 }
 
-// The rail is dark in both themes, so these use the side-* tokens. The active link gets a soft brand wash and a
-// bar on its left edge, so it is told apart by shape as well as colour.
-export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-    isActive
-      ? 'bg-indigo-500/15 text-side-strong before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-side-accent [&>svg]:text-side-accent'
-      : 'text-side-text hover:bg-side-hover hover:text-side-strong'
-  }`
-
 export function NavTree({
   nodes,
   collapsed,
@@ -88,23 +79,9 @@ export function NavTree({
 
   if (collapsed) {
     return (
-      <nav className="flex flex-1 flex-col items-center gap-1 overflow-y-auto px-2">
+      <nav className="flex flex-1 flex-col items-center gap-1.5 overflow-y-auto px-2">
         {flattenLinks(visible).map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.end}
-            title={link.label}
-            aria-label={link.label}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              `flex h-10 w-10 items-center justify-center rounded-lg ${
-                isActive ? 'bg-indigo-500/15 text-side-accent' : 'text-side-text hover:bg-side-hover hover:text-side-strong'
-              }`
-            }
-          >
-            {link.icon}
-          </NavLink>
+          <EnlaceDeMenuCompacto key={link.to} to={link.to} end={link.end} icono={link.icon} etiqueta={link.label} onNavigate={onNavigate} />
         ))}
       </nav>
     )
@@ -113,30 +90,28 @@ export function NavTree({
   const searching = normalizedQuery !== ''
 
   return (
-    <nav aria-label="Principal" className="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-3 pb-2">
+    <nav aria-label="Principal" className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 pb-3">
       {visible.map((node) => {
         if (node.type === 'link') {
-          return (
-            <NavLink key={node.to} to={node.to} end={node.end} className={navLinkClass} onClick={onNavigate}>
-              {node.icon}
-              {node.label}
-            </NavLink>
-          )
+          return <EnlaceDeMenu key={node.to} to={node.to} end={node.end} icono={node.icon} etiqueta={node.label} onNavigate={onNavigate} />
         }
 
         const open = searching || (openGroups[node.id] ?? true)
 
         return (
-          <div key={node.id} className="mt-2 first:mt-0">
+          <div key={node.id} className="mt-3 border-t border-side-border pt-3 first:mt-0 first:border-t-0 first:pt-0">
             <button
               type="button"
               title={node.label}
-              className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-side-text hover:text-side-strong"
+              className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-side-strong"
               aria-expanded={open}
               onClick={() => setOpenGroups((prev) => ({ ...prev, [node.id]: !open }))}
             >
-              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.08em] uppercase">{node.label}</span>
-              <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring.snappy} className="shrink-0 opacity-70 group-hover:opacity-100">
+              <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/20 text-side-accent [&>svg]:h-3.5 [&>svg]:w-3.5">
+                {node.icon}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold tracking-[0.06em] uppercase opacity-90">{node.label}</span>
+              <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring.snappy} className="shrink-0 text-side-text group-hover:text-side-strong">
                 <ChevronDown size={14} />
               </motion.span>
             </button>
@@ -144,13 +119,10 @@ export function NavTree({
             <AnimatePresence initial={false}>
               {open && (
                 <motion.div variants={collapseVariants} initial="initial" animate="animate" exit="exit" className="overflow-hidden">
-                  <div className="flex flex-col gap-0.5 pb-1">
+                  <div className="flex flex-col gap-1 pt-1 pb-1">
                     {node.children.map((child) =>
                       child.type === 'link' ? (
-                        <NavLink key={child.to} to={child.to} end={child.end} className={navLinkClass} onClick={onNavigate}>
-                          {child.icon}
-                          {child.label}
-                        </NavLink>
+                        <EnlaceDeMenu key={child.to} to={child.to} end={child.end} icono={child.icon} etiqueta={child.label} onNavigate={onNavigate} />
                       ) : null,
                     )}
                   </div>

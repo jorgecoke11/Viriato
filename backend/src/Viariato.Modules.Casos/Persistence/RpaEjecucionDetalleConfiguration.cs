@@ -13,6 +13,9 @@ public sealed class RpaEjecucionDetalleConfiguration : IEntityTypeConfiguration<
 
         builder.Property(d => d.AplicacionObjetivo).IsRequired().HasMaxLength(200);
         builder.Property(d => d.WorkerId).HasMaxLength(100);
+        builder.Property(d => d.InstanciaId).HasMaxLength(64);
+        builder.Property(d => d.ProgresoMensaje).HasMaxLength(200);
+        builder.Property(d => d.VistaEnDirectoUrl).HasMaxLength(500);
         builder.Property(d => d.ParametrosEntrada).HasColumnType("jsonb");
         builder.Property(d => d.ParametrosSalida).HasColumnType("jsonb");
 

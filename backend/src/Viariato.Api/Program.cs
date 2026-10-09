@@ -102,14 +102,20 @@ builder.Services.AddAuthRateLimiting(builder.Configuration);
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// The schema is brought up to date when the API starts: always while developing, and wherever `Database:MigrateOnStartup` is true
+// (the production compose sets it), so a new install or an update needs no separate step. EF takes a lock while migrating,
+// so several replicas starting together do not trip over each other.
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
     }
+}
 
+if (app.Environment.IsDevelopment())
+{
     app.MapOpenApi();
     app.MapScalarApiReference();
 }

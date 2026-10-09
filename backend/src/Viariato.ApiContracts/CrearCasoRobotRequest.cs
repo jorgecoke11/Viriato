@@ -11,5 +11,14 @@ namespace Viariato.ApiContracts;
 /// skipped), or null to start at the first one. A robot cannot create a Caso that would begin at a step of its own
 /// Servicio — it would just create more of itself — so a launcher that is itself step 1 of the process names the
 /// step after it.</param>
+/// <param name="Prioridad">The priority of the execution this opens (the one for the step the Caso starts at): the higher the
+/// number, the sooner a robot takes it, among the executions waiting for the same service. 0 is the ordinary one and the
+/// default; negative values wait behind it. Between -1000 and 1000. The executions the Caso creates later (its next
+/// steps) start at 0 like any other, and a person can change an execution's priority while it waits.</param>
 public sealed record CrearCasoRobotRequest(
-    string Titulo, string? DatosJson, string? TipoCaso = null, string? EstadoNegocioCodigo = null, string? PasoInicial = null);
+    string Titulo,
+    string? DatosJson,
+    string? TipoCaso = null,
+    string? EstadoNegocioCodigo = null,
+    string? PasoInicial = null,
+    int Prioridad = 0);

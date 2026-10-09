@@ -35,15 +35,23 @@ internal static class DocumentosEndpoints
             return ProblemResults.NotFound(http, "Caso no encontrado.");
         }
 
-        // Evidencia files are stored through a Documento row too, but they are not documents of the
-        // expediente — they belong to the timeline, never to this list.
-        var documentos = await db.Set<Documento>().AsNoTracking()
+        var documentos = await DocumentosDelExpediente.De(db, casoId).AsNoTracking()
             .Include(d => d.Clasificaciones).ThenInclude(c => c.TipoDocumento)
-            .Where(d => d.CasoId == casoId && !db.Set<Evidencia>().Any(e => e.DocumentoId == d.Id))
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync(ct);
 
-        return Results.Ok(documentos.Select(d => d.ToDto()).ToList());
+        // A file a robot produced says which step made it.
+        var pasoIds = documentos.Where(d => d.EjecucionPasoId is not null).Select(d => d.EjecucionPasoId!.Value).Distinct().ToList();
+        var pasos = pasoIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await db.Set<EjecucionPaso>().AsNoTracking()
+                .Where(p => pasoIds.Contains(p.Id))
+                .Select(p => new { p.Id, Nombre = p.FlujoPasoDef!.Nombre })
+                .ToDictionaryAsync(p => p.Id, p => p.Nombre, ct);
+
+        return Results.Ok(documentos
+            .Select(d => d.ToDto(d.EjecucionPasoId is { } pasoId && pasos.TryGetValue(pasoId, out var nombre) ? nombre : null))
+            .ToList());
     }
 
     private static async Task<IResult> UploadDocumentoAsync(

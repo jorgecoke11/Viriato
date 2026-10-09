@@ -11,7 +11,8 @@ public sealed class PlantillaDespacho
 
     public string? Descripcion { get; set; }
 
-    public int MaxEjecucionesSimultaneas { get; set; } = 1;
+    /// <summary>The optional ceiling of steps at once; null = none (see <see cref="Equipo.MaxEjecucionesSimultaneas"/>).</summary>
+    public int? MaxEjecucionesSimultaneas { get; set; }
 
     public PoliticaDespacho Politica { get; set; } = PoliticaDespacho.Prioridad;
 

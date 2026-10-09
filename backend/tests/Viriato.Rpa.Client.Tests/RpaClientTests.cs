@@ -105,6 +105,23 @@ public sealed class RpaClientTests
     }
 
     [Fact]
+    public async Task ReportarEnVivoAsync_PostsOnlyWhatWasGiven_ToTheLiveRoute()
+    {
+        var pasoId = Guid.NewGuid();
+        var (client, handler) = CreateClient();
+
+        await client.ReportarEnVivoAsync(pasoId, porcentaje: 40, mensaje: "Añadiendo productos", vistaUrl: "http://localhost:6080/vnc.html");
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal($"/api/v1/rpa/pasos/{pasoId}/en-vivo", request.Uri.AbsolutePath);
+        var cuerpo = JsonDocument.Parse(request.Body).RootElement;
+        Assert.Equal(40, cuerpo.GetProperty("porcentaje").GetInt32());
+        Assert.Equal("Añadiendo productos", cuerpo.GetProperty("mensaje").GetString());
+        Assert.Equal("http://localhost:6080/vnc.html", cuerpo.GetProperty("vistaUrl").GetString());
+    }
+
+    [Fact]
     public async Task AgregarEvidenciaAsync_SendsAMultipartFormWithTheFileAndFields()
     {
         var pasoId = Guid.NewGuid();

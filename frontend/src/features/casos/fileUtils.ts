@@ -15,6 +15,16 @@ export function formatBytes(bytes: number): string {
 
 // Content sits behind Authorization, so a plain <a href> can't download it: fetch as a Blob and
 // click a temporary link instead.
+/** Hands a file the browser already has to the person, as a download. */
+export function guardarBlob(blob: Blob, nombre: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = window.document.createElement('a')
+  link.href = url
+  link.download = nombre
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function descargarDocumento(documentoId: string, nombre: string): Promise<void> {
   const blob = await apiFetchBlob(documentoContenidoPath(documentoId))
   const url = URL.createObjectURL(blob)

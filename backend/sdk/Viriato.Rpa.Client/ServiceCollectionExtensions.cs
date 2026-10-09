@@ -30,6 +30,7 @@ public static class ServiceCollectionExtensions
             http.BaseAddress = options.ResolveBaseAddress();
             http.Timeout = options.Timeout;
             http.DefaultRequestHeaders.Add("X-Api-Key", options.ApiKey);
+            http.DefaultRequestHeaders.Add(Viariato.ApiContracts.RpaHeaders.Instancia, options.ResolveInstanciaId());
         });
 
         services.AddTransient(sp => new RpaWorker(

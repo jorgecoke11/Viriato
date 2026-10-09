@@ -9,13 +9,14 @@ import { ApiError } from '../../../lib/apiClient'
 import { duration, ease } from '../../../lib/motion/tokens'
 import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../api'
+import { FlujoCreadoresPanel } from '../FlujoCreadoresPanel'
 import { FlujoEstadosPanel } from '../FlujoEstadosPanel'
 import { FlujoParametrosPanel } from '../FlujoParametrosPanel'
 import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
 import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
 import { BackLink } from '../../../components/ui/BackLink'
 
-type Tab = 'versiones' | 'estados' | 'tipos' | 'parametros'
+type Tab = 'versiones' | 'estados' | 'tipos' | 'creadores' | 'parametros'
 
 export function FlujoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -47,6 +48,7 @@ export function FlujoDetailPage() {
             { value: 'versiones', label: 'Versiones' },
             { value: 'estados', label: 'Estados' },
             { value: 'tipos', label: 'Tipos de caso' },
+            { value: 'creadores', label: 'Creadores' },
             { value: 'parametros', label: 'Parámetros' },
           ]}
           active={tab}
@@ -89,6 +91,19 @@ export function FlujoDetailPage() {
             >
               <Card className="mt-4">
                 <FlujoTiposCasoPanel flujoId={flujo.id} />
+              </Card>
+            </motion.div>
+          )}
+
+          {tab === 'creadores' && (
+            <motion.div
+              key="creadores"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
+              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+            >
+              <Card className="mt-4">
+                <FlujoCreadoresPanel flujoId={flujo.id} versionActivaId={flujo.versionActivaId} />
               </Card>
             </motion.div>
           )}

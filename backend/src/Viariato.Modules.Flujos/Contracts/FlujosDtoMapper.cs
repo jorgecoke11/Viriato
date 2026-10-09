@@ -55,6 +55,11 @@ public static class FlujosDtoMapper
     public static FlujoTipoCasoDefDto ToDto(this FlujoTipoCasoDef tipo) => new(
         tipo.Id, tipo.FlujoId, tipo.Nombre, tipo.Orden, tipo.Activo, tipo.EsquemaDatosJson, tipo.CreatedAt, tipo.UpdatedAt);
 
+    public static CreadorDeCasoDto ToDto(this CreadorDeCaso creador) => new(
+        creador.Id, creador.FlujoId, creador.Nombre, creador.Descripcion, creador.TipoCasoId, creador.TipoCaso?.Nombre,
+        creador.PasoInicialNombre, creador.EstadoNegocioInicialId, creador.EstadoNegocioInicial?.Display, creador.PlantillaTitulo,
+        creador.Orden, creador.Activo, creador.CreatedAt, creador.UpdatedAt);
+
     public static StorageConfigDto ToDto(this StorageConfig config) => new(
         config.Id,
         config.Nombre,

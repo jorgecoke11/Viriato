@@ -3,13 +3,14 @@ import { Badge, type BadgeTone } from '../../components/ui/Badge'
 // How each state of a Caso, its Ejecucion or one of its steps reads: a tone, and the label people see.
 const states: Record<string, { tone: BadgeTone; label: string; live?: boolean }> = {
   Iniciado: { tone: 'neutral', label: 'Iniciado' },
-  EnProgreso: { tone: 'info', label: 'En progreso', live: true },
+  // "En ejecución": something is running it right now. A Caso waiting in the queue for a robot is "Pendiente".
+  EnProgreso: { tone: 'info', label: 'En ejecución', live: true },
   Pausado: { tone: 'warning', label: 'Pausado' },
   EsperandoRevisionHumana: { tone: 'review', label: 'Esperando revisión' },
   Completado: { tone: 'success', label: 'Completado' },
   Fallido: { tone: 'danger', label: 'Fallido' },
   Cancelado: { tone: 'neutral', label: 'Cancelado' },
-  Pendiente: { tone: 'neutral', label: 'Pendiente' },
+  Pendiente: { tone: 'warning', label: 'Pendiente' },
   Omitido: { tone: 'neutral', label: 'Omitido' },
   Completada: { tone: 'success', label: 'Completada' },
   Fallida: { tone: 'danger', label: 'Fallida' },

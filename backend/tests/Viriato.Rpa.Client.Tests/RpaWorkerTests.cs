@@ -53,6 +53,8 @@ public sealed class RpaWorkerTests
 
         public Task CambiarEstadoCasoAsync(Guid id, string codigoEstado, CancellationToken ct = default) => Report($"estado:{codigoEstado}");
 
+        public Task ReportarEnVivoAsync(Guid ejecucionPasoId, int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default) => Report($"en-vivo:{porcentaje}:{mensaje}");
+
         public Task<CredencialRobotDto> ObtenerCredencialAsync(string nombre, CancellationToken ct = default) => throw new NotSupportedException();
 
         public Task<ParametrosProceso> ObtenerParametrosAsync(CancellationToken ct = default) => throw new NotSupportedException();
@@ -311,6 +313,46 @@ public sealed class RpaWorkerTests
 
         Assert.IsType<RpaClient>(provider.GetRequiredService<IRpaClient>());
         Assert.NotNull(provider.GetRequiredService<RpaWorker>());
+    }
+
+    private sealed class CapturaInstancia(List<string?> vistos) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            vistos.Add(request.Headers.TryGetValues(Viariato.ApiContracts.RpaHeaders.Instancia, out var valores) ? valores.Single() : null);
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"encendido":true,"equipoNombre":"e","servicioNombre":"s","flujoNombre":"f"}""", System.Text.Encoding.UTF8, "application/json"),
+            });
+        }
+    }
+
+    private static async Task<string?> InstanciaEnviadaAsync(string? configurada)
+    {
+        var vistos = new List<string?>();
+        var services = new ServiceCollection();
+        services.AddViriatoRpaClient(o =>
+        {
+            o.BaseUrl = "http://viriato.test";
+            o.ApiKey = "clave";
+            o.InstanciaId = configurada;
+        });
+        services.AddHttpClient<IRpaClient, RpaClient>().ConfigurePrimaryHttpMessageHandler(() => new CapturaInstancia(vistos));
+        await using var provider = services.BuildServiceProvider();
+
+        await provider.GetRequiredService<IRpaClient>().ObtenerEstadoAsync();
+        return Assert.Single(vistos);
+    }
+
+    [Fact]
+    public async Task TheClient_SendsWhichCopyOfTheRobotItIs_TheConfiguredIdOrOneOfTheProcess()
+    {
+        Assert.Equal("mi-copia", await InstanciaEnviadaAsync("mi-copia"));
+
+        // Left empty, it makes one up — the same for everything that runs in this process, different from another process's.
+        var propia = await InstanciaEnviadaAsync(null);
+        Assert.False(string.IsNullOrWhiteSpace(propia));
+        Assert.Equal(propia, await InstanciaEnviadaAsync("  "));
     }
 
     [Fact]

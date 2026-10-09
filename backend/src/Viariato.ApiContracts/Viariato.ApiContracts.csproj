@@ -6,7 +6,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Authors>Viriato</Authors>
     <Description>Contratos (DTOs) compartidos entre la API de Viriato y los robots RPA.</Description>
     <RepositoryUrl>https://github.com/jorgecoke11/Viriato</RepositoryUrl>

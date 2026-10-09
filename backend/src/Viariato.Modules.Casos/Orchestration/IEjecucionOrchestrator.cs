@@ -11,7 +11,9 @@ public interface IEjecucionOrchestrator
     /// <summary>Creates the first Ejecucion for a Caso and dispatches its first step — or, if
     /// <paramref name="pasoInicialId"/> is given, dispatches that step directly and records every
     /// FlujoPasoDef before it as Omitido (e.g. "the documentation was already validated externally").</summary>
-    Task<Guid> IniciarCasoAsync(Guid casoId, Guid? pasoInicialId, CancellationToken ct);
+    /// <param name="prioridad">The priority of the first execution it queues (see <c>RpaEjecucionDetalle.Prioridad</c>); every
+    /// execution created afterwards for this Caso starts at 0.</param>
+    Task<Guid> IniciarCasoAsync(Guid casoId, Guid? pasoInicialId, CancellationToken ct, int prioridad = 0);
 
     /// <summary>Reads the (already finalized) Estado of one EjecucionPaso and decides what happens
     /// next — advance to the following step, finish the Ejecucion, or park it waiting.</summary>
@@ -34,7 +36,9 @@ public interface IEjecucionOrchestrator
     /// <summary>Resumes a paused Ejecucion, re-entering the exact attempt that was in flight.</summary>
     Task ReanudarAsync(Guid casoId, CancellationToken ct);
 
-    Task CancelarAsync(Guid casoId, CancellationToken ct);
+    /// <summary>Cancels the Caso and what is still in flight for it. It ends on a final business estado that depends on why
+    /// (see <see cref="MotivoDeCancelacion"/>); the engine creates that estado in the process the first time it is needed.</summary>
+    Task CancelarAsync(Guid casoId, CancellationToken ct, MotivoDeCancelacion motivo = MotivoDeCancelacion.Manual);
 
     /// <summary>Records a human reviewer's decision on a step waiting in RevisionHumana and continues
     /// (Aprobada) or fails (Rechazada) the Ejecucion accordingly.</summary>

@@ -240,6 +240,50 @@ public sealed class FlujosAndCasosFlowTests(ViariatoApiFactory factory) : IClass
         Assert.Equal(3, evidencia.GetProperty("tamanoBytes").GetInt64());
     }
 
+    [Fact]
+    public async Task UnArchivoGeneradoPorUnPaso_EsUnDocumentoDelCaso_YLaLineaDeTiempoSoloLoResume()
+    {
+        var (client, userId) = await CreateAuthorizedClientAsync();
+        var flujoId = await ExtractIdAsync(await client.PostAsJsonAsync("/api/v1/flujos", new { nombre = $"Flujo {Guid.NewGuid():N}", descripcion = (string?)null }));
+        await AsignarFlujoAsync(client, flujoId, userId);
+        var versionId = await ExtractIdAsync(await client.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/versiones", new { notas = (string?)null }));
+        await client.PutAsJsonAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/pasos", new
+        {
+            pasos = new[] { new { orden = 1, nombre = "Genera informe", tipoPaso = "Interno", agenteDefinicionId = (Guid?)null, configuracionJson = (string?)null } },
+        });
+        await client.PostAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/publicar", null);
+        var casoId = await ExtractIdAsync(await client.PostAsJsonAsync("/api/v1/casos", new { flujoId, flujoVersionId = (Guid?)null, titulo = "Caso con informe", datosJson = (string?)null }));
+
+        var ejecuciones = await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/ejecuciones");
+        var ejecucion = await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/ejecuciones/{ejecuciones[0].GetProperty("id").GetGuid()}");
+        var pasoId = ejecucion.GetProperty("pasos")[0].GetProperty("id").GetGuid();
+
+        async Task SubirEvidenciaAsync(string tipo, string titulo, string archivo)
+        {
+            using var form = new MultipartFormDataContent
+            {
+                { new StringContent(tipo), "tipo" },
+                { new StringContent(titulo), "titulo" },
+                { new ByteArrayContent("x"u8.ToArray()), "file", archivo },
+            };
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/v1/casos/{casoId}/pasos/{pasoId}/evidencias", form)).StatusCode);
+        }
+
+        await SubirEvidenciaAsync("ArchivoGenerado", "Informe", "informe.csv");
+        await SubirEvidenciaAsync("Screenshot", "Captura", "captura.png");
+
+        // The generated file is a document (with the step that made it); the screenshot stays only in the timeline.
+        var documentos = await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/documentos");
+        var documento = Assert.Single(documentos.EnumerateArray());
+        Assert.Equal("informe.csv", documento.GetProperty("nombre").GetString());
+        Assert.Equal("Genera informe", documento.GetProperty("pasoNombre").GetString());
+
+        // The timeline still has both as evidence — and does not list the generated file a second time as a Documento.
+        var timeline = (await client.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}/timeline")).EnumerateArray().ToList();
+        Assert.Equal(2, timeline.Count(item => item.GetProperty("tipo").GetString() == "Evidencia"));
+        Assert.DoesNotContain(timeline, item => item.GetProperty("tipo").GetString() == "Documento");
+    }
+
     private static async Task<Guid> FindPendingRevisionPasoIdAsync(HttpClient client, Guid casoId)
     {
         var pendientes = await client.GetFromJsonAsync<JsonElement>("/api/v1/revisiones?estado=pendiente");

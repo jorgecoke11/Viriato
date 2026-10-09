@@ -10,6 +10,14 @@ public sealed class RpaClientOptions
     /// Servicio and Flujo) on the server.</summary>
     public string ApiKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Tells this running copy of the robot apart from the others of the same Despliegue (replicas of a container, more
+    /// processes started with the same API key), so each one is its own slot: a copy stuck on a case does not stop the rest
+    /// from taking the next ones. Leave it empty: the client then makes one up when the process starts, which is what you want.
+    /// Set it only to keep a stable id, or when one process runs several robots.
+    /// </summary>
+    public string? InstanciaId { get; set; }
+
     /// <summary>Per-request timeout. Generous by default because evidence uploads (videos) can be large.</summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(2);
 
@@ -35,6 +43,12 @@ public sealed class RpaClientOptions
 
         return problemas;
     }
+
+    /// <summary>The id made up for this process, the same for every client created in it.</summary>
+    private static readonly string InstanciaDelProceso = Guid.NewGuid().ToString("N");
+
+    /// <summary>What this copy sends as its id: the configured one, or the one of the process.</summary>
+    internal string ResolveInstanciaId() => string.IsNullOrWhiteSpace(InstanciaId) ? InstanciaDelProceso : InstanciaId.Trim();
 
     internal Uri ResolveBaseAddress()
     {

@@ -21,12 +21,12 @@ internal static class DespachoEndpoints
 {
     public static void MapDespachoEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var equipo = endpoints.MapGroup("/api/v1/equipos/{equipoId:guid}/despacho").RequireAuthorization(Permissions.RpaManage);
+        var equipo = endpoints.MapGroup("/api/v1/equipos/{equipoId:guid}/despacho").RequireAuthorization(Permissions.RpaDespacho);
         equipo.MapGet("/", GetDespachoAsync);
         equipo.MapPut("/", UpdateDespachoAsync);
         equipo.MapPost("/plantilla/{plantillaId:guid}", AplicarPlantillaAsync);
 
-        var plantillas = endpoints.MapGroup("/api/v1/plantillas-despacho").RequireAuthorization(Permissions.RpaManage);
+        var plantillas = endpoints.MapGroup("/api/v1/plantillas-despacho").RequireAuthorization(Permissions.RpaDespacho);
         plantillas.MapGet("/", ListPlantillasAsync);
         plantillas.MapPost("/", CreatePlantillaAsync);
         plantillas.MapPut("/{id:guid}", UpdatePlantillaAsync);
@@ -80,7 +80,7 @@ internal static class DespachoEndpoints
     }
 
     private static async Task AplicarAsync(
-        AppDbContext db, Equipo equipo, int max, PoliticaDespacho politica, IReadOnlyList<Guid> orden, CancellationToken ct)
+        AppDbContext db, Equipo equipo, int? max, PoliticaDespacho politica, IReadOnlyList<Guid> orden, CancellationToken ct)
     {
         equipo.MaxEjecucionesSimultaneas = max;
         equipo.Politica = politica;

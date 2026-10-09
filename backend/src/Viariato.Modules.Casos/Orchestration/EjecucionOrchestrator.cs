@@ -16,7 +16,7 @@ namespace Viariato.Modules.Casos.Orchestration;
 /// </summary>
 public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider services) : IEjecucionOrchestrator
 {
-    public async Task<Guid> IniciarCasoAsync(Guid casoId, Guid? pasoInicialId, CancellationToken ct)
+    public async Task<Guid> IniciarCasoAsync(Guid casoId, Guid? pasoInicialId, CancellationToken ct, int prioridad = 0)
     {
         var caso = await db.Set<Caso>().FirstOrDefaultAsync(c => c.Id == casoId, ct)
             ?? throw new InvalidOperationException($"Caso {casoId} no encontrado.");
@@ -69,7 +69,7 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         }
         await db.SaveChangesAsync(ct);
 
-        await CrearYDespacharPasoAsync(ejecucion, caso, pasoInicial, numeroIntento: 1, ct);
+        await CrearYDespacharPasoAsync(ejecucion, caso, pasoInicial, numeroIntento: 1, ct, prioridad);
 
         return ejecucion.Id;
     }
@@ -140,7 +140,12 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         caso.UpdatedAt = DateTimeOffset.UtcNow;
         await RegistrarEventoAsync(caso.Id, ejecucion.Id, CasoEventoAccion.PasoReintentado, pasoOrigen.Id, ct);
 
-        await CrearYDespacharPasoAsync(ejecucion, caso, pasoDef, pasoOrigen.NumeroIntento + 1, ct);
+        // Reprocessing puts the same execution back in the queue, so it keeps the place it had (its priority); only
+        // brand-new executions start at 0.
+        var prioridad = await db.Set<RpaEjecucionDetalle>().AsNoTracking()
+            .Where(d => d.EjecucionPasoId == pasoOrigen.Id).Select(d => d.Prioridad).FirstOrDefaultAsync(ct);
+
+        await CrearYDespacharPasoAsync(ejecucion, caso, pasoDef, pasoOrigen.NumeroIntento + 1, ct, prioridad);
     }
 
     public async Task CompletarCasoAsync(Guid ejecucionPasoId, CancellationToken ct)
@@ -207,9 +212,19 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
             // continuation logic instead of re-dispatching a step that already ran.
             await AvanzarAsync(pasoActual.Id, ct);
         }
+        else if (pasoActual.Estado == EjecucionPasoEstado.EnProgreso && await EsperaUnRobotAsync(pasoActual.Id, ct))
+        {
+            // Paused while it waited in the queue, and it still waits: resuming puts the Caso back to pending, not running.
+            caso.Estado = CasoEstado.Pendiente;
+            await db.SaveChangesAsync(ct);
+        }
     }
 
-    public async Task CancelarAsync(Guid casoId, CancellationToken ct)
+    /// <summary>The step is an RPA one that no robot has claimed yet.</summary>
+    private Task<bool> EsperaUnRobotAsync(Guid pasoId, CancellationToken ct) =>
+        db.Set<RpaEjecucionDetalle>().AnyAsync(d => d.EjecucionPasoId == pasoId && d.DespliegueId == null, ct);
+
+    public async Task CancelarAsync(Guid casoId, CancellationToken ct, MotivoDeCancelacion motivo = MotivoDeCancelacion.Manual)
     {
         var caso = await db.Set<Caso>().FirstOrDefaultAsync(c => c.Id == casoId, ct)
             ?? throw new InvalidOperationException($"Caso {casoId} no encontrado.");
@@ -238,7 +253,8 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
             }
         }
 
-        var estadoDescartado = await EnsureEstadoDescartadoAsync(caso.FlujoId, ct);
+        var (codigoFinal, displayFinal) = EstadosDeSistema.Para(motivo);
+        var estadoDescartado = await EnsureEstadoDeSistemaAsync(caso.FlujoId, codigoFinal, displayFinal, ct);
         caso.EstadoNegocioActualId = estadoDescartado.Id;
         db.Add(new CasoEvento
         {
@@ -252,15 +268,18 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         await RegistrarEventoAsync(casoId, caso.EjecucionActualId, CasoEventoAccion.Cancelado, null, ct);
     }
 
-    /// <summary>Every Flujo must have a "Descartado" business estado available for cancelled Casos to
-    /// land on, but admins shouldn't have to remember to create it by hand in every process — so it's
-    /// provisioned lazily, per Flujo, the first time a Caso of that Flujo gets cancelled. Once created,
-    /// an admin is free to rename its Display like any other FlujoEstadoDef.</summary>
-    private async Task<FlujoEstadoDef> EnsureEstadoDescartadoAsync(Guid flujoId, CancellationToken ct)
+    /// <summary>Every Flujo must have the business estados a cancelled Caso can land on ("Descartado", "Cancelado por
+    /// exceso de tiempo de ejecución"), but admins shouldn't have to remember to create them by hand in every process — so
+    /// each is provisioned lazily, per Flujo, the first time a Caso of that Flujo needs it. Once created, an admin is free to
+    /// rename its Display like any other FlujoEstadoDef.</summary>
+    private async Task<FlujoEstadoDef> EnsureEstadoDeSistemaAsync(Guid flujoId, string codigo, string display, CancellationToken ct)
     {
-        const string codigoDescartado = "DESCARTADO";
+        // A Local that was just added in this same unit of work has not reached the database yet.
+        var pendiente = db.ChangeTracker.Entries<FlujoEstadoDef>()
+            .Select(e => e.Entity).FirstOrDefault(e => e.FlujoId == flujoId && e.Codigo == codigo);
+        if (pendiente is not null) return pendiente;
 
-        var estado = await db.Set<FlujoEstadoDef>().FirstOrDefaultAsync(e => e.FlujoId == flujoId && e.Codigo == codigoDescartado, ct);
+        var estado = await db.Set<FlujoEstadoDef>().FirstOrDefaultAsync(e => e.FlujoId == flujoId && e.Codigo == codigo, ct);
         if (estado is not null)
         {
             return estado;
@@ -274,8 +293,8 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         estado = new FlujoEstadoDef
         {
             FlujoId = flujoId,
-            Codigo = codigoDescartado,
-            Display = "Descartado",
+            Codigo = codigo,
+            Display = display,
             Orden = maxOrden + 1,
             EsFinal = true,
             Activo = true,
@@ -320,7 +339,8 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         await AvanzarAsync(paso.Id, ct);
     }
 
-    private async Task CrearYDespacharPasoAsync(Ejecucion ejecucion, Caso caso, FlujoPasoDef pasoDef, int numeroIntento, CancellationToken ct)
+    private async Task CrearYDespacharPasoAsync(
+        Ejecucion ejecucion, Caso caso, FlujoPasoDef pasoDef, int numeroIntento, CancellationToken ct, int prioridad = 0)
     {
         var paso = new EjecucionPaso
         {
@@ -336,18 +356,24 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         ejecucion.PasoActualId = paso.Id;
         await db.SaveChangesAsync(ct);
 
-        await DespacharAsync(paso, pasoDef, caso, ct);
+        await DespacharAsync(paso, pasoDef, caso, ct, prioridad);
     }
 
-    private async Task DespacharAsync(EjecucionPaso paso, FlujoPasoDef pasoDef, Caso caso, CancellationToken ct)
+    private async Task DespacharAsync(EjecucionPaso paso, FlujoPasoDef pasoDef, Caso caso, CancellationToken ct, int prioridad = 0)
     {
         paso.Estado = EjecucionPasoEstado.EnProgreso;
         paso.StartedAt = DateTimeOffset.UtcNow;
+
+        // A step a robot has to take waits in the queue first: until one claims it the Caso is pending, not in progress.
+        // Any other kind of step starts running right away. (The executor saves this along with its own changes.)
+        caso.Estado = pasoDef.TipoPaso == TipoPaso.Rpa ? CasoEstado.Pendiente : CasoEstado.EnProgreso;
+        caso.UpdatedAt = DateTimeOffset.UtcNow;
+
         await db.SaveChangesAsync(ct);
         await RegistrarEventoAsync(caso.Id, paso.EjecucionId, CasoEventoAccion.PasoIniciado, paso.Id, ct);
 
         var executor = services.GetRequiredKeyedService<IPasoEjecutor>(pasoDef.TipoPaso);
-        var context = new PasoEjecucionContext(paso.Id, paso.EjecucionId, caso.Id, pasoDef, caso.DatosJson);
+        var context = new PasoEjecucionContext(paso.Id, paso.EjecucionId, caso.Id, pasoDef, caso.DatosJson, prioridad);
 
         PasoResultado resultado;
         try

@@ -27,6 +27,7 @@ public sealed class RpaPasoEjecutor(AppDbContext db, ITrabajoTracker tracker) : 
             EjecucionPasoId = paso.Id,
             AplicacionObjetivo = aplicacion,
             ParametrosEntrada = context.PasoDef.ConfiguracionJson,
+            Prioridad = context.Prioridad,
         });
         await db.SaveChangesAsync(ct);
 

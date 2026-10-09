@@ -43,6 +43,14 @@ public interface IRpaClient
     Task CambiarEstadoCasoAsync(Guid ejecucionPasoId, string codigoEstado, CancellationToken ct = default);
 
     /// <summary>
+    /// Tells Viriato how the step is going so that people can follow it: how far along it is (<paramref name="porcentaje"/>, 0 to
+    /// 100), what it is doing now (<paramref name="mensaje"/>), and where the robot's screen can be watched live
+    /// (<paramref name="vistaUrl"/>, an http(s) address). Only what is sent changes; an empty text clears it. Viriato keeps the latest
+    /// figure and writes the milestones (a new phase, every tenth of the way) in the Caso's history.
+    /// </summary>
+    Task ReportarEnVivoAsync(Guid ejecucionPasoId, int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default);
+
+    /// <summary>
     /// The settings of the process this robot's Despliegue belongs to (Viriato's "Parámetros" tab). Always the
     /// robot's own process — it is decided by the API key, not by anything the robot sends. Not secret: use
     /// <see cref="ObtenerCredencialAsync"/> for passwords.

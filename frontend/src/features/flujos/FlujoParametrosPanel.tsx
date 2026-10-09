@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../components/crud/types'
+import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../lib/toast/useToast'
@@ -13,6 +14,8 @@ interface ParametroFormValues {
   codigo: string
   valor: string
   descripcion: string
+  etiqueta: string
+  editablePorUsuario: boolean
 }
 
 type Config = CrudFormConfig<FlujoParametroDto, ParametroFormValues, flujosApi.CreateFlujoParametroRequest, flujosApi.UpdateFlujoParametroRequest>
@@ -30,6 +33,21 @@ const campoValor: Config['createFields'][number] = {
   validate: errorDeJson,
 }
 
+// Opening a parameter to the people working the process: they change its value from the dashboard, under this name.
+const camposDelPanel: Config['createFields'] = [
+  {
+    name: 'editablePorUsuario',
+    label: 'Los usuarios pueden cambiarlo desde el panel',
+    type: 'checkbox',
+  },
+  {
+    name: 'etiqueta',
+    label: 'Nombre en el panel',
+    helpText: 'Lo que verá el usuario en lugar del código, p. ej. «IVA (%)».',
+    visibleWhen: (values) => Boolean(values.editablePorUsuario),
+  },
+]
+
 const createFields: Config['createFields'] = [
   {
     name: 'codigo',
@@ -39,12 +57,14 @@ const createFields: Config['createFields'] = [
   },
   campoValor,
   { name: 'descripcion', label: 'Descripción' },
+  ...camposDelPanel,
 ]
 
 const editFields: Config['editFields'] = [
   { name: 'codigo', label: 'Código', disabled: true },
   campoValor,
   { name: 'descripcion', label: 'Descripción' },
+  ...camposDelPanel,
 ]
 
 // A JSON value is not shown inline: a summary, and a modal with the document properly indented. A value that
@@ -126,15 +146,45 @@ const columns: CrudColumn<FlujoParametroDto>[] = [
   { key: 'codigo', label: 'Código', render: (p) => <span className="font-mono text-xs">{p.codigo}</span> },
   { key: 'valor', label: 'Valor', render: (p) => <ValorParametro parametro={p} /> },
   { key: 'descripcion', label: 'Descripción', render: (p) => p.descripcion ?? '—' },
+  {
+    key: 'panel',
+    label: 'En el panel',
+    render: (p) =>
+      p.editablePorUsuario ? (
+        <Badge tone="info" title="Los usuarios lo cambian desde el panel">
+          {p.etiqueta ?? 'Editable'}
+        </Badge>
+      ) : (
+        <span className="text-gray-400">Solo administradores</span>
+      ),
+  },
 ]
 
 const form: Config = {
   createFields,
   editFields,
-  emptyValues: { codigo: '', valor: '', descripcion: '' },
-  toEditValues: (p) => ({ codigo: p.codigo, valor: p.valor, descripcion: p.descripcion ?? '' }),
-  toCreateInput: (values) => ({ codigo: values.codigo.trim(), valor: values.valor, descripcion: values.descripcion.trim() || null }),
-  toUpdateInput: (values) => ({ valor: values.valor, descripcion: values.descripcion.trim() || null }),
+  emptyValues: { codigo: '', valor: '', descripcion: '', etiqueta: '', editablePorUsuario: false },
+  toEditValues: (p) => ({
+    codigo: p.codigo,
+    valor: p.valor,
+    descripcion: p.descripcion ?? '',
+    etiqueta: p.etiqueta ?? '',
+    editablePorUsuario: p.editablePorUsuario,
+  }),
+  toCreateInput: (values) => ({
+    codigo: values.codigo.trim(),
+    valor: values.valor,
+    descripcion: values.descripcion.trim() || null,
+    editablePorUsuario: values.editablePorUsuario,
+    etiqueta: values.editablePorUsuario ? values.etiqueta.trim() || null : null,
+  }),
+  toUpdateInput: (values) => ({
+    valor: values.valor,
+    descripcion: values.descripcion.trim() || null,
+    editablePorUsuario: values.editablePorUsuario,
+    // An empty label clears it; closing the parameter to users drops the label with it.
+    etiqueta: values.editablePorUsuario ? values.etiqueta.trim() : '',
+  }),
 }
 
 // Settings of one process that its robots read at run time (what the old platform kept in a global

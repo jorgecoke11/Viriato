@@ -22,6 +22,7 @@ public sealed class RpaClient : IRpaClient, IDisposable
 
         _http = new HttpClient { BaseAddress = options.ResolveBaseAddress(), Timeout = options.Timeout };
         _http.DefaultRequestHeaders.Add(ApiKeyHeader, options.ApiKey);
+        _http.DefaultRequestHeaders.Add(RpaHeaders.Instancia, options.ResolveInstanciaId());
         _ownsHttpClient = true;
     }
 
@@ -92,6 +93,9 @@ public sealed class RpaClient : IRpaClient, IDisposable
 
     public Task CambiarEstadoCasoAsync(Guid ejecucionPasoId, string codigoEstado, CancellationToken ct = default) =>
         PostJsonAsync($"{RpaRoute}/pasos/{ejecucionPasoId}/estado-negocio", new CambiarEstadoNegocioRequest(codigoEstado), ct);
+
+    public Task ReportarEnVivoAsync(Guid ejecucionPasoId, int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default) =>
+        PostJsonAsync($"{RpaRoute}/pasos/{ejecucionPasoId}/en-vivo", new ReportarEnVivoRequest(porcentaje, mensaje, vistaUrl), ct);
 
     public async Task AgregarEvidenciaAsync(
         Guid ejecucionPasoId,

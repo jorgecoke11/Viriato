@@ -33,6 +33,8 @@ export interface ListTrabajosFilters {
   status?: string
   subjectType?: string
   subjectKey?: string
+  page?: number
+  pageSize?: number
 }
 
 const buildQuery = (filters: ListTrabajosFilters) => {
@@ -41,6 +43,8 @@ const buildQuery = (filters: ListTrabajosFilters) => {
   if (filters.status) params.set('status', filters.status)
   if (filters.subjectType) params.set('subjectType', filters.subjectType)
   if (filters.subjectKey) params.set('subjectKey', filters.subjectKey)
+  if (filters.page) params.set('page', String(filters.page))
+  if (filters.pageSize) params.set('pageSize', String(filters.pageSize))
   const query = params.toString()
   return query ? `?${query}` : ''
 }

@@ -9,4 +9,5 @@ public sealed record DocumentoDto(
     long TamanoBytes,
     string? Hash,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<DocumentoClasificacionDto> Clasificaciones);
+    IReadOnlyList<DocumentoClasificacionDto> Clasificaciones,
+    string? PasoNombre = null);

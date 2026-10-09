@@ -25,7 +25,8 @@ public sealed record EnEjecucionDto(
     DateTimeOffset Desde,
     int? TiempoMaximoMinutos,
     DateTimeOffset? LimiteAt,
-    bool Vencido);
+    bool Vencido,
+    Guid EjecucionPasoId);
 
 /// <param name="ServicioAlLimiteGlobal">The service has as many steps running as its global cap allows, so this one waits.</param>
 public sealed record PendienteDto(
@@ -38,15 +39,22 @@ public sealed record PendienteDto(
     bool RobotEncendido,
     bool RobotConectado,
     bool RobotOcupado,
-    bool ServicioAlLimiteGlobal);
+    bool ServicioAlLimiteGlobal,
+    int Prioridad,
+    Guid EjecucionPasoId);
 
 /// <param name="EnUso">Steps running on the machine right now, out of <paramref name="MaxEjecucionesSimultaneas"/>.</param>
+/// <param name="MaxEjecucionesSimultaneas">The machine's optional ceiling; null when it has none and its robot copies set the capacity.</param>
+/// <param name="Robots">The robots of the machine and how many copies of each are there, and free.</param>
 public sealed record ColaEquipoDto(
-    int MaxEjecucionesSimultaneas,
+    int? MaxEjecucionesSimultaneas,
     int EnUso,
     string Politica,
     IReadOnlyList<EnEjecucionDto> EnEjecucion,
-    IReadOnlyList<PendienteDto> Pendientes);
+    IReadOnlyList<PendienteDto> Pendientes,
+    IReadOnlyList<RobotDelEquipoDto> Robots);
+
+public sealed record RobotDelEquipoDto(Guid DespliegueId, Guid ServicioId, string ServicioNombre, bool Encendido, bool Conectado, int Instancias, int Libres);
 
 /// <summary>
 /// What a machine is doing and what is waiting for it, in the order it will be served: the answer to "who goes
@@ -60,7 +68,7 @@ internal static class DespachoColaEndpoints
     public static void MapDespachoColaEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGroup("/api/v1/equipos/{equipoId:guid}/despacho")
-            .RequireAuthorization(Permissions.RpaManage)
+            .RequireAuthorization(Permissions.RpaDespacho)
             .MapGet("/cola", GetColaAsync);
     }
 
@@ -70,7 +78,7 @@ internal static class DespachoColaEndpoints
         if (!await db.Set<Equipo>().AnyAsync(e => e.Id == equipoId, ct)) return ProblemResults.NotFound(http, "Equipo no encontrado.");
 
         var ahora = DateTimeOffset.UtcNow;
-        var estado = await DespachoEquipo.CargarAsync(db, equipoId, despliegueQueConsulta: null, ahora, opciones.Value, ct);
+        var estado = await DespachoEquipo.CargarAsync(db, equipoId, despliegueQueConsulta: null, instanciaQueConsulta: null, ahora, opciones.Value, ct);
         var servicios = await db.Set<Servicio>().AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Nombre, ct);
         string NombreServicio(Guid id) => servicios.GetValueOrDefault(id, string.Empty);
 
@@ -78,10 +86,11 @@ internal static class DespachoColaEndpoints
         // shown as overdue (they are exactly what someone looking at this screen wants to see).
         var enEjecucion = (await PasoEnMarcha.CargarAsync(db, equipoId, ct))
             .Select(p => new EnEjecucionDto(
-                p.CasoId, p.CasoTitulo, p.ServicioId, NombreServicio(p.ServicioId), p.ReclamadoEn, p.TiempoMaximoMinutos, p.LimiteAt, p.Vencido(ahora)))
+                p.CasoId, p.CasoTitulo, p.ServicioId, NombreServicio(p.ServicioId), p.ReclamadoEn, p.TiempoMaximoMinutos, p.LimiteAt, p.Vencido(ahora), p.PasoId))
             .ToList();
 
-        var esperando = new List<(PendienteDto Base, Guid DetalleId, int Rango)>();
+        // One queue per robot, each ordered by its executions' priority and then by age — what the robot would be handed.
+        var colas = new List<IReadOnlyList<(PendienteDto Base, Candidato Candidato)>>();
         foreach (var robot in estado.Robots.Where(r => r.Despliegue.Encendido))
         {
             var d = robot.Despliegue;
@@ -93,28 +102,31 @@ internal static class DespachoColaEndpoints
                 join version in db.Set<FlujoVersion>().AsNoTracking() on pasoDef.FlujoVersionId equals version.Id
                 where detalle.DespliegueId == null && paso.Estado == EjecucionPasoEstado.EnProgreso
                     && pasoDef.ServicioId == d.ServicioId && version.FlujoId == d.FlujoId
-                orderby detalle.Id
-                select new { DetalleId = detalle.Id, CasoId = caso.Id, caso.Titulo, paso.StartedAt, paso.CreatedAt }
+                orderby detalle.Prioridad descending, detalle.Id
+                select new { DetalleId = detalle.Id, PasoId = paso.Id, CasoId = caso.Id, caso.Titulo, detalle.Prioridad, paso.StartedAt, paso.CreatedAt }
             ).Take(PendientesPorRobot).ToListAsync(ct);
 
-            var rango = Despachador.Rango(d.ServicioId, estado.Orden, estado.Equipo.Politica, estado.UltimoServicioId);
             var alLimite = estado.ServiciosAlLimite.Contains(d.ServicioId);
-            foreach (var fila in filas)
-            {
-                esperando.Add((
-                    new PendienteDto(
-                        0, fila.CasoId, fila.Titulo, d.ServicioId, NombreServicio(d.ServicioId),
-                        fila.StartedAt ?? fila.CreatedAt, d.Encendido, robot.Conectado, robot.Ocupado, alLimite),
-                    fila.DetalleId, rango));
-            }
+            colas.Add(filas.Select(fila =>
+            (
+                new PendienteDto(
+                    0, fila.CasoId, fila.Titulo, d.ServicioId, NombreServicio(d.ServicioId),
+                    fila.StartedAt ?? fila.CreatedAt, d.Encendido, robot.Conectado, robot.Ocupado, alLimite, fila.Prioridad, fila.PasoId),
+                new Candidato(d.Id, d.ServicioId, fila.DetalleId, fila.StartedAt ?? fila.CreatedAt)
+            )).ToList());
         }
 
-        var pendientes = esperando
-            .OrderBy(e => e.Rango).ThenBy(e => e.Base.EsperaDesde).ThenBy(e => e.DetalleId.ToString(), StringComparer.Ordinal)
+        var pendientes = Despachador
+            .Servir(colas, e => e.Candidato, estado.Orden, estado.Equipo.Politica, estado.UltimoServicioId)
             .Select((e, i) => e.Base with { Posicion = i + 1 })
             .ToList();
 
         return Results.Ok(new ColaEquipoDto(
-            estado.Equipo.MaxEjecucionesSimultaneas, estado.EnEjecucion, estado.Equipo.Politica.ToString(), enEjecucion, pendientes));
+            estado.Equipo.MaxEjecucionesSimultaneas, estado.EnEjecucion, estado.Equipo.Politica.ToString(), enEjecucion, pendientes,
+            estado.Robots
+                .OrderBy(r => NombreServicio(r.Despliegue.ServicioId))
+                .Select(r => new RobotDelEquipoDto(
+                    r.Despliegue.Id, r.Despliegue.ServicioId, NombreServicio(r.Despliegue.ServicioId), r.Despliegue.Encendido, r.Conectado, r.Instancias, r.Libres))
+                .ToList()));
     }
 }

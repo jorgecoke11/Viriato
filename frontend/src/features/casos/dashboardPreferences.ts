@@ -1,6 +1,5 @@
-// Which dashboard cards the user has chosen to hide — a per-browser display preference, not a
-// security boundary (AsignacionFlujo already controls what a user can even fetch). Deliberately
-// local-only: which cards someone likes to see doesn't need to follow them across devices.
+// Which dashboard cards an older version let the person hide, saved for the whole browser. It is only read now, as the place the
+// per-user preference starts from (see `usePreferencia`), so nobody has to hide their processes again.
 const STORAGE_KEY = 'viriato:dashboard:hidden-flujos'
 
 export function getHiddenFlujoIds(): Set<string> {
@@ -9,13 +8,5 @@ export function getHiddenFlujoIds(): Set<string> {
     return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
   } catch {
     return new Set()
-  }
-}
-
-export function setHiddenFlujoIds(ids: Set<string>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]))
-  } catch {
-    // Private browsing / storage disabled — the preference just won't persist.
   }
 }

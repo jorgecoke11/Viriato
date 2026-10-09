@@ -11,6 +11,8 @@ interface ConfirmDialogProps {
   onConfirm: () => void
   onCancel: () => void
   pending?: boolean
+  /** For what is big or cannot be undone: the confirm button stays off until this exact word is typed. */
+  requireText?: string
 }
 
 export function ConfirmDialog({
@@ -22,13 +24,23 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   pending,
+  requireText,
 }: ConfirmDialogProps) {
+  const [typed, setTyped] = useState('')
+
+  // Every time it opens it starts empty: a confirmation typed earlier must not carry over to the next one.
+  useEffect(() => {
+    if (open) setTyped('')
+  }, [open])
+
+  const confirmed = requireText === undefined || typed.trim().toLowerCase() === requireText.toLowerCase()
+
   // Frozen so the dialog keeps showing valid content while it animates out, even if the caller
   // clears the underlying data (e.g. the item pending deletion) the moment `open` goes false.
-  const [frozen, setFrozen] = useState({ title, message, confirmLabel, pendingLabel, onConfirm, pending })
+  const [frozen, setFrozen] = useState({ title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText })
   useEffect(() => {
-    if (open) setFrozen({ title, message, confirmLabel, pendingLabel, onConfirm, pending })
-  }, [open, title, message, confirmLabel, pendingLabel, onConfirm, pending])
+    if (open) setFrozen({ title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText })
+  }, [open, title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText])
 
   return (
     <Modal
@@ -41,13 +53,33 @@ export function ConfirmDialog({
           <Button type="button" variant="ghost" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="button" variant="danger" disabled={frozen.pending} onClick={frozen.onConfirm}>
+          <Button type="button" variant="danger" disabled={frozen.pending || !confirmed} onClick={frozen.onConfirm}>
             {frozen.pending ? frozen.pendingLabel : frozen.confirmLabel}
           </Button>
         </div>
       }
     >
       <p className="text-sm text-gray-600">{frozen.message}</p>
+      {frozen.requireText !== undefined && (
+        <form
+          className="mt-4 flex flex-col gap-1.5"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (confirmed && !frozen.pending) frozen.onConfirm()
+          }}
+        >
+          <label htmlFor="confirmar-texto" className="text-sm font-medium text-gray-700">
+            Para confirmar, escribe <span className="font-mono font-semibold text-gray-900">{frozen.requireText}</span>
+          </label>
+          <input
+            id="confirmar-texto"
+            className="field"
+            autoComplete="off"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+          />
+        </form>
+      )}
     </Modal>
   )
 }

@@ -39,6 +39,27 @@ public sealed class RpaStepContext
         CancellationToken ct = default) =>
         _client.AgregarEvidenciaAsync(Ejecucion.EjecucionPasoId, tipo, titulo, contenidoJson, archivo, nombreArchivo, ct);
 
+    /// <inheritdoc cref="IRpaClient.ReportarEnVivoAsync"/>
+    public Task ReportarEnVivoAsync(int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default) =>
+        _client.ReportarEnVivoAsync(Ejecucion.EjecucionPasoId, porcentaje, mensaje, vistaUrl, ct);
+
+    /// <summary>
+    /// Like <see cref="ReportarEnVivoAsync"/>, but a report that cannot be made — the network, Viriato saying the step is over —
+    /// is only a false. How a step is going is for people to read: it must never be the reason a step fails.
+    /// </summary>
+    public async Task<bool> IntentarReportarEnVivoAsync(int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default)
+    {
+        try
+        {
+            await _client.ReportarEnVivoAsync(Ejecucion.EjecucionPasoId, porcentaje, mensaje, vistaUrl, ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex) when (ex is ViriatoApiException or HttpRequestException or TaskCanceledException)
+        {
+            return false;
+        }
+    }
+
     /// <inheritdoc cref="IRpaClient.CambiarEstadoCasoAsync"/>
     public Task CambiarEstadoCasoAsync(string codigoEstado, CancellationToken ct = default) =>
         _client.CambiarEstadoCasoAsync(Ejecucion.EjecucionPasoId, codigoEstado, ct);

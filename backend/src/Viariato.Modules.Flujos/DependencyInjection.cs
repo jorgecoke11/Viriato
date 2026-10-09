@@ -20,8 +20,10 @@ public static class DependencyInjection
         services.AddSingleton<UpdateFlujoEstadoDefRequestValidator>();
         services.AddSingleton<CreateFlujoParametroRequestValidator>();
         services.AddSingleton<UpdateFlujoParametroRequestValidator>();
+        services.AddSingleton<GuardarParametrosEditablesRequestValidator>();
         services.AddSingleton<CreateFlujoTipoCasoRequestValidator>();
         services.AddSingleton<UpdateFlujoTipoCasoRequestValidator>();
+        services.AddSingleton<GuardarCreadorDeCasoRequestValidator>();
         services.AddSingleton<CreateAgenteDefinicionRequestValidator>();
         services.AddSingleton<UpdateAgenteDefinicionRequestValidator>();
         services.AddSingleton<CreateStorageConfigRequestValidator>();

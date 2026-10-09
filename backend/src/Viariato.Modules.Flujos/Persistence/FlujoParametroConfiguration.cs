@@ -14,6 +14,7 @@ public sealed class FlujoParametroConfiguration : IEntityTypeConfiguration<Flujo
         builder.Property(p => p.Codigo).IsRequired().HasMaxLength(100);
         builder.Property(p => p.Valor).IsRequired().HasMaxLength(2000);
         builder.Property(p => p.Descripcion).HasMaxLength(500);
+        builder.Property(p => p.Etiqueta).HasMaxLength(100);
 
         builder.HasOne(p => p.Flujo)
             .WithMany()

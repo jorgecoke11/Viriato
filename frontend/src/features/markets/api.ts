@@ -73,6 +73,8 @@ export interface ListCompaniesFilters {
   index?: string
   sector?: string
   minScore?: number
+  page?: number
+  pageSize?: number
 }
 
 export type SyncScope = 'Sp500' | 'Ndx100'
@@ -83,6 +85,8 @@ const buildQuery = (filters: ListCompaniesFilters) => {
   if (filters.index) params.set('index', filters.index)
   if (filters.sector) params.set('sector', filters.sector)
   if (filters.minScore !== undefined) params.set('minScore', String(filters.minScore))
+  if (filters.page) params.set('page', String(filters.page))
+  if (filters.pageSize) params.set('pageSize', String(filters.pageSize))
   const query = params.toString()
   return query ? `?${query}` : ''
 }

@@ -1,14 +1,20 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Inbox, Plus, Search } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Inbox, Plus } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import type { AccionMasiva } from '../../lib/accionesMasivas'
 import { ApiError } from '../../lib/apiClient'
+import { filtrosActivos } from '../../lib/lista'
 import { useToast } from '../../lib/toast/useToast'
+import { useListaPaginada } from '../../lib/useListaPaginada'
+import { AccionesDeSeleccion, AvisoSeleccionarTodos, InformeDeAcciones } from '../ui/AccionesDeLista'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { EmptyState } from '../ui/EmptyState'
 import { Input } from '../ui/Input'
 import { PageHeader } from '../ui/PageHeader'
+import { Pagination } from '../ui/Pagination'
+import { SearchField } from '../ui/SearchField'
 import { SkeletonRows } from '../ui/Skeleton'
 import { CrudFormModal } from './CrudFormModal'
 import { CrudTable } from './CrudTable'
@@ -17,10 +23,13 @@ import type { CrudApi, CrudColumn, CrudFilterConfig, CrudFormConfig } from './ty
 type ModalState<T, TFormValues> = { mode: 'create' } | { mode: 'edit'; item: T; values: TFormValues } | null
 
 /**
- * A filter bar + table + create/edit modal + delete confirmation, wired to TanStack Query and
+ * A filter bar + table + pages + create/edit modal + delete confirmation, wired to TanStack Query and
  * parameterized by resource. Pass `form` to enable create/edit (omit it, or the corresponding
  * api.* function, for read-only resources like Permissions — see §5.1). Pass `filters` to choose
- * how the table can be searched: one general box, one control per field, or none at all.
+ * how the table can be searched: one general box, one control per field, or none at all. Pass
+ * `acciones` to give the table a selection column (also "select all that match", past the page)
+ * and a button per action; with none, there is no selection at all. The list state — search,
+ * filters, page, selection — is the one every list of the app has (`useListaPaginada`).
  */
 export function CrudPage<T, TFormValues extends Record<string, string | boolean>, TCreate, TUpdate>({
   title,
@@ -35,6 +44,9 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
   deleteConfirm,
   canEditRow,
   canDeleteRow,
+  acciones = [],
+  entidad = { singular: 'elemento', plural: 'elementos' },
+  nombreDeFila,
 }: {
   title: string
   resourceKey: string
@@ -51,21 +63,29 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
   /** Hides the edit/delete action for a specific row (e.g. an admin can't edit their own user). */
   canEditRow?: (item: T) => boolean
   canDeleteRow?: (item: T) => boolean
+  /** What can be done to the selected rows. Leave out for a table nobody acts on in bulk. */
+  acciones?: readonly AccionMasiva[]
+  /** What the rows are called, for "3 elementos seleccionados". */
+  entidad?: { singular: string; plural: string }
+  /** What to call a row for a screen reader when it has a tick box ("Seleccionar «Placas»"). */
+  nombreDeFila?: (item: T) => string
 }) {
-  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
   const [modalState, setModalState] = useState<ModalState<T, TFormValues>>(null)
   const [pendingDelete, setPendingDelete] = useState<T | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const queryClient = useQueryClient()
   const { showToast } = useToast()
 
-  const query = useQuery({
-    queryKey: [resourceKey, filterValues],
-    queryFn: () => api.list(filterValues),
+  const fuente = useListaPaginada<T>({
+    clave: [resourceKey],
+    obtenerId: getId,
+    tamano: 25,
+    cargar: ({ busqueda, filtros, pagina, tamano }) =>
+      api.list({ ...filtrosActivos(filtros), ...(busqueda ? { search: busqueda } : {}), page: String(pagina), pageSize: String(tamano) }),
   })
+  const conAcciones = acciones.length > 0
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: [resourceKey] })
-  const setFilter = (key: string, value: string) => setFilterValues((prev) => ({ ...prev, [key]: value }))
 
   const createMutation = useMutation({
     mutationFn: (input: TCreate) => api.create!(input),
@@ -150,19 +170,10 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
         }
       />
 
+      <InformeDeAcciones fuente={fuente} />
+
       {filters.mode === 'general' && (
-        <div className="relative max-w-md">
-          <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-          <input
-            type="search"
-            name="search"
-            aria-label="Buscar"
-            placeholder={filters.placeholder ?? 'Buscar…'}
-            className="field pl-9"
-            value={filterValues.search ?? ''}
-            onChange={(e) => setFilter('search', e.target.value)}
-          />
-        </div>
+        <SearchField className="max-w-md" label="Buscar" placeholder={filters.placeholder ?? 'Buscar…'} value={fuente.busqueda} onChange={fuente.setBusqueda} />
       )}
 
       {filters.mode === 'fields' && (
@@ -176,8 +187,8 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
                 <select
                   id={`filter-${field.key}`}
                   className="field"
-                  value={filterValues[field.key] ?? ''}
-                  onChange={(e) => setFilter(field.key, e.target.value)}
+                  value={fuente.filtros[field.key] ?? ''}
+                  onChange={(e) => fuente.ponerFiltro(field.key, e.target.value)}
                 >
                   {field.options?.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -192,8 +203,8 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
                 label={field.label}
                 name={field.key}
                 placeholder={field.placeholder}
-                value={filterValues[field.key] ?? ''}
-                onChange={(e) => setFilter(field.key, e.target.value)}
+                value={fuente.filtros[field.key] ?? ''}
+                onChange={(e) => fuente.ponerFiltro(field.key, e.target.value)}
               />
             ),
           )}
@@ -201,8 +212,9 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
       )}
 
       <Card className="overflow-x-auto p-0">
+        {conAcciones && <AvisoSeleccionarTodos fuente={fuente} />}
         <CrudTable
-          items={query.data?.items ?? []}
+          items={fuente.filas}
           columns={columns}
           getId={getId}
           onEdit={canEdit ? openEdit : undefined}
@@ -210,29 +222,31 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
           renderRowExtra={renderRowExtra}
           canEditRow={canEditRow}
           canDeleteRow={canDeleteRow}
+          seleccion={conAcciones ? fuente.seleccion : undefined}
+          nombreDeFila={nombreDeFila}
         />
-        {query.isLoading && <SkeletonRows />}
-        {query.isError && (
+        {fuente.estado.cargando && <SkeletonRows />}
+        {fuente.estado.conError && (
           <div className="flex items-center justify-between gap-3 p-4 text-sm">
             <span className="text-red-600">No se han podido cargar los datos.</span>
-            <Button variant="secondary" size="sm" onClick={() => query.refetch()}>
+            <Button variant="secondary" size="sm" onClick={fuente.estado.reintentar}>
               Reintentar
             </Button>
           </div>
         )}
-        {query.isSuccess && query.data.items.length === 0 && (
+        {fuente.estado.correcta && fuente.filas.length === 0 && (
           <EmptyState
             icon={<Inbox size={22} />}
             title="Sin resultados"
             description={
-              Object.values(filterValues).some(Boolean)
+              fuente.hayFiltros
                 ? 'Ningún elemento coincide con la búsqueda. Prueba con otros términos.'
                 : canCreate
                   ? 'Todavía no hay nada aquí.'
                   : undefined
             }
             action={
-              canCreate && !Object.values(filterValues).some(Boolean) ? (
+              canCreate && !fuente.hayFiltros ? (
                 <Button variant="secondary" size="sm" onClick={openCreate}>
                   <Plus size={15} />
                   Nuevo
@@ -242,6 +256,10 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
           />
         )}
       </Card>
+
+      <Pagination pagina={fuente.pagina} tamano={fuente.tamano} total={fuente.total} alCambiar={fuente.setPagina} />
+
+      {conAcciones && <AccionesDeSeleccion fuente={fuente} acciones={acciones} entidad={entidad} />}
 
       {form && (
         <CrudFormModal

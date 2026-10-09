@@ -9,7 +9,8 @@ namespace Viariato.Modules.Casos.Despacho;
 
 /// <summary>
 /// What the platform does with a claimed step that has run past its service's maximum time: the Caso is cancelled (the
-/// step as Cancelado with the reason, then the Caso the way a user cancelling it would). The robot is never asked
+/// step as Cancelado with the reason, then the Caso — which ends on the business estado «Cancelado por exceso de tiempo de
+/// ejecución», not on «Descartado», so it is plain at a glance that a person did not do it). The robot is never asked
 /// anything — the time is the only rule. The cut is one conditional update on the step, so it cannot race with the robot
 /// reporting the step done at the same moment: whoever gets there first wins, and the other finds the step already
 /// settled (a robot that reports late is turned down with a 409).
@@ -40,15 +41,38 @@ public sealed class ControlDePasos(
             $"El paso superó el tiempo máximo de su servicio ({paso.TiempoMaximoMinutos} min) y la plataforma canceló el caso. "
             + "Si es normal que tarde más, aumenta el tiempo máximo del servicio.";
 
-        var cerrado = await CerrarSiSigueEnCursoAsync(paso.PasoId, mensaje, ct);
-        if (!cerrado) return false;
+        var cancelada = await CancelarAsync(paso.PasoId, paso.CasoId, mensaje, MotivoDeCancelacion.TiempoMaximo, ct);
+        if (cancelada)
+        {
+            logger.LogWarning(
+                "Caso {Caso}: el paso {Paso} superó los {Minutos} min de su servicio; se cancela el caso.",
+                paso.CasoId, paso.PasoId, paso.TiempoMaximoMinutos);
+        }
 
-        logger.LogWarning(
-            "Caso {Caso}: el paso {Paso} superó los {Minutos} min de su servicio; se cancela el caso.",
-            paso.CasoId, paso.PasoId, paso.TiempoMaximoMinutos);
+        return cancelada;
+    }
 
-        await FallarTrabajoAsync(paso.PasoId, mensaje, ct);
-        await orchestrator.CancelarAsync(paso.CasoId, ct);
+    /// <summary>
+    /// A person cancels an execution — an RPA step that waits in the queue or that a robot is running. Its step is left as
+    /// cancelled, with the reason, and so is its Caso: the steps of a Caso run one after the other, so with this one gone
+    /// the Caso has nowhere to go. A robot that reports on it afterwards is turned down (the step is already settled).
+    /// False if it was no longer waiting or running — it finished, failed or was cancelled in the meantime.
+    /// </summary>
+    public async Task<bool> CancelarEjecucionAsync(Guid pasoId, Guid casoId, CancellationToken ct)
+    {
+        const string mensaje = "La ejecución se canceló manualmente y, con ella, el caso.";
+
+        var cancelada = await CancelarAsync(pasoId, casoId, mensaje, MotivoDeCancelacion.Manual, ct);
+        if (cancelada) logger.LogInformation("Caso {Caso}: la ejecución {Paso} se canceló manualmente; se cancela el caso.", casoId, pasoId);
+        return cancelada;
+    }
+
+    private async Task<bool> CancelarAsync(Guid pasoId, Guid casoId, string mensaje, MotivoDeCancelacion motivo, CancellationToken ct)
+    {
+        if (!await CerrarSiSigueEnCursoAsync(pasoId, mensaje, ct)) return false;
+
+        await FallarTrabajoAsync(pasoId, mensaje, ct);
+        await orchestrator.CancelarAsync(casoId, ct, motivo);
         return true;
     }
 

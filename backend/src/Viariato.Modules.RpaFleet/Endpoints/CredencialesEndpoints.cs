@@ -22,7 +22,7 @@ internal static class CredencialesEndpoints
 {
     public static void MapCredencialesEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/api/v1/credenciales").RequireAuthorization(Permissions.RpaManage);
+        var group = endpoints.MapGroup("/api/v1/credenciales").RequireAuthorization(Permissions.RpaCredenciales);
 
         group.MapGet("/", ListAsync);
         group.MapPost("/", CreateAsync);

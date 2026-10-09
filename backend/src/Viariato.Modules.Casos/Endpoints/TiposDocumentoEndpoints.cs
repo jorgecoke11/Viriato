@@ -59,7 +59,7 @@ internal static class TiposDocumentoEndpoints
 
     private static Task<IResult?> RequireCasosManageAsync(HttpContext http, CancellationToken ct)
     {
-        var allowed = http.User.HasClaim("perm", Permissions.CasosManage);
+        var allowed = http.User.HasClaim("perm", Permissions.FlujosManage);
         return Task.FromResult<IResult?>(allowed ? null : ProblemResults.Forbidden(http, "No tienes permiso para gestionar tipos de documento."));
     }
 }

@@ -7,7 +7,7 @@ export function Tabs<T extends string>({
   active,
   onChange,
 }: {
-  tabs: { value: T; label: string }[]
+  tabs: { value: T; label: string; /** A count beside the label ("Documentos 3"); left out while unknown. */ cantidad?: number }[]
   active: T
   onChange: (value: T) => void
 }) {
@@ -34,6 +34,9 @@ export function Tabs<T extends string>({
             onClick={() => onChange(tab.value)}
           >
             {tab.label}
+            {tab.cantidad !== undefined && (
+              <span className={`num ml-1.5 rounded-full px-1.5 py-0.5 font-mono text-[11px] ${isActive ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}`}>{tab.cantidad}</span>
+            )}
             {isActive && (
               <motion.div
                 layoutId={`${indicatorId}-tab-indicator`}

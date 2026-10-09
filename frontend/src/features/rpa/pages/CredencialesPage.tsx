@@ -3,16 +3,16 @@ import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
-import { Card } from '../../../components/ui/Card'
-import { EmptyState } from '../../../components/ui/EmptyState'
+import type { ColumnaDeTabla } from '../../../components/ui/DataTable'
 import { IconButton } from '../../../components/ui/IconButton'
+import { ListaDeDatos } from '../../../components/ui/ListaDeDatos'
 import { PageHeader } from '../../../components/ui/PageHeader'
-import { SkeletonRows } from '../../../components/ui/Skeleton'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
 import { ApiError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
+import { useListaPaginada } from '../../../lib/useListaPaginada'
 import * as rpaApi from '../api'
 import type { CredencialDto } from '../api'
 
@@ -40,7 +40,11 @@ export function CredencialesPage() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [pendingDelete, setPendingDelete] = useState<CredencialDto | null>(null)
 
-  const credencialesQuery = useQuery({ queryKey: ['credenciales'], queryFn: () => rpaApi.listCredenciales() })
+  const fuente = useListaPaginada<CredencialDto>({
+    clave: ['credenciales'],
+    obtenerId: (c) => c.id,
+    cargar: ({ busqueda, pagina, tamano }) => rpaApi.listCredenciales({ search: busqueda, page: String(pagina), pageSize: String(tamano) }),
+  })
   const serviciosQuery = useQuery({ queryKey: ['servicios-all'], queryFn: () => rpaApi.listServicios() })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['credenciales'] })
@@ -85,7 +89,6 @@ export function CredencialesPage() {
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo eliminar la credencial.'),
   })
 
-  const credenciales = credencialesQuery.data?.items ?? []
   // An inactive servicio is not offered for new assignments, but a credential already tied to one keeps showing it.
   const servicios = (serviciosQuery.data?.items ?? []).filter((s) => s.activo || s.id === credencialEnEdicion?.servicioId)
 
@@ -113,6 +116,34 @@ export function CredencialesPage() {
 
   const set = <K extends keyof FormState>(campo: K, valor: FormState[K]) => setForm((prev) => ({ ...prev, [campo]: valor }))
 
+  const columnas: ColumnaDeTabla<CredencialDto>[] = [
+    { clave: 'nombre', titulo: 'Nombre', celda: (c) => <span className="font-mono text-xs text-gray-800">{c.nombre}</span> },
+    { clave: 'descripcion', titulo: 'Descripción', celda: (c) => <span className="text-gray-600">{c.descripcion ?? '—'}</span> },
+    { clave: 'usuario', titulo: 'Usuario', celda: (c) => c.usuario ?? '—' },
+    { clave: 'password', titulo: 'Contraseña', celda: () => <span className="text-gray-400">••••••••</span> },
+    { clave: 'servicio', titulo: 'Disponible para', celda: (c) => c.servicioNombre ?? 'Todos los robots' },
+    { clave: 'activa', titulo: 'Activa', celda: (c) => <Badge tone={c.activo ? 'success' : 'neutral'}>{c.activo ? 'Activa' : 'Inactiva'}</Badge> },
+    {
+      clave: 'acceso',
+      titulo: 'Último acceso',
+      celda: (c) => <span className="text-gray-500">{c.ultimoAccesoAt ? new Date(c.ultimoAccesoAt).toLocaleString() : 'Nunca'}</span>,
+    },
+    {
+      clave: 'acciones',
+      titulo: 'Acciones',
+      celda: (c) => (
+        <div className="-my-1 flex items-center gap-0.5">
+          <IconButton size="sm" label="Editar" onClick={() => abrirEdicion(c)}>
+            <Pencil size={16} />
+          </IconButton>
+          <IconButton size="sm" variant="danger" label="Eliminar" onClick={() => setPendingDelete(c)}>
+            <Trash2 size={16} />
+          </IconButton>
+        </div>
+      ),
+    },
+  ]
+
   const nombreInvalido = esNueva && form.nombre !== '' && !NOMBRE_VALIDO.test(form.nombre)
   const puedeGuardar = esNueva ? NOMBRE_VALIDO.test(form.nombre) && form.password !== '' : true
 
@@ -129,63 +160,26 @@ export function CredencialesPage() {
         }
       />
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50/70">
-            <tr>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Nombre</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Descripción</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Usuario</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Contraseña</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Disponible para</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Activa</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Último acceso</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {credenciales.map((credencial) => (
-              <tr key={credencial.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/70">
-                <td className="px-4 py-3 font-mono text-xs text-gray-800">{credencial.nombre}</td>
-                <td className="px-4 py-3 text-gray-600">{credencial.descripcion ?? '—'}</td>
-                <td className="px-4 py-3">{credencial.usuario ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-400">••••••••</td>
-                <td className="px-4 py-3">{credencial.servicioNombre ?? 'Todos los robots'}</td>
-                <td className="px-4 py-3">
-                  <Badge tone={credencial.activo ? 'success' : 'neutral'}>{credencial.activo ? 'Activa' : 'Inactiva'}</Badge>
-                </td>
-                <td className="px-4 py-3 text-gray-500">
-                  {credencial.ultimoAccesoAt ? new Date(credencial.ultimoAccesoAt).toLocaleString() : 'Nunca'}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-0.5">
-                    <IconButton size="sm" label="Editar" onClick={() => abrirEdicion(credencial)}>
-                      <Pencil size={16} />
-                    </IconButton>
-                    <IconButton size="sm" variant="danger" label="Eliminar" onClick={() => setPendingDelete(credencial)}>
-                      <Trash2 size={16} />
-                    </IconButton>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {credencialesQuery.isLoading && <SkeletonRows />}
-        {credencialesQuery.isSuccess && credenciales.length === 0 && (
-          <EmptyState
-            icon={<KeyRound size={22} />}
-            title="Sin credenciales"
-            description="Guarda aquí el usuario y la contraseña que necesita un robot, y pídela por su nombre desde el robot."
-            action={
-              <Button variant="secondary" size="sm" onClick={abrirNueva}>
-                <Plus size={15} />
-                Nueva
-              </Button>
-            }
-          />
-        )}
-      </Card>
+      <ListaDeDatos
+        fuente={fuente}
+        columnas={columnas}
+        obtenerId={(c) => c.id}
+        nombreDeFila={(c) => c.nombre}
+        entidad={{ singular: 'credencial', plural: 'credenciales' }}
+        buscador={{ etiqueta: 'Buscar credenciales', placeholder: 'Buscar por nombre o usuario…' }}
+        vacio={{
+          icono: <KeyRound size={22} />,
+          titulo: 'Sin credenciales',
+          descripcion: 'Guarda aquí el usuario y la contraseña que necesita un robot, y pídela por su nombre desde el robot.',
+          accion: (
+            <Button variant="secondary" size="sm" onClick={abrirNueva}>
+              <Plus size={15} />
+              Nueva
+            </Button>
+          ),
+        }}
+        anchoMinimo="900px"
+      />
 
       <Modal
         open={editing !== null}

@@ -47,6 +47,37 @@ internal static class Despachador
             .ThenBy(c => c.DetalleId.ToString(), StringComparer.Ordinal)
             .ToList();
 
+    /// <summary>
+    /// Everything waiting, in the order the machine would hand it out if its robots kept asking. Each queue (one per
+    /// robot) arrives already ordered inside — by the priority of its executions, then by age — and the machine's order of
+    /// services only decides which queue's front goes next, so a high-priority execution never jumps ahead of a service the
+    /// machine ranks higher.
+    /// </summary>
+    public static IReadOnlyList<T> Servir<T>(
+        IEnumerable<IReadOnlyList<T>> colas,
+        Func<T, Candidato> comoCandidato,
+        IReadOnlyList<Guid> orden,
+        PoliticaDespacho politica,
+        Guid? ultimoServicioId)
+    {
+        var restantes = colas.Select(c => new Queue<T>(c)).Where(q => q.Count > 0).ToList();
+        var servidos = new List<T>();
+        var ultimo = ultimoServicioId;
+
+        while (restantes.Count > 0)
+        {
+            var frentes = restantes.Select(q => (Cola: q, Candidato: comoCandidato(q.Peek()))).ToList();
+            var elegido = Elegir(frentes.Select(f => f.Candidato), orden, politica, ultimo)!;
+            var cola = frentes.First(f => f.Candidato.DetalleId == elegido.DetalleId).Cola;
+
+            servidos.Add(cola.Dequeue());
+            if (cola.Count == 0) restantes.Remove(cola);
+            ultimo = elegido.ServicioId;
+        }
+
+        return servidos;
+    }
+
     /// <summary>What goes next, or null if nothing is waiting.</summary>
     public static Candidato? Elegir(
         IEnumerable<Candidato> candidatos, IReadOnlyList<Guid> orden, PoliticaDespacho politica, Guid? ultimoServicioId) =>

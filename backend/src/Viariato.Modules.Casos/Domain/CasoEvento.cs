@@ -17,6 +17,9 @@ public enum CasoEventoAccion
     Cancelado,
     Fallido,
     EstadoNegocioActualizado,
+    PrioridadCambiada,
+    /// <summary>No longer written (how far a robot is lives on the step, not in the history); kept so rows already saved still read.</summary>
+    ProgresoActualizado,
 }
 
 /// <summary>Flat, append-only audit trail — same shape and spirit as Users' RoleAuditLog. Every state
