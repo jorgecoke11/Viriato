@@ -64,6 +64,9 @@ curl https://viriato.tudominio.com/api/v1/version
 
 Entra en la dirección pública con el administrador del `.env`.
 
+**MinIO es opcional y no arranca por defecto** (perfil `s3`): MinIO retiró sus imágenes de Docker Hub y de quay.io, y en un PC nuevo no se pueden bajar. Solo se necesita si un proceso guarda sus documentos en S3; por defecto se guarda en la carpeta `STORAGE_HOST_PATH`.
+
+
 ## 4 · Dar de alta robots
 
 En la plataforma: *RPA → Equipos, Servicios, Despliegues* (un despliegue por robot; al crearlo se muestra **una sola vez** su clave).
