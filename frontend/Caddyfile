@@ -11,6 +11,12 @@
 		reverse_proxy api:8080
 	}
 
+	# La pantalla del robot en directo (noVNC del contenedor del extractor), por la misma dirección que Viriato: así comparte HTTPS y
+	# el login de Cloudflare Access. Solo hay una si el extractor está en la misma red de Docker (ver docs/ver-la-ejecucion-en-directo.md).
+	handle_path /vista/* {
+		reverse_proxy {$VISTA_UPSTREAM:extractor:6080}
+	}
+
 	handle {
 		root * /srv
 		try_files {path} /index.html
