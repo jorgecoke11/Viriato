@@ -10,6 +10,7 @@ dist/
 
 ## Env
 .env
+.env.prod
 
 ## Editors / OS
 .vs/
