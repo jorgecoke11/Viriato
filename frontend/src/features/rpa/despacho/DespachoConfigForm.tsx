@@ -1,5 +1,5 @@
 import { Input } from '../../../components/ui/Input'
-import { leerMaximo, type DespachoConfig } from './despachoConfig'
+import { leerTope, type DespachoConfig } from './despachoConfig'
 import { OrdenServicios, type ServicioEnOrden } from './OrdenServicios'
 import { PoliticaSelector } from './PoliticaSelector'
 
@@ -16,21 +16,22 @@ interface DespachoConfigFormProps {
 export function DespachoConfigForm({ value, onChange, candidatos, disabled = false }: DespachoConfigFormProps) {
   const enOrden = new Set(value.orden.map((s) => s.id))
   const sinPosicion = candidatos.filter((c) => !enOrden.has(c.id))
-  const maximoInvalido = leerMaximo(value.maxEjecucionesSimultaneas) === null
+  const topeInvalido = !leerTope(value.maxEjecucionesSimultaneas).valido
 
   return (
     <div className="flex flex-col gap-5">
       <Input
-        label="Ejecuciones simultáneas"
+        label="Límite de ejecuciones a la vez (opcional)"
         name="maxEjecucionesSimultaneas"
         type="number"
         min={1}
         max={50}
         step={1}
+        placeholder="Sin límite"
         value={value.maxEjecucionesSimultaneas}
         disabled={disabled}
-        error={maximoInvalido ? 'Un número entero entre 1 y 50.' : undefined}
-        hint="Cuántos pasos puede estar ejecutando a la vez la máquina. Con 1, los robots van uno detrás de otro; es lo más seguro si usan la pantalla o el mismo navegador."
+        error={topeInvalido ? 'Un número entero entre 1 y 50, o vacío para no limitar.' : undefined}
+        hint="Déjalo vacío: cuántas ejecuciones corren a la vez lo deciden las copias de cada robot que tengas en marcha (réplicas en el stack o procesos en Windows). Pon un número solo si quieres frenar la máquina; con 1, los robots van uno detrás de otro, lo más seguro si usan la pantalla o el mismo navegador."
         onChange={(e) => onChange({ ...value, maxEjecucionesSimultaneas: e.target.value })}
       />
 

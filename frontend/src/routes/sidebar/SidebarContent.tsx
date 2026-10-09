@@ -1,10 +1,11 @@
 import { ChevronsLeft, ChevronsRight, LogOut, Settings, Workflow } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../features/auth/useAuth'
 import { ThemeToggle } from '../../lib/theme/ThemeToggle'
 import { VersionBadge } from '../../lib/version/VersionBadge'
-import { navLinkClass, NavTree } from './NavTree'
+import { EnlaceDeMenu, EnlaceDeMenuCompacto } from './EnlaceDeMenu'
+import { NavTree } from './NavTree'
 import { navTree } from './navConfig'
 import { SidebarSearch } from './SidebarSearch'
 
@@ -34,19 +35,19 @@ export function SidebarContent({
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-[radial-gradient(120%_50%_at_0%_0%,rgb(99_102_241/0.20),transparent_60%)]">
       <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${collapsed ? 'flex-col gap-3' : 'flex-row'}`}>
         <Link
           to="/"
           onClick={onNavigate}
           aria-label="Viariato"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white shadow-[0_4px_14px_-4px_rgb(99_102_241/0.7)]"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white shadow-[0_6px_18px_-4px_rgb(99_102_241/0.8)]"
         >
-          <Workflow size={18} />
+          <Workflow size={20} />
         </Link>
         {!collapsed && (
           <Link to="/" onClick={onNavigate} className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-[17px] font-semibold tracking-tight text-side-strong">Viariato</span>
+            <span className="block truncate text-[18px] font-semibold tracking-tight text-side-strong">Viariato</span>
             <span className="block truncate text-[11px] tracking-wide text-side-text">Procesos y robots</span>
           </Link>
         )}
@@ -70,19 +71,7 @@ export function SidebarContent({
       <div className={`border-t border-side-border px-3 py-3 ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-2'}`}>
         {collapsed ? (
           <>
-            <NavLink
-              to="/perfil"
-              title="Configuración"
-              aria-label="Configuración"
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `flex h-10 w-10 items-center justify-center rounded-lg ${
-                  isActive ? 'bg-indigo-500/15 text-side-accent' : 'text-side-text hover:bg-side-hover hover:text-side-strong'
-                }`
-              }
-            >
-              <Settings size={18} />
-            </NavLink>
+            <EnlaceDeMenuCompacto to="/perfil" icono={<Settings size={18} />} etiqueta="Configuración" onNavigate={onNavigate} />
             <ThemeToggle compact />
             <Avatar name={user?.displayName} size="sm" />
             <button
@@ -97,12 +86,9 @@ export function SidebarContent({
           </>
         ) : (
           <>
-            <NavLink to="/perfil" onClick={onNavigate} className={navLinkClass}>
-              <Settings size={18} />
-              Configuración
-            </NavLink>
+            <EnlaceDeMenu to="/perfil" icono={<Settings size={18} />} etiqueta="Configuración" onNavigate={onNavigate} />
             <ThemeToggle />
-            <div className="flex items-center gap-3 rounded-lg px-1 py-1">
+            <div className="flex items-center gap-3 rounded-xl border border-side-border bg-white/5 p-2">
               <Avatar name={user?.displayName} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-side-strong">{user?.displayName}</p>

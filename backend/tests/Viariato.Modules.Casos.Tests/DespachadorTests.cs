@@ -18,6 +18,67 @@ public sealed class DespachadorTests
     private static Guid[] Servicios(Candidato[] candidatos, Guid[] orden, PoliticaDespacho politica, Guid? ultimo = null) =>
         Despachador.Ordenar(candidatos, orden, politica, ultimo).Select(c => c.ServicioId).ToArray();
 
+    // ---------------------------------------------------------------- queues merged
+
+    private static (Candidato Candidato, string Nombre) Item(Guid servicio, string nombre, int minutos, Guid despliegue) =>
+        (new Candidato(despliegue, servicio, Guid.CreateVersion7(), T0.AddMinutes(minutos)), nombre);
+
+    private static string[] Servir(
+        (Candidato Candidato, string Nombre)[][] colas, Guid[] orden, PoliticaDespacho politica, Guid? ultimo = null) =>
+        Despachador.Servir(colas, i => i.Candidato, orden, politica, ultimo).Select(i => i.Nombre).ToArray();
+
+    [Fact]
+    public void Servir_KeepsTheOrderInsideEachQueue_WhateverTheAgeOfItsItems()
+    {
+        // A queue arrives ordered by priority: its second item is older than its first. The machine must not reshuffle it.
+        var robot = Guid.NewGuid();
+        var cola = new[] { Item(S1, "urgente, nuevo", 30, robot), Item(S1, "normal, viejo", 0, robot) };
+
+        Assert.Equal(["urgente, nuevo", "normal, viejo"], Servir([cola], [S1], PoliticaDespacho.Prioridad));
+    }
+
+    [Fact]
+    public void Servir_TheMachinesRankDecidesWhichQueueGoesFirst_ThenTheFrontOfThatQueueGoes()
+    {
+        var r1 = Guid.NewGuid();
+        var r2 = Guid.NewGuid();
+        var servicioUno = new[] { Item(S1, "uno-a", 10, r1), Item(S1, "uno-b", 20, r1) };
+        var servicioDos = new[] { Item(S2, "dos-a", 0, r2), Item(S2, "dos-b", 5, r2) };
+
+        // S2 waited longer, but S1 is ranked first: all of S1 before any of S2.
+        Assert.Equal(["uno-a", "uno-b", "dos-a", "dos-b"], Servir([servicioDos, servicioUno], [S1, S2], PoliticaDespacho.Prioridad));
+    }
+
+    [Fact]
+    public void Servir_AmongServicesNobodyRanked_TheFrontThatHasWaitedLongestGoesFirst()
+    {
+        var r1 = Guid.NewGuid();
+        var r2 = Guid.NewGuid();
+        var a = new[] { Item(S1, "a1", 10, r1), Item(S1, "a2", 11, r1) };
+        var b = new[] { Item(S2, "b1", 5, r2), Item(S2, "b2", 50, r2) };
+
+        Assert.Equal(["b1", "a1", "a2", "b2"], Servir([a, b], [], PoliticaDespacho.Prioridad));
+    }
+
+    [Fact]
+    public void Servir_WithTurns_AlternatesBetweenTheQueues_StartingAfterTheServiceServedLast()
+    {
+        var r1 = Guid.NewGuid();
+        var r2 = Guid.NewGuid();
+        var a = new[] { Item(S1, "a1", 0, r1), Item(S1, "a2", 1, r1) };
+        var b = new[] { Item(S2, "b1", 2, r2), Item(S2, "b2", 3, r2) };
+
+        Assert.Equal(["a1", "b1", "a2", "b2"], Servir([a, b], [S1, S2], PoliticaDespacho.Turnos));
+        Assert.Equal(["b1", "a1", "b2", "a2"], Servir([a, b], [S1, S2], PoliticaDespacho.Turnos, ultimo: S1));
+    }
+
+    [Fact]
+    public void Servir_WithNothingWaiting_ReturnsNothing()
+    {
+        Assert.Empty(Servir([], [S1], PoliticaDespacho.Prioridad));
+        Assert.Empty(Servir([[]], [S1], PoliticaDespacho.Prioridad));
+    }
+
     // ---------------------------------------------------------------- rank
 
     [Fact]

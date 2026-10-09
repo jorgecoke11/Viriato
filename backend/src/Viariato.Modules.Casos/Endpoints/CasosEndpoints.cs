@@ -5,10 +5,13 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Viariato.Infrastructure;
 using Viariato.Modules.Casos.Contracts;
+using Viariato.Modules.Casos.AccionesMasivas;
+using Viariato.Modules.Casos.Despacho;
 using Viariato.Modules.Casos.Domain;
 using Viariato.Modules.Casos.Orchestration;
 using Viariato.Modules.Casos.Validation;
 using Viariato.Modules.Flujos.Domain;
+using Viariato.Modules.RpaFleet.Domain;
 using Viariato.Shared;
 using Viariato.Shared.Authorization;
 using Viariato.Shared.Http;
@@ -25,7 +28,10 @@ namespace Viariato.Modules.Casos.Endpoints;
 internal static class CasosEndpoints
 {
     private static readonly CasoEstado[] EstadosActivos =
-        [CasoEstado.Iniciado, CasoEstado.EnProgreso, CasoEstado.Pausado, CasoEstado.EsperandoRevisionHumana];
+        [CasoEstado.Iniciado, CasoEstado.Pendiente, CasoEstado.EnProgreso, CasoEstado.Pausado, CasoEstado.EsperandoRevisionHumana];
+
+    // The other half of the technical estados: the Caso is over, whatever the business estado it ended on says.
+    private static readonly CasoEstado[] EstadosFinales = [CasoEstado.Completado, CasoEstado.Fallido, CasoEstado.Cancelado];
 
     public static void MapCasosCoreEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -39,13 +45,26 @@ internal static class CasosEndpoints
         read.MapGet("/{id:guid}/ejecuciones/{ejecucionId:guid}", GetEjecucionAsync);
         read.MapGet("/{id:guid}/timeline", GetTimelineAsync);
 
+        // Starting a case by hand picks the process, type and starting service freely, which is configuration; people create
+        // cases through a creator (casos.crear, see CreadoresDeCasoUsoEndpoints).
+        endpoints.MapGroup("/api/v1/casos").RequireAuthorization(Permissions.FlujosManage).MapPost("/", StartCasoAsync);
+
         var manage = endpoints.MapGroup("/api/v1/casos").RequireAuthorization(Permissions.CasosManage);
-        manage.MapPost("/", StartCasoAsync);
         manage.MapPatch("/{id:guid}/datos", UpdateDatosAsync);
         manage.MapPost("/{id:guid}/pausar", PausarAsync);
         manage.MapPost("/{id:guid}/reanudar", ReanudarAsync);
-        manage.MapPost("/{id:guid}/cancelar", CancelarAsync);
         manage.MapPost("/{id:guid}/pasos/{ejecucionPasoId:guid}/reprocesar", ReprocesarPasoAsync);
+
+        var cancelar = endpoints.MapGroup("/api/v1/casos").RequireAuthorization(Permissions.CasosCancelar);
+        cancelar.MapPost("/{id:guid}/cancelar", CancelarAsync);
+        cancelar.MapPost("/{id:guid}/pasos/{ejecucionPasoId:guid}/cancelar", CancelarEjecucionAsync);
+
+        endpoints.MapGroup("/api/v1/casos").RequireAuthorization(Permissions.CasosPrioridad)
+            .MapPatch("/{id:guid}/pasos/{ejecucionPasoId:guid}/prioridad", CambiarPrioridadAsync);
+
+        // The bulk-actions screen; each action then asks for its own permission (see EjecutarAccionMasivaAsync).
+        endpoints.MapGroup("/api/v1/casos").RequireAuthorization(Permissions.CasosMasivas)
+            .MapPost("/acciones/{accion}", EjecutarAccionMasivaAsync);
     }
 
     /// <summary>Null means access is granted; otherwise this is the response to return (NotFound,
@@ -86,9 +105,9 @@ internal static class CasosEndpoints
     }
 
     private static async Task<IResult> ListCasosAsync(
-        string? estado, string? tipoCasoId, string? estadoNegocioCodigo, bool? finalizado, Guid? flujoId, string? search,
+        string? estado, string? tipoCasoId, string? estadoNegocioCodigo, bool? finalizado, Guid? flujoId, string? flujoIds, string? search,
         DateTimeOffset? desde, DateTimeOffset? hasta, bool? ventana, string? finalizados, DateTimeOffset? completadoDesde,
-        DateTimeOffset? completadoHasta, int? page, int? pageSize, AppDbContext db, HttpContext http, CancellationToken ct)
+        DateTimeOffset? completadoHasta, bool? activos, int? page, int? pageSize, AppDbContext db, HttpContext http, CancellationToken ct)
     {
         var currentPage = page is null or < 1 ? 1 : page.Value;
         var currentPageSize = pageSize is null or < 1 or > 100 ? 20 : pageSize.Value;
@@ -99,10 +118,19 @@ internal static class CasosEndpoints
             .Where(c => flujosAsignados.Contains(c.FlujoId));
 
         if (flujoId is not null) query = query.Where(c => c.FlujoId == flujoId);
-        if (!string.IsNullOrWhiteSpace(estado) && Enum.TryParse<CasoEstado>(estado, true, out var parsedEstado))
-        {
-            query = query.Where(c => c.Estado == parsedEstado);
-        }
+        // Several processes at once, separated by commas. Whatever is not a process the caller is assigned to is simply not
+        // in the list (the query is already limited to theirs), and text that is not an id is ignored.
+        var procesos = (flujoIds ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(id => Guid.TryParse(id, out var parsed) ? (Guid?)parsed : null)
+            .Where(id => id is not null).Select(id => id!.Value).ToArray();
+        if (procesos.Length > 0) query = query.Where(c => procesos.Contains(c.FlujoId));
+        // One estado or several separated by commas ("Pausado,EsperandoRevisionHumana"): the dashboard's "stopped" group is three.
+        var estados = (estado ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(e => Enum.TryParse<CasoEstado>(e, true, out var parsed) ? (CasoEstado?)parsed : null)
+            .Where(e => e is not null).Select(e => e!.Value).ToArray();
+        if (estados.Length > 0) query = query.Where(c => estados.Contains(c.Estado));
         // "sin-tipo" is a sentinel from the dashboard's drill-down for the "Sin tipo" bucket (Casos
         // created before Tipo de caso existed, or without one chosen), since null can't travel as a
         // query string value.
@@ -114,11 +142,13 @@ internal static class CasosEndpoints
         {
             query = query.Where(c => c.TipoCasoId == parsedTipoCasoId);
         }
+        // Finished means the Caso itself is over (completed, failed or cancelled), not that its business estado is a final one:
+        // the two are different questions and the dashboard's groups follow the first.
         if (finalizado is not null)
         {
             query = finalizado.Value
-                ? query.Where(c => c.EstadoNegocioActual != null && c.EstadoNegocioActual.EsFinal && c.EstadoNegocioActual.Activo)
-                : query.Where(c => c.EstadoNegocioActual == null || !c.EstadoNegocioActual.EsFinal || !c.EstadoNegocioActual.Activo);
+                ? query.Where(c => EstadosFinales.Contains(c.Estado))
+                : query.Where(c => !EstadosFinales.Contains(c.Estado));
         }
         // "sin-estado" is a sentinel for the "Sin estado" bucket (Casos with no business estado
         // reported yet), since null can't travel as a query string value.
@@ -138,6 +168,9 @@ internal static class CasosEndpoints
         if (desde is not null) query = query.Where(c => c.CreatedAt >= desde);
         if (hasta is not null) query = query.Where(c => c.CreatedAt <= hasta);
 
+        // Only the Casos that can still be acted on: waiting, running, paused or waiting for a person.
+        if (activos == true) query = query.Where(c => EstadosActivos.Contains(c.Estado));
+
         // The same window the dashboard counts with, so a drill-down lists exactly the Casos that were counted.
         if (ventana == true) query = ConVentanaDeFinalizados(query, finalizados, completadoDesde, completadoHasta);
 
@@ -146,7 +179,19 @@ internal static class CasosEndpoints
         var total = await query.CountAsync(ct);
         var items = await query.Skip((currentPage - 1) * currentPageSize).Take(currentPageSize).ToListAsync(ct);
 
-        return Results.Ok(new PagedResult<CasoListItemDto>(items.Select(c => c.ToListItemDto()).ToList(), currentPage, currentPageSize, total));
+        // For the Casos a robot is running right now: how far along it says it is, and whether its screen can be watched.
+        var idsDeLaPagina = items.Select(c => c.Id).ToList();
+        var enMarcha = (await db.Set<EjecucionPaso>().AsNoTracking()
+                .Where(p => idsDeLaPagina.Contains(p.CasoId) && p.Estado == EjecucionPasoEstado.EnProgreso)
+                .Join(db.Set<RpaEjecucionDetalle>().Where(d => d.DespliegueId != null), p => p.Id, d => d.EjecucionPasoId,
+                    (p, d) => new { p.CasoId, d.ProgresoPorcentaje, d.VistaEnDirectoUrl })
+                .ToListAsync(ct))
+            .GroupBy(x => x.CasoId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        return Results.Ok(new PagedResult<CasoListItemDto>(
+            items.Select(c => enMarcha.TryGetValue(c.Id, out var vivo) ? c.ToListItemDto(vivo.ProgresoPorcentaje, vivo.VistaEnDirectoUrl is not null) : c.ToListItemDto()).ToList(),
+            currentPage, currentPageSize, total));
     }
 
     /// <summary>
@@ -179,8 +224,10 @@ internal static class CasosEndpoints
                 EstadoCodigo = c.EstadoNegocioActual == null ? null : c.EstadoNegocioActual.Codigo,
                 EstadoDisplay = c.EstadoNegocioActual == null ? null : c.EstadoNegocioActual.Display,
                 EstadoOrden = c.EstadoNegocioActual == null ? (int?)null : c.EstadoNegocioActual.Orden,
+                c.Estado,
                 EstadoActivo = c.EstadoNegocioActual != null && c.EstadoNegocioActual.Activo,
-                Finalizado = c.EstadoNegocioActual != null && c.EstadoNegocioActual.EsFinal && c.EstadoNegocioActual.Activo,
+                Finalizado = EstadosFinales.Contains(c.Estado),
+                EstadoEsFinal = c.EstadoNegocioActual != null && c.EstadoNegocioActual.EsFinal && c.EstadoNegocioActual.Activo,
             })
             .ToListAsync(ct);
 
@@ -194,6 +241,13 @@ internal static class CasosEndpoints
             .Where(f => flujosAsignados.Contains(f.Id))
             .OrderBy(f => f.Nombre)
             .ToListAsync(ct);
+
+        // How many of each process's parameters the person may change from the card: the card only offers the action if there are any.
+        var editablesPorFlujo = await db.Set<FlujoParametro>().AsNoTracking()
+            .Where(p => p.EditablePorUsuario && flujosAsignados.Contains(p.FlujoId))
+            .GroupBy(p => p.FlujoId)
+            .Select(g => new { FlujoId = g.Key, Cantidad = g.Count() })
+            .ToDictionaryAsync(x => x.FlujoId, x => x.Cantidad, ct);
 
         // Grouped by Tipo de caso, not by estado — a type with no Caso in it doesn't appear at all.
         // "Sin tipo" (TipoCasoId null) shows up only when a Caso in range hasn't had one chosen. Within
@@ -209,7 +263,7 @@ internal static class CasosEndpoints
                     var porEstado = g
                         .GroupBy(c => c.EstadoCodigo)
                         .Select(eg => new EstadoConteoDto(
-                            eg.Key, eg.First().EstadoDisplay ?? "Sin estado", eg.First().EstadoOrden ?? int.MaxValue, eg.Count(), eg.First().Finalizado))
+                            eg.Key, eg.First().EstadoDisplay ?? "Sin estado", eg.First().EstadoOrden ?? int.MaxValue, eg.Count(), eg.First().EstadoEsFinal))
                         .OrderBy(e => e.Orden)
                         .ToList();
 
@@ -219,12 +273,15 @@ internal static class CasosEndpoints
                         g.First().TipoCasoOrden ?? int.MaxValue,
                         g.Count(c => !c.Finalizado),
                         g.Count(c => c.Finalizado),
-                        porEstado);
+                        porEstado,
+                        g.Count(c => c.Estado == CasoEstado.EnProgreso),
+                        g.Count(c => c.Estado == CasoEstado.Pendiente),
+                        g.Count(c => !c.Finalizado && c.Estado != CasoEstado.EnProgreso && c.Estado != CasoEstado.Pendiente));
                 })
                 .OrderBy(t => t.Orden)
                 .ToList();
 
-            return new FlujoResumenDto(f.Id, f.Nombre, casosDelFlujo.Count, porTipo);
+            return new FlujoResumenDto(f.Id, f.Nombre, casosDelFlujo.Count, porTipo, editablesPorFlujo.GetValueOrDefault(f.Id));
         }).ToList();
 
         return Results.Ok(resumen);
@@ -247,9 +304,8 @@ internal static class CasosEndpoints
                 var pasos = await db.Set<EjecucionPaso>().AsNoTracking()
                     .Where(p => p.EjecucionId == ejecucion.Id)
                     .OrderBy(p => p.CreatedAt)
-                    .Select(p => p.ToDto())
                     .ToListAsync(ct);
-                ejecucionDto = ejecucion.ToDto(pasos);
+                ejecucionDto = ejecucion.ToDto(await ConPrioridadAsync(db, pasos, ct));
             }
         }
 
@@ -330,10 +386,9 @@ internal static class CasosEndpoints
         var pasos = await db.Set<EjecucionPaso>().AsNoTracking()
             .Where(p => p.EjecucionId == ejecucion.Id)
             .OrderBy(p => p.CreatedAt)
-            .Select(p => p.ToDto())
             .ToListAsync(ct);
 
-        return Results.Ok(ejecucion.ToDto(pasos));
+        return Results.Ok(ejecucion.ToDto(await ConPrioridadAsync(db, pasos, ct)));
     }
 
     /// <summary>
@@ -409,6 +464,14 @@ internal static class CasosEndpoints
         var validation = validator.Validate(request);
         if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
 
+        return await IniciarCasoAsync(request, db, orchestrator, http, ct);
+    }
+
+    /// <summary>Starts a Caso from an already validated request. Shared with the creators, which are only a pre-filled way of
+    /// asking for the same thing — same checks, same boundary, same result.</summary>
+    internal static async Task<IResult> IniciarCasoAsync(
+        StartCasoRequest request, AppDbContext db, IEjecucionOrchestrator orchestrator, HttpContext http, CancellationToken ct)
+    {
         FlujoVersion? version;
         if (request.FlujoVersionId is not null)
         {
@@ -515,6 +578,154 @@ internal static class CasosEndpoints
             .Include(c => c.EstadoNegocioActual).Include(c => c.TipoCaso)
             .FirstAsync(c => c.Id == caso.Id, ct);
         return Results.Ok(actualizado.ToListItemDto());
+    }
+
+    /// <summary>
+    /// Changes where an execution stands in the queue of the service it is waiting for. It takes effect at once: the
+    /// queue reads the priority every time a robot asks for work, so there is nothing to reorder. Only an execution
+    /// that is still waiting can change — once a robot has taken it, or it has finished, its place in the queue means
+    /// nothing, and saying so is better than silently accepting a number that does nothing.
+    /// </summary>
+    private static async Task<IResult> CambiarPrioridadAsync(
+        Guid id,
+        Guid ejecucionPasoId,
+        CambiarPrioridadRequest request,
+        CambiarPrioridadRequestValidator validator,
+        AppDbContext db,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var validation = validator.Validate(request);
+        if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
+
+        var caso = await db.Set<Caso>().AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (caso is null) return ProblemResults.NotFound(http, "Caso no encontrado.");
+        if (await RequireAccesoAsync(db, http, caso.FlujoId, ct) is { } denied) return denied;
+
+        var paso = await db.Set<EjecucionPaso>().AsNoTracking().FirstOrDefaultAsync(p => p.Id == ejecucionPasoId && p.CasoId == id, ct);
+        if (paso is null) return ProblemResults.NotFound(http, "Ejecución no encontrada.");
+
+        var detalle = await db.Set<RpaEjecucionDetalle>().FirstOrDefaultAsync(d => d.EjecucionPasoId == ejecucionPasoId, ct);
+        if (detalle is null) return ProblemResults.Conflict(http, "Solo las ejecuciones de un robot tienen prioridad.");
+        if (paso.Estado != EjecucionPasoEstado.EnProgreso || detalle.DespliegueId is not null)
+        {
+            return ProblemResults.Conflict(http, "Solo se puede cambiar la prioridad de una ejecución que sigue esperando a un robot.");
+        }
+
+        if (detalle.Prioridad != request.Prioridad)
+        {
+            var anterior = detalle.Prioridad;
+            detalle.Prioridad = request.Prioridad;
+            db.Add(new CasoEvento
+            {
+                CasoId = id,
+                ActorUserId = http.User.GetUserId(),
+                EjecucionId = paso.EjecucionId,
+                Accion = CasoEventoAccion.PrioridadCambiada,
+                DetalleJson = JsonSerializer.Serialize(new { ejecucionPasoId, anterior, nueva = request.Prioridad }),
+                OccurredAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        return Results.Ok(paso.ToDto(detalle));
+    }
+
+    /// <summary>
+    /// Applies one of the bulk actions (see <see cref="IAccionMasivaSobreCaso"/>) to a selection of Casos. The action is named in
+    /// the URL; what is common to all of them — the selection checks, the report of what was done and what was left alone — is
+    /// done once, by <see cref="EjecutorDeAccionesMasivas"/>, so this endpoint never changes when an action is added.
+    /// </summary>
+    private static async Task<IResult> EjecutarAccionMasivaAsync(
+        string accion,
+        AccionMasivaRequest request,
+        AccionMasivaRequestValidator validator,
+        IEnumerable<IAccionMasivaSobreCaso> acciones,
+        EjecutorDeAccionesMasivas ejecutor,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var validation = validator.Validate(request);
+        if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
+
+        var implementacion = acciones.FirstOrDefault(a => string.Equals(a.Id, accion, StringComparison.OrdinalIgnoreCase));
+        if (implementacion is null) return ProblemResults.NotFound(http, $"La acción «{accion}» no existe.");
+
+        // The same rule the permission policies apply (a "perm" claim), without needing a policy per action.
+        if (!http.User.HasClaim("perm", implementacion.Permiso))
+        {
+            return ProblemResults.Forbidden(http, "No tienes permiso para esta acción.");
+        }
+
+        if (implementacion.ValidarParametros(request.Parametros) is { } problema)
+        {
+            return ProblemResults.ValidationProblem(new FluentValidation.Results.ValidationResult(
+                [new FluentValidation.Results.ValidationFailure(nameof(request.Parametros), problema)]));
+        }
+
+        return Results.Ok(await ejecutor.EjecutarAsync(implementacion, request.Ids, request.Parametros, http.User.GetUserId(), ct));
+    }
+
+    /// <summary>
+    /// Cancels an execution — an RPA step that waits in the queue or that a robot is running — and with it its Caso. It does
+    /// not stop a robot that is already working on it (the platform cannot reach into the machine): it ignores whatever the
+    /// robot reports afterwards, which is turned down with a 409.
+    /// </summary>
+    private static async Task<IResult> CancelarEjecucionAsync(
+        Guid id, Guid ejecucionPasoId, ControlDePasos control, AppDbContext db, HttpContext http, CancellationToken ct)
+    {
+        var caso = await db.Set<Caso>().AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (caso is null) return ProblemResults.NotFound(http, "Caso no encontrado.");
+        if (await RequireAccesoAsync(db, http, caso.FlujoId, ct) is { } denied) return denied;
+
+        var paso = await db.Set<EjecucionPaso>().AsNoTracking().FirstOrDefaultAsync(p => p.Id == ejecucionPasoId && p.CasoId == id, ct);
+        if (paso is null) return ProblemResults.NotFound(http, "Ejecución no encontrada.");
+        if (!await db.Set<RpaEjecucionDetalle>().AnyAsync(d => d.EjecucionPasoId == ejecucionPasoId, ct))
+        {
+            return ProblemResults.Conflict(http, "Solo se pueden cancelar las ejecuciones de un robot.");
+        }
+
+        if (!await control.CancelarEjecucionAsync(ejecucionPasoId, id, ct))
+        {
+            return ProblemResults.Conflict(http, "Solo se puede cancelar una ejecución que está esperando a un robot o en marcha.");
+        }
+
+        return Results.NoContent();
+    }
+
+    /// <summary>The robot-side detail of each RPA step among <paramref name="pasos"/> for the DTOs: its priority, the service whose
+    /// robots run it and, once a robot has taken it, the machine that robot is on.</summary>
+    private static async Task<List<EjecucionPasoDto>> ConPrioridadAsync(AppDbContext db, IReadOnlyList<EjecucionPaso> pasos, CancellationToken ct)
+    {
+        var ids = pasos.Select(p => p.Id).ToList();
+        var detalles = await db.Set<RpaEjecucionDetalle>().AsNoTracking()
+            .Where(d => ids.Contains(d.EjecucionPasoId)).ToDictionaryAsync(d => d.EjecucionPasoId, ct);
+        if (detalles.Count == 0) return pasos.Select(p => p.ToDto()).ToList();
+
+        var definiciones = pasos.Where(p => detalles.ContainsKey(p.Id)).Select(p => p.FlujoPasoDefId).Distinct().ToList();
+        var serviciosDeLaDefinicion = await (
+            from definicion in db.Set<FlujoPasoDef>().AsNoTracking()
+            join servicio in db.Set<Servicio>().AsNoTracking() on definicion.ServicioId equals servicio.Id
+            where definiciones.Contains(definicion.Id)
+            select new { definicion.Id, servicio.Nombre }).ToDictionaryAsync(x => x.Id, x => x.Nombre, ct);
+
+        var despliegueIds = detalles.Values.Where(d => d.DespliegueId != null).Select(d => d.DespliegueId!.Value).Distinct().ToList();
+        var equiposPorDespliegue = despliegueIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await (
+                from despliegue in db.Set<Despliegue>().AsNoTracking()
+                join equipo in db.Set<Equipo>().AsNoTracking() on despliegue.EquipoId equals equipo.Id
+                where despliegueIds.Contains(despliegue.Id)
+                select new { despliegue.Id, equipo.Nombre }).ToDictionaryAsync(x => x.Id, x => x.Nombre, ct);
+
+        return pasos.Select(p =>
+        {
+            var detalle = detalles.GetValueOrDefault(p.Id);
+            return p.ToDto(
+                detalle,
+                serviciosDeLaDefinicion.GetValueOrDefault(p.FlujoPasoDefId),
+                detalle?.DespliegueId is { } despliegueId ? equiposPorDespliegue.GetValueOrDefault(despliegueId) : null);
+        }).ToList();
     }
 
     private static async Task<IResult> UpdateDatosAsync(

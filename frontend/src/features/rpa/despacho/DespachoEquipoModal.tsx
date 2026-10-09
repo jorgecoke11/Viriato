@@ -9,12 +9,12 @@ import { useToast } from '../../../lib/toast/useToast'
 import * as rpaApi from '../api'
 import type { DespachoEquipoDto, PlantillaDespachoDto } from '../api'
 import { ColaEquipoPanel } from './ColaEquipoPanel'
-import { leerMaximo, type DespachoConfig } from './despachoConfig'
+import { leerTope, type DespachoConfig } from './despachoConfig'
 import { DespachoConfigForm } from './DespachoConfigForm'
 
 function desdeDespacho(d: DespachoEquipoDto): DespachoConfig {
   return {
-    maxEjecucionesSimultaneas: String(d.maxEjecucionesSimultaneas),
+    maxEjecucionesSimultaneas: d.maxEjecucionesSimultaneas === null ? '' : String(d.maxEjecucionesSimultaneas),
     politica: d.politica,
     orden: d.orden.map((o) => ({ id: o.servicioId, nombre: o.servicioNombre })),
   }
@@ -22,7 +22,7 @@ function desdeDespacho(d: DespachoEquipoDto): DespachoConfig {
 
 function desdePlantilla(p: PlantillaDespachoDto): DespachoConfig {
   return {
-    maxEjecucionesSimultaneas: String(p.maxEjecucionesSimultaneas),
+    maxEjecucionesSimultaneas: p.maxEjecucionesSimultaneas === null ? '' : String(p.maxEjecucionesSimultaneas),
     politica: p.politica,
     orden: p.orden.map((o) => ({ id: o.servicioId, nombre: o.servicioNombre })),
   }
@@ -63,12 +63,14 @@ export function DespachoEquipoModal({
     if (!abierto) setConfig(null)
   }, [abierto, despacho.data])
 
-  const maximo = config ? leerMaximo(config.maxEjecucionesSimultaneas) : null
+  const tope = config ? leerTope(config.maxEjecucionesSimultaneas) : null
+  const topeValido = tope?.valido === true
+  const maximo = tope?.valido ? tope.valor : null
 
   const guardar = useMutation({
     mutationFn: () =>
       rpaApi.updateDespachoEquipo(equipoId, {
-        maxEjecucionesSimultaneas: maximo!,
+        maxEjecucionesSimultaneas: maximo,
         politica: config!.politica,
         orden: config!.orden.map((o) => o.id),
       }),
@@ -86,7 +88,7 @@ export function DespachoEquipoModal({
       rpaApi.createPlantillaDespacho({
         nombre: nombrePlantilla.trim(),
         descripcion: null,
-        maxEjecucionesSimultaneas: maximo!,
+        maxEjecucionesSimultaneas: maximo,
         politica: config!.politica,
         orden: config!.orden.map((o) => o.id),
       }),
@@ -118,7 +120,7 @@ export function DespachoEquipoModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="button" disabled={!config || maximo === null || guardar.isPending} onClick={() => guardar.mutate()}>
+          <Button type="button" disabled={!config || !topeValido || guardar.isPending} onClick={() => guardar.mutate()}>
             <Save size={16} />
             {guardar.isPending ? 'Guardando…' : 'Guardar'}
           </Button>

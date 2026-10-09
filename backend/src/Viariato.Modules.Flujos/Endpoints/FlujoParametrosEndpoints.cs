@@ -67,6 +67,8 @@ internal static class FlujoParametrosEndpoints
             Codigo = request.Codigo,
             Valor = request.Valor,
             Descripcion = string.IsNullOrWhiteSpace(request.Descripcion) ? null : request.Descripcion.Trim(),
+            EditablePorUsuario = request.EditablePorUsuario,
+            Etiqueta = string.IsNullOrWhiteSpace(request.Etiqueta) ? null : request.Etiqueta.Trim(),
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -93,6 +95,8 @@ internal static class FlujoParametrosEndpoints
 
         parametro.Valor = request.Valor;
         parametro.Descripcion = string.IsNullOrWhiteSpace(request.Descripcion) ? null : request.Descripcion.Trim();
+        if (request.EditablePorUsuario is { } editable) parametro.EditablePorUsuario = editable;
+        if (request.Etiqueta is { } etiqueta) parametro.Etiqueta = string.IsNullOrWhiteSpace(etiqueta) ? null : etiqueta.Trim();
         parametro.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);

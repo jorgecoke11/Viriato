@@ -13,7 +13,6 @@ public sealed class EquipoConfiguration : IEntityTypeConfiguration<Equipo>
 
         builder.Property(e => e.Nombre).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Descripcion).HasMaxLength(1000);
-        builder.Property(e => e.MaxEjecucionesSimultaneas).HasDefaultValue(1);
         builder.Property(e => e.Politica).HasConversion<string>().HasMaxLength(20).HasDefaultValue(PoliticaDespacho.Prioridad);
 
         builder.HasIndex(e => e.Nombre).IsUnique();

@@ -6,6 +6,7 @@ import * as rpaApi from '../api'
 import type { EquipoDto } from '../api'
 import { ActivoBadge } from '../../../components/ui/ActivoBadge'
 import { IconButton } from '../../../components/ui/IconButton'
+import { useAuth } from '../../auth/useAuth'
 import { DespachoEquipoModal } from '../despacho/DespachoEquipoModal'
 
 interface EquipoFormValues {
@@ -42,6 +43,7 @@ const form: CrudFormConfig<EquipoDto, EquipoFormValues, rpaApi.CreateEquipoInput
 }
 
 export function EquiposPage() {
+  const { can } = useAuth()
   const [despachando, setDespachando] = useState<EquipoDto | null>(null)
 
   return (
@@ -53,11 +55,13 @@ export function EquiposPage() {
       columns={columns}
       form={form}
       filters={{ mode: 'general', placeholder: 'Nombre del equipo…' }}
-      renderRowExtra={(equipo) => (
-        <IconButton size="sm" label={`Despacho de ${equipo.nombre}: orden de los servicios`} onClick={() => setDespachando(equipo)}>
-          <ListOrdered size={16} />
-        </IconButton>
-      )}
+      renderRowExtra={(equipo) =>
+        can('rpa.despacho') && (
+          <IconButton size="sm" label={`Despacho de ${equipo.nombre}: orden de los servicios`} onClick={() => setDespachando(equipo)}>
+            <ListOrdered size={16} />
+          </IconButton>
+        )
+      }
       api={{
         list: rpaApi.listEquipos,
         create: rpaApi.createEquipo,

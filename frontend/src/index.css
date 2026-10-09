@@ -205,7 +205,7 @@
   --c-purple-800: #6b21a8;
   --c-purple-900: #581c87;
   --c-purple-950: #3b0764;
-  --c-page: #f3f5f9;
+  --c-page: #ebeef4;
   --c-surface: #ffffff;
   --c-surface-raised: #ffffff;
   --c-overlay: rgb(15 23 42 / 0.45);
@@ -215,7 +215,7 @@
   --c-side-text: #9aa8bf;
   --c-side-strong: #f1f5f9;
   --c-side-accent: #818cf8;
-  --c-shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --c-shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 2px 8px rgb(15 23 42 / 0.07);
   --c-shadow-pop: 0 20px 50px -12px rgb(15 23 42 / 0.35);
   --scroll-thumb: #cbd5e1;
   --scroll-thumb-hover: #94a3b8;

@@ -1,4 +1,6 @@
-import { apiFetch } from '../../lib/apiClient'
+import { apiFetch, apiFetchArchivo } from '../../lib/apiClient'
+import { CABECERA_DE_RESUMEN, leerResumenDeZip, nombreDeContentDisposition } from './resumenDeZip'
+import type { ResultadoMasivo } from '../../lib/accionesMasivas'
 import type { PagedResult } from '../../lib/types'
 
 export interface FlujoAsignadoDto {
@@ -27,6 +29,12 @@ export interface TipoCasoConteoDto {
   enCurso: number
   finalizados: number
   porEstado: EstadoConteoDto[]
+  /** Of its casos, how many a robot is running right now. */
+  enEjecucion: number
+  /** Of its casos, how many wait in the queue for a robot to take them. */
+  pendientes: number
+  /** Of its casos, how many are just started, paused or waiting for a person: not running, not queued, not over. */
+  detenidos: number
 }
 
 export interface FlujoResumenDto {
@@ -34,11 +42,15 @@ export interface FlujoResumenDto {
   flujoNombre: string
   total: number
   porTipo: TipoCasoConteoDto[]
+  /** How many of the process's parameters the person may change from its card. */
+  parametrosEditables: number
 }
 
 export interface EstadoNegocioDto {
   codigo: string
   display: string
+  /** The process says the case is over once it reaches this estado. */
+  esFinal: boolean
 }
 
 export type CasoEstado =
@@ -49,6 +61,7 @@ export type CasoEstado =
   | 'Completado'
   | 'Fallido'
   | 'Cancelado'
+  | 'Pendiente'
 
 export interface CasoListItemDto {
   id: string
@@ -61,6 +74,10 @@ export interface CasoListItemDto {
   createdAt: string
   updatedAt: string
   completedAt: string | null
+  /** While a robot runs a step of this case: how far along it says it is (0–100). */
+  progresoPorcentaje?: number | null
+  /** A robot is running it and its screen can be watched right now. */
+  enVivo?: boolean
 }
 
 export interface EjecucionPasoDto {
@@ -74,6 +91,19 @@ export interface EjecucionPasoDto {
   errorMensaje: string | null
   startedAt: string | null
   finishedAt: string | null
+  /** Only for RPA steps, the executions robots take from a queue: higher goes first among the ones waiting for the same
+   * service. 0 is the ordinary one. Null for any other kind of step. */
+  prioridad: number | null
+  /** The execution is waiting for a robot to take it: the only time its priority can change. */
+  enCola: boolean
+  /** For an RPA step, the service whose robots run it. */
+  servicioNombre?: string | null
+  /** For an RPA step a robot has taken, the machine that robot runs on. */
+  equipoNombre?: string | null
+  /** While a robot runs the step: how far along it says it is, what it says it is doing, and where its screen can be watched. */
+  progresoPorcentaje?: number | null
+  progresoMensaje?: string | null
+  vistaEnDirectoUrl?: string | null
 }
 
 export interface EjecucionDto {
@@ -150,6 +180,8 @@ export interface DocumentoDto {
   hash: string | null
   createdAt: string
   clasificaciones: DocumentoClasificacionDto[]
+  /** The step that produced the file, when a robot generated it rather than a person uploading it. */
+  pasoNombre?: string | null
 }
 
 export interface TipoDocumentoDto {
@@ -222,6 +254,8 @@ export interface ListCasosFilters {
   estadoNegocioCodigo?: string
   finalizado?: boolean
   flujoId?: string
+  /** Several processes, separated by commas. */
+  flujoIds?: string
   search?: string
   desde?: string
   hasta?: string
@@ -231,6 +265,8 @@ export interface ListCasosFilters {
   finalizados?: 'todos'
   completadoDesde?: string
   completadoHasta?: string
+  /** Only the Casos that can still be acted on (waiting, running, paused or waiting for a person). */
+  activos?: boolean
 }
 
 export interface ResumenFilters {
@@ -260,12 +296,33 @@ export const listCasos = (filters: ListCasosFilters & { page?: number; pageSize?
       ...filters,
       finalizado: filters.finalizado === undefined ? undefined : String(filters.finalizado),
       ventana: filters.ventana ? 'true' : undefined,
+      activos: filters.activos ? 'true' : undefined,
       page: filters.page?.toString(),
       pageSize: filters.pageSize?.toString(),
     })}`,
   )
 
 export const getCaso = (id: string) => apiFetch<CasoDetailDto>(`/casos/${id}`)
+
+/** Cancels an execution (an RPA step waiting for a robot or being run) and, with it, its Caso. */
+export const cancelarEjecucion = (casoId: string, ejecucionPasoId: string) =>
+  apiFetch<void>(`/casos/${casoId}/pasos/${ejecucionPasoId}/cancelar`, { method: 'POST' })
+
+/** The most Casos one bulk request takes (the server's limit); a longer selection goes in several. */
+export const MAXIMO_POR_PETICION = 500
+
+/**
+ * Runs a bulk action (the one the URL names: "cancelar"…) on a selection of Casos. `parametros` is whatever that action
+ * reads besides the selection; most read nothing. The answer says how many it was applied to and why each of the others was not.
+ */
+export const ejecutarAccionMasiva = (accion: string, ids: readonly string[], parametros?: unknown) =>
+  apiFetch<ResultadoMasivo>(`/casos/acciones/${accion}`, { method: 'POST', body: JSON.stringify({ ids, parametros }) })
+
+export const cambiarPrioridad = (casoId: string, ejecucionPasoId: string, prioridad: number) =>
+  apiFetch<EjecucionPasoDto>(`/casos/${casoId}/pasos/${ejecucionPasoId}/prioridad`, {
+    method: 'PATCH',
+    body: JSON.stringify({ prioridad }),
+  })
 
 export const getFlujoVersion = (flujoId: string, versionId: string) =>
   apiFetch<FlujoVersionDetailDto>(`/flujos/${flujoId}/versiones/${versionId}`)
@@ -304,7 +361,7 @@ export const uploadDocumento = (casoId: string, file: File) => {
 }
 
 export const listTiposDocumento = (filters: Record<string, string> = {}) =>
-  apiFetch<PagedResult<TipoDocumentoDto>>(`/tipos-documento${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+  apiFetch<PagedResult<TipoDocumentoDto>>(`/tipos-documento${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
 
 export const createTipoDocumento = (input: CreateTipoDocumentoInput) =>
   apiFetch<TipoDocumentoDto>('/tipos-documento', { method: 'POST', body: JSON.stringify(input) })
@@ -334,3 +391,37 @@ export const cancelarCaso = (id: string) => apiFetch<void>(`/casos/${id}/cancela
 
 export const reprocesarPaso = (casoId: string, ejecucionPasoId: string) =>
   apiFetch<void>(`/casos/${casoId}/pasos/${ejecucionPasoId}/reprocesar`, { method: 'POST' })
+
+/** A creator as the person creating a case sees it. */
+export interface CreadorDisponibleDto {
+  id: string
+  nombre: string
+  descripcion: string | null
+  flujoId: string
+  flujoNombre: string
+  tipoCasoId: string | null
+  tipoCasoNombre: string | null
+  /** The form of the data of the creator's case type, or null when the data is free-form JSON. */
+  esquemaDatosJson: string | null
+  /** What the title would be if the case were created now: the placeholder of the title field. */
+  tituloEjemplo: string
+}
+
+export const listCreadoresDisponibles = () => apiFetch<CreadorDisponibleDto[]>('/creadores-de-caso')
+
+/** `titulo` empty or null: the creator writes it. */
+export const crearCasoDesdeCreador = (creadorId: string, request: { titulo: string | null; datosJson: string | null }) =>
+  apiFetch<CasoListItemDto>(`/creadores-de-caso/${creadorId}/casos`, { method: 'POST', body: JSON.stringify(request) })
+
+/**
+ * The documents of these Casos in one zip (a folder per case). `blob` is null when none of them had any. At most
+ * `MAXIMO_POR_PETICION` cases; `resumen` says how many documents went in and which cases were left out, and why.
+ */
+export async function descargarDocumentosDeCasos(ids: readonly string[]) {
+  const { blob, headers } = await apiFetchArchivo('/casos/documentos/zip', { method: 'POST', body: JSON.stringify({ ids }) })
+  return {
+    blob,
+    nombre: nombreDeContentDisposition(headers.get('Content-Disposition')),
+    resumen: leerResumenDeZip(headers.get(CABECERA_DE_RESUMEN)),
+  }
+}

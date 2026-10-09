@@ -178,6 +178,55 @@ public sealed class CrearCasosRobotFlowTests(ViariatoApiFactory factory) : IClas
     }
 
     [Fact]
+    public async Task ALauncher_ChoosesThePriorityOfTheExecutionItOpens_AndTheNextRobotTakesThemInThatOrder()
+    {
+        var e = await CrearEntornoAsync();
+        var lanzador = Robot(e.KeyLanzador);
+
+        var normal = await lanzador.CrearCasoAsync(new CrearCasoRobotRequest("Normal", null));
+        var urgente = await lanzador.CrearCasoAsync(new CrearCasoRobotRequest("Urgente", null, Prioridad: 10));
+        var baja = await lanzador.CrearCasoAsync(new CrearCasoRobotRequest("Baja", null, Prioridad: -5));
+        var igualDeUrgente = await lanzador.CrearCasoAsync(new CrearCasoRobotRequest("Igual de urgente, después", null, Prioridad: 10));
+
+        async Task<int> PrioridadDeLaEjecucionAsync(Guid casoId)
+        {
+            var caso = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}");
+            return caso.GetProperty("ejecucionActual").GetProperty("pasos").EnumerateArray().Single().GetProperty("prioridad").GetInt32();
+        }
+
+        // The priority is the one of the execution the robot opened, not a property of the Caso.
+        Assert.Equal(0, await PrioridadDeLaEjecucionAsync(normal.CasoId));
+        Assert.Equal(10, await PrioridadDeLaEjecucionAsync(urgente.CasoId));
+        Assert.Equal(-5, await PrioridadDeLaEjecucionAsync(baja.CasoId));
+
+        var destino = Robot(e.KeyDestino);
+        var servidos = new List<Guid>();
+        for (var i = 0; i < 4; i++)
+        {
+            var asignada = await destino.ObtenerSiguienteEjecucionAsync();
+            Assert.NotNull(asignada);
+            servidos.Add(asignada.CasoId);
+            await destino.CompletarCasoAsync(asignada.EjecucionPasoId);
+        }
+
+        Assert.Equal([urgente.CasoId, igualDeUrgente.CasoId, normal.CasoId, baja.CasoId], servidos);
+    }
+
+    [Theory]
+    [InlineData(1001)]
+    [InlineData(-1001)]
+    public async Task ALauncher_CannotUseAPriorityOutOfRange_AndNothingIsCreated(int prioridad)
+    {
+        var e = await CrearEntornoAsync();
+
+        var error = await Assert.ThrowsAsync<ViriatoApiException>(() =>
+            Robot(e.KeyLanzador).CrearCasoAsync(new CrearCasoRobotRequest("Fuera de rango", null, Prioridad: prioridad)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, error.StatusCode);
+        Assert.Null(await Robot(e.KeyDestino).ObtenerSiguienteEjecucionAsync());
+    }
+
+    [Fact]
     public async Task AnUnknownTipoOrEstado_IsAConflict_NamingWhatIsMissing()
     {
         var e = await CrearEntornoAsync();

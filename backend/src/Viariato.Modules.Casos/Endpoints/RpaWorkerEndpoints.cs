@@ -44,6 +44,7 @@ internal static class RpaWorkerEndpoints
         group.MapPost("/pasos/{id:guid}/fallar", FallarAsync);
         group.MapPost("/pasos/{id:guid}/evidencias", AgregarEvidenciaAsync).DisableAntiforgery();
         group.MapPost("/pasos/{id:guid}/estado-negocio", CambiarEstadoNegocioAsync);
+        group.MapPost("/pasos/{id:guid}/en-vivo", ReportarEnVivoAsync);
     }
 
     private static async Task<IResult> GetDespliegueAsync(ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
@@ -192,7 +193,7 @@ internal static class RpaWorkerEndpoints
 
         try
         {
-            await orchestrator.IniciarCasoAsync(caso.Id, pasoInicial?.Id, ct);
+            await orchestrator.IniciarCasoAsync(caso.Id, pasoInicial?.Id, ct, request.Prioridad);
         }
         catch (InvalidOperationException ex)
         {
@@ -206,11 +207,16 @@ internal static class RpaWorkerEndpoints
     private const long CerrojoDeDespacho = 7_204_601;
 
     /// <summary>
-    /// Hands the next step to the robot that asks — if it is that robot's turn. Robots of one machine do not each
-    /// grab whatever is oldest in their own queue: the machine has a limit on how many steps run at once and an
-    /// order for its services (see <see cref="Despacho.Despachador"/>), and a service can be capped across machines,
-    /// so the answer to "give me work" can be "not you, not yet" (204, the same as an empty queue — the robot just
-    /// asks again in a few seconds). A step handed out may stay in execution as long as its service's maximum time
+    /// Hands the next step to the copy of the robot that asks. A copy only asks when it is idle, so every copy that asks
+    /// is a free slot: capacity is however many copies the stack runs, and one that is stuck on a step never holds the
+    /// others back. What it is handed is the front of its robot's queue — the execution with the highest priority, and among
+    /// equals the one that has waited longest — decided under one lock, so copies asking at the same moment receive the
+    /// queue strictly in that order.
+    ///
+    /// Two things can still answer "not you, not yet" (204, the same as an empty queue — the copy asks again in a few
+    /// seconds): a service capped across machines that is at its limit, and a machine that has an optional ceiling on steps
+    /// at once. Under such a ceiling the robots of the machine take turns in the machine's order of services (see
+    /// <see cref="Despacho.Despachador"/>). A step handed out may stay in execution as long as its service's maximum time
     /// allows; past that the platform cancels its Caso (see <see cref="Despacho.ControlDePasos"/>).
     /// </summary>
     private static async Task<IResult> ClaimSiguienteAsync(
@@ -228,25 +234,45 @@ internal static class RpaWorkerEndpoints
 
         var config = opciones.Value;
         var ahora = DateTimeOffset.UtcNow;
+        var instanciaId = LeerInstancia(http);
 
         // One decision at a time for the whole platform: a service's global cap spans machines, and nothing narrower
         // than a platform-wide lock keeps two machines from both taking its last slot. A decision takes milliseconds.
         await using var transaccion = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock({CerrojoDeDespacho})", ct);
 
+        // This copy is there, and free unless it already holds a step: written down so the other robots of the machine know
+        // it exists. It lives in the same transaction, so it is only kept if the decision is.
+        await db.Database.ExecuteSqlInterpolatedAsync($@"
+            insert into rpafleet.despliegue_instancias (despliegue_id, instancia_id, last_seen_at)
+            values ({despliegueId}, {instanciaId}, {ahora})
+            on conflict (despliegue_id, instancia_id) do update set last_seen_at = excluded.last_seen_at", ct);
+
         // Optimistic claim on top of that, for a step taken by something that does not take the lock: if it was
         // taken first (0 rows affected), look again.
         for (var intento = 0; intento < 5; intento++)
         {
-            var estado = await Despacho.DespachoEquipo.CargarAsync(db, despliegue.EquipoId, despliegueId, ahora, config, ct);
+            var estado = await Despacho.DespachoEquipo.CargarAsync(db, despliegue.EquipoId, despliegueId, instanciaId, ahora, config, ct);
 
-            if (estado.EnEjecucion >= estado.Equipo.MaxEjecucionesSimultaneas)
+            // A copy that asks while it still holds a step (it restarted with the same id, or it is not waiting its turn) gets nothing.
+            if (estado.ConsultanteOcupado)
             {
                 await transaccion.CommitAsync(ct);
                 return Results.NoContent();
             }
 
-            var elegido = Despacho.Despachador.Elegir(estado.Candidatos, estado.Orden, estado.Equipo.Politica, estado.UltimoServicioId);
+            var tope = estado.Equipo.MaxEjecucionesSimultaneas;
+            if (tope is { } maximo && estado.EnEjecucion >= maximo)
+            {
+                await transaccion.CommitAsync(ct);
+                return Results.NoContent();
+            }
+
+            // No ceiling: every robot works its own queue, so this copy takes the front of its robot's. With one, the robots
+            // of the machine take turns, in the machine's order.
+            var elegido = tope is null
+                ? estado.Candidatos.FirstOrDefault(c => c.DespliegueId == despliegueId)
+                : Despacho.Despachador.Elegir(estado.Candidatos, estado.Orden, estado.Equipo.Politica, estado.UltimoServicioId);
             if (elegido is null || elegido.DespliegueId != despliegueId)
             {
                 await transaccion.CommitAsync(ct);
@@ -259,7 +285,8 @@ internal static class RpaWorkerEndpoints
                 .Where(d => d.Id == elegido.DetalleId && d.DespliegueId == null)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(d => d.DespliegueId, despliegueId)
-                    .SetProperty(d => d.ClaimedAt, reclamadoEn), ct);
+                    .SetProperty(d => d.ClaimedAt, reclamadoEn)
+                    .SetProperty(d => d.InstanciaId, instanciaId == InstanciaDeDespliegue.SinId ? null : instanciaId), ct);
 
             if (filasActualizadas == 0)
             {
@@ -279,12 +306,28 @@ internal static class RpaWorkerEndpoints
                     caso.TipoCaso == null ? null : caso.TipoCaso.Nombre)
             ).FirstAsync(ct);
 
+            // The step is being run now: the Caso stops being pending. Conditional, so a Caso that was paused or cancelled
+            // in the meantime keeps that state.
+            var ahoraReclamado = DateTimeOffset.UtcNow;
+            await db.Set<Caso>()
+                .Where(c => c.Id == asignado.CasoId && c.Estado == CasoEstado.Pendiente)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.Estado, CasoEstado.EnProgreso).SetProperty(c => c.UpdatedAt, ahoraReclamado), ct);
+
             await transaccion.CommitAsync(ct);
             return Results.Ok(asignado);
         }
 
         await transaccion.CommitAsync(ct);
         return ProblemResults.Conflict(http, "No se pudo reservar un elemento de la cola; inténtalo de nuevo.");
+    }
+
+    /// <summary>Which copy of the robot is asking: the id it sends (see <see cref="RpaHeaders.Instancia"/>), cleaned up, or the
+    /// empty id of a robot that sends none.</summary>
+    private static string LeerInstancia(HttpContext http)
+    {
+        var valor = http.Request.Headers[RpaHeaders.Instancia].ToString().Trim();
+        if (valor.Length == 0) return InstanciaDeDespliegue.SinId;
+        return new string(valor.Where(c => !char.IsControl(c)).Take(InstanciaDeDespliegue.LongitudMaxima).ToArray());
     }
 
     /// <summary>The one conditional update every way of settling a step goes through: it changes the step only if it
@@ -417,6 +460,41 @@ internal static class RpaWorkerEndpoints
 
         return await EvidenciaCreation.CrearAsync(
             paso.CasoId, id, tipo, titulo, contenidoJson, file, caso.FlujoId, uploadedByUserId: null, db, storageResolver, http, ct);
+    }
+
+    /// <summary>
+    /// The robot tells people how it is going: how far along (a percentage), what it is doing, and where its screen can be
+    /// watched. It only means something while the step is running, so a report for one that is over is a conflict, like any
+    /// other late report. Only the live figure is kept: it does not go into the
+    /// Caso's history.
+    /// </summary>
+    private static async Task<IResult> ReportarEnVivoAsync(
+        Guid id,
+        ReportarEnVivoRequest request,
+        ReportarEnVivoRequestValidator validator,
+        ClaimsPrincipal principal,
+        AppDbContext db,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var validation = validator.Validate(request);
+        if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
+
+        var detalle = await RpaWorkerAuthorization.RequireClaimedStepAsync(db, principal.GetDespliegueId(), id, ct);
+        if (detalle is null) return ProblemResults.NotFound(http, "Paso no encontrado.");
+
+        var paso = await db.Set<EjecucionPaso>().AsNoTracking().FirstAsync(p => p.Id == id, ct);
+        if (paso.Estado != EjecucionPasoEstado.EnProgreso) return ProblemResults.Conflict(http, "Este paso ya no está en progreso.");
+
+        var ahora = DateTimeOffset.UtcNow;
+
+        if (request.Porcentaje is { } porcentaje) detalle.ProgresoPorcentaje = porcentaje;
+        if (request.Mensaje is { } mensaje) detalle.ProgresoMensaje = string.IsNullOrWhiteSpace(mensaje) ? null : mensaje.Trim();
+        if (request.VistaUrl is { } url) detalle.VistaEnDirectoUrl = string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+        detalle.ProgresoAt = ahora;
+
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> CambiarEstadoNegocioAsync(

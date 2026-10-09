@@ -8,10 +8,10 @@ import { ApiError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import * as rpaApi from '../api'
 import type { PlantillaDespachoDto } from '../api'
-import { leerMaximo, type DespachoConfig } from './despachoConfig'
+import { leerTope, type DespachoConfig } from './despachoConfig'
 import { DespachoConfigForm } from './DespachoConfigForm'
 
-const VACIA: DespachoConfig = { maxEjecucionesSimultaneas: '1', politica: 'Prioridad', orden: [] }
+const VACIA: DespachoConfig = { maxEjecucionesSimultaneas: '', politica: 'Prioridad', orden: [] }
 
 /**
  * Create or edit a dispatch template: a name, and the same three decisions a machine has. The services offered are
@@ -45,7 +45,7 @@ export function PlantillaDespachoModal({
     setConfig(
       plantilla
         ? {
-            maxEjecucionesSimultaneas: String(plantilla.maxEjecucionesSimultaneas),
+            maxEjecucionesSimultaneas: plantilla.maxEjecucionesSimultaneas === null ? '' : String(plantilla.maxEjecucionesSimultaneas),
             politica: plantilla.politica,
             orden: plantilla.orden.map((o) => ({ id: o.servicioId, nombre: o.servicioNombre })),
           }
@@ -53,14 +53,15 @@ export function PlantillaDespachoModal({
     )
   }, [abierta, plantilla])
 
-  const maximo = leerMaximo(config.maxEjecucionesSimultaneas)
+  const tope = leerTope(config.maxEjecucionesSimultaneas)
+  const maximo = tope.valido ? tope.valor : null
 
   const guardar = useMutation({
     mutationFn: () => {
       const input = {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || null,
-        maxEjecucionesSimultaneas: maximo!,
+        maxEjecucionesSimultaneas: maximo,
         politica: config.politica,
         orden: config.orden.map((o) => o.id),
       }

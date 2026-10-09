@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Viariato.Infrastructure;
+using Viariato.Modules.Casos.AccionesMasivas;
 using Viariato.Modules.Casos.Contracts;
 using Viariato.Modules.Casos.Despacho;
 using Viariato.Modules.Casos.Orchestration;
@@ -38,6 +39,14 @@ public static class DependencyInjection
         services.AddSingleton<StartCasoRequestValidator>();
         services.AddSingleton<CrearCasoRobotRequestValidator>();
         services.AddSingleton<UpdateCasoDatosRequestValidator>();
+        services.AddSingleton<CambiarPrioridadRequestValidator>();
+        services.AddSingleton<AccionMasivaRequestValidator>();
+        services.AddSingleton<ReportarEnVivoRequestValidator>();
+
+        // Bulk actions on Casos: a new one is a class that implements IAccionMasivaSobreCaso, registered here.
+        services.AddScoped<EjecutorDeAccionesMasivas>();
+        services.AddScoped<IAccionMasivaSobreCaso, CancelarCasoAccion>();
+        services.AddScoped<IAccionMasivaSobreCaso, ReprocesarCasoAccion>();
         services.AddSingleton<ResolverRevisionRequestValidator>();
         services.AddSingleton<IValidator<CreateTipoDocumentoRequest>, CreateTipoDocumentoRequestValidator>();
         services.AddSingleton<IValidator<UpdateTipoDocumentoRequest>, UpdateTipoDocumentoRequestValidator>();

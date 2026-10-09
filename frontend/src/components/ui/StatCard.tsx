@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 type Tone = 'neutral' | 'brand' | 'info' | 'success' | 'warning' | 'danger'
 
@@ -18,15 +19,28 @@ export function StatCard({
   hint,
   icon,
   tone = 'neutral',
+  to,
 }: {
   label: string
   value: ReactNode
   hint?: ReactNode
   icon?: ReactNode
   tone?: Tone
+  /** Makes the whole card a link to where these figures can be looked at one by one. */
+  to?: string
 }) {
+  const caja = 'flex items-center gap-4 rounded-xl border border-gray-200 bg-surface p-4 shadow-card'
+  const Contenedor = ({ children }: { children: ReactNode }) =>
+    to ? (
+      <Link to={to} className={`${caja} transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-indigo-500`}>
+        {children}
+      </Link>
+    ) : (
+      <div className={caja}>{children}</div>
+    )
+
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-surface p-4 shadow-card">
+    <Contenedor>
       {/* Hidden on a phone: two cards per row leave the text no room otherwise. */}
       {icon && <span className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg sm:flex ${tones[tone]}`}>{icon}</span>}
       <div className="min-w-0">
@@ -34,6 +48,6 @@ export function StatCard({
         <p className="num font-mono text-2xl leading-8 font-medium text-gray-900">{value}</p>
         {hint && <p className="truncate text-xs text-gray-500">{hint}</p>}
       </div>
-    </div>
+    </Contenedor>
   )
 }

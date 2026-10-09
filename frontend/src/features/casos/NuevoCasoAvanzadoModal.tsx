@@ -11,12 +11,15 @@ import * as casosApi from './api'
 import { DatosCasoInput } from './DatosCasoInput'
 
 /**
- * The same "start a Caso" form as NuevoCasoPage.tsx, but for the case where the Proceso is already
+ * The full form, for whoever manages processes and has to start a case without a creator (or before one exists): every choice a
+ * creator would make — type, starting service, estado, title — is made by hand here. Everyone else uses the creators.
+ *
+ * The same "start a Caso" form as NuevoCasoAvanzadoPage.tsx, but for the case where the Proceso is already
  * known (opened from that Proceso's own action icon) — so there's no Flujo picker, just its name
  * shown as context. The generic page (any Flujo, reached from Listado) stays a separate page: it
  * has no single Proceso to be "inside", so a full page with its own picker still makes more sense there.
  */
-export function NuevoCasoModal({
+export function NuevoCasoAvanzadoModal({
   open,
   flujoId,
   flujoNombre,

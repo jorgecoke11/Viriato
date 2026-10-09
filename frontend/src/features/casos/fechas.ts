@@ -33,6 +33,16 @@ export function haceCuanto(iso: string, ahora: Date = new Date()): string {
   return `hace ${Math.round(horas / 24)} d`
 }
 
+/** "45 s", "3 min", "1 h 05 min" — how long something took. */
+export function duracion(ms: number): string {
+  const segundos = Math.max(0, Math.round(ms / 1000))
+  if (segundos < 60) return `${segundos} s`
+  const minutos = Math.floor(segundos / 60)
+  if (minutos < 60) return `${minutos} min`
+  const horas = Math.floor(minutos / 60)
+  return `${horas} h ${String(minutos % 60).padStart(2, '0')} min`
+}
+
 export interface UltimoResultado {
   /** When the Caso last finished — completed, failed or cancelled. Null while it is moving. */
   finalizadoAt: string | null

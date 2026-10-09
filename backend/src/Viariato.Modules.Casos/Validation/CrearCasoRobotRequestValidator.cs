@@ -12,6 +12,8 @@ public sealed class CrearCasoRobotRequestValidator : AbstractValidator<CrearCaso
         RuleFor(x => x.TipoCaso).MaximumLength(200);
         RuleFor(x => x.EstadoNegocioCodigo).MaximumLength(100);
         RuleFor(x => x.PasoInicial).MaximumLength(200);
+        RuleFor(x => x.Prioridad).InclusiveBetween(PrioridadDeEjecucion.Minima, PrioridadDeEjecucion.Maxima)
+            .WithMessage($"La prioridad debe estar entre {PrioridadDeEjecucion.Minima} y {PrioridadDeEjecucion.Maxima}.");
         RuleFor(x => x.DatosJson)
             .Must(EsObjetoJson).When(x => !string.IsNullOrWhiteSpace(x.DatosJson))
             .WithMessage("DatosJson debe ser un objeto JSON válido.");

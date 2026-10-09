@@ -57,6 +57,9 @@ public sealed class RpaStepContextTests
 
         public Task CambiarEstadoCasoAsync(Guid id, string codigoEstado, CancellationToken ct = default) =>
             error is null ? Task.CompletedTask : Task.FromException(error);
+
+        public Task ReportarEnVivoAsync(Guid ejecucionPasoId, int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default) =>
+            error is null ? Task.CompletedTask : Task.FromException(error);
     }
 
     private static RpaStepContext Contexto(Exception? error) =>
@@ -133,6 +136,8 @@ public sealed class RpaRobotTests
         }
 
         public Task CambiarEstadoCasoAsync(Guid id, string codigoEstado, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task ReportarEnVivoAsync(Guid ejecucionPasoId, int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default) => Task.CompletedTask;
 
         public Task<CredencialRobotDto> ObtenerCredencialAsync(string nombre, CancellationToken ct = default) => throw new NotSupportedException();
 

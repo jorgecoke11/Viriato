@@ -1,3 +1,5 @@
+# DOMAIN con un dominio (app.tuempresa.com): Caddy consigue solo el certificado HTTPS (Let's Encrypt).
+# DOMAIN=:80 (detrás de Cloudflare Tunnel, que ya pone el HTTPS): Caddy sirve HTTP plano y no pide ningún certificado.
 {
 	email {$CADDY_EMAIL}
 }

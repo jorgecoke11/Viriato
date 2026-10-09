@@ -12,9 +12,11 @@ public sealed class Equipo
 
     public bool Activo { get; set; } = true;
 
-    /// <summary>How many steps the robots of this machine may be running at the same time. 1 (the default) is the safe
-    /// setting for robots that drive the screen or share a browser: they take turns instead of fighting over it.</summary>
-    public int MaxEjecucionesSimultaneas { get; set; } = 1;
+    /// <summary>An optional ceiling on how many steps the robots of this machine may run at the same time. Null (the
+    /// default) means none: the capacity is the number of robot instances running, which the stack decides (see
+    /// <see cref="InstanciaDeDespliegue"/>). Set it (1 is the safe value for robots that drive the screen or share a
+    /// browser, so they take turns) only to hold the machine below what its instances could do.</summary>
+    public int? MaxEjecucionesSimultaneas { get; set; }
 
     /// <summary>How the machine chooses among services that all have work waiting; see <see cref="EquipoServicioOrden"/>.</summary>
     public PoliticaDespacho Politica { get; set; } = PoliticaDespacho.Prioridad;

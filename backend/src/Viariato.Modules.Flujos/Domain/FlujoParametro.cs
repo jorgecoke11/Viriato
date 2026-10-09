@@ -22,6 +22,16 @@ public sealed class FlujoParametro
 
     public string? Descripcion { get; set; }
 
+    /// <summary>Whether the people who work the process's cases may change the value themselves, from the dashboard. Off by default:
+    /// most settings (a selector, a URL…) are for whoever manages the process, and only the ones that are a business decision
+    /// (an IVA, a coupon, the list of products to extract) are opened up. It changes who may write the value, nothing about how a
+    /// robot reads it.</summary>
+    public bool EditablePorUsuario { get; set; }
+
+    /// <summary>What a person sees instead of the code when the parameter is editable from the dashboard ("IVA (%)" instead of
+    /// <c>iva</c>). Null: the code.</summary>
+    public string? Etiqueta { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

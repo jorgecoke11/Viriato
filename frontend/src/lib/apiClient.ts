@@ -105,6 +105,24 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return (await response.json()) as T
 }
 
+/** What a download answers: the file (null when the server had nothing to give: 204) and the headers it came with. */
+export interface Archivo {
+  blob: Blob | null
+  headers: Headers
+}
+
+/** A file that needs a request body (a POST that answers with a zip). Errors come back as `ApiError`, like everywhere else. */
+export async function apiFetchArchivo(path: string, options: RequestInit = {}): Promise<Archivo> {
+  const response = await fetchWithRefresh(path, options)
+
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null)
+    throw new ApiError(extractErrorMessage(problem, response.statusText), response.status, problem)
+  }
+
+  return { blob: response.status === 204 ? null : await response.blob(), headers: response.headers }
+}
+
 // <img>/<video> src can't carry an Authorization header, so authenticated media (documento
 // content, evidencia screenshots/videos) is fetched as a Blob and exposed via an Object URL instead
 // — see useAuthenticatedMediaUrl.

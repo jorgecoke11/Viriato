@@ -1,41 +1,58 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
-import { Card } from '../../../components/ui/Card'
-import { Input } from '../../../components/ui/Input'
+import type { ColumnaDeTabla } from '../../../components/ui/DataTable'
+import { ListaDeDatos } from '../../../components/ui/ListaDeDatos'
 import { ApiError } from '../../../lib/apiClient'
+import type { ConsultaDeLista } from '../../../lib/lista'
 import { useToast } from '../../../lib/toast/useToast'
+import { useListaPaginada } from '../../../lib/useListaPaginada'
 import { useAuth } from '../../auth/useAuth'
 import * as marketsApi from '../api'
+import type { CompanyListItemDto } from '../api'
 import { GrahamScoreBadge, SignalBadge } from '../SignalBadge'
 
 const INDEXES = [
-  { value: '', label: 'Todos los índices' },
-  { value: 'Sp500', label: 'S&P 500' },
-  { value: 'Ndx100', label: 'Nasdaq-100' },
+  { valor: '', etiqueta: 'Todos los índices' },
+  { valor: 'Sp500', etiqueta: 'S&P 500' },
+  { valor: 'Ndx100', etiqueta: 'Nasdaq-100' },
+]
+
+const obtenerId = (c: CompanyListItemDto) => c.ticker
+
+const cargar = ({ busqueda, filtros, pagina, tamano }: ConsultaDeLista) =>
+  marketsApi.listCompanies({
+    search: busqueda,
+    index: filtros.index || undefined,
+    sector: filtros.sector || undefined,
+    minScore: filtros.minScore ? Number(filtros.minScore) : undefined,
+    page: pagina,
+    pageSize: tamano,
+  })
+
+const columnas: ColumnaDeTabla<CompanyListItemDto>[] = [
+  { clave: 'ticker', titulo: 'Ticker', celda: (c) => <span className="font-mono font-medium text-gray-900">{c.ticker}</span> },
+  { clave: 'nombre', titulo: 'Nombre', celda: (c) => <span className="text-gray-700">{c.name}</span> },
+  { clave: 'sector', titulo: 'Sector', celda: (c) => <span className="text-gray-600">{c.sector || '—'}</span> },
+  { clave: 'graham', titulo: 'Graham', celda: (c) => <GrahamScoreBadge score={c.grahamScore} evaluated={c.criteriaEvaluated} /> },
+  { clave: 'pe', titulo: 'P/E', celda: (c) => <span className="text-gray-600">{c.peRatio?.toFixed(1) ?? '—'}</span> },
+  { clave: 'pb', titulo: 'P/B', celda: (c) => <span className="text-gray-600">{c.pbRatio?.toFixed(1) ?? '—'}</span> },
+  {
+    clave: 'margen',
+    titulo: 'Margen seg.',
+    celda: (c) => <span className="text-gray-600">{c.marginOfSafetyPercent !== null ? `${c.marginOfSafetyPercent.toFixed(0)}%` : '—'}</span>,
+  },
+  { clave: 'senal', titulo: 'Señal', celda: (c) => <SignalBadge signal={c.signal} /> },
 ]
 
 export function CompaniesPage() {
   const { can } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
-
-  const [search, setSearch] = useState('')
-  const [index, setIndex] = useState('')
-  const [sector, setSector] = useState('')
-  const [minScore, setMinScore] = useState('')
   const [lastSyncTrabajoId, setLastSyncTrabajoId] = useState<string | null>(null)
 
-  const query = useQuery({
-    queryKey: ['markets-companies', search, index, sector, minScore],
-    queryFn: () => marketsApi.listCompanies({
-      search,
-      index: index || undefined,
-      sector: sector || undefined,
-      minScore: minScore ? Number(minScore) : undefined,
-    }),
-  })
+  const fuente = useListaPaginada<CompanyListItemDto>({ clave: ['markets-companies'], cargar, obtenerId })
 
   const syncMutation = useMutation({
     mutationFn: (scope: marketsApi.SyncScope) => marketsApi.triggerSync(scope),
@@ -74,64 +91,25 @@ export function CompaniesPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <Input label="Buscar" name="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ticker o nombre…" />
-        <div className="flex flex-col gap-1">
-          <label htmlFor="index" className="text-sm font-medium text-gray-700">Índice</label>
-          <select
-            id="index"
-            className="field"
-            value={index}
-            onChange={(e) => setIndex(e.target.value)}
-          >
-            {INDEXES.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-        <Input label="Sector" name="sector" value={sector} onChange={(e) => setSector(e.target.value)} placeholder="Technology…" />
-        <Input label="Score Graham mínimo" name="minScore" type="number" min={0} max={7} value={minScore} onChange={(e) => setMinScore(e.target.value)} />
-      </div>
-
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50/70">
-            <tr>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Ticker</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Nombre</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Sector</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Graham</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">P/E</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">P/B</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Margen seg.</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Señal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {query.data?.items.map((c) => (
-              <tr
-                key={c.ticker}
-                className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
-                onClick={() => navigate(`/mercados/${c.ticker}`)}
-              >
-                <td className="px-4 py-3 font-mono font-medium text-gray-900">{c.ticker}</td>
-                <td className="px-4 py-3 text-gray-700">{c.name}</td>
-                <td className="px-4 py-3 text-gray-600">{c.sector || '—'}</td>
-                <td className="px-4 py-3"><GrahamScoreBadge score={c.grahamScore} evaluated={c.criteriaEvaluated} /></td>
-                <td className="px-4 py-3 text-gray-600">{c.peRatio?.toFixed(1) ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-600">{c.pbRatio?.toFixed(1) ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-600">{c.marginOfSafetyPercent !== null ? `${c.marginOfSafetyPercent.toFixed(0)}%` : '—'}</td>
-                <td className="px-4 py-3"><SignalBadge signal={c.signal} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {query.data?.items.length === 0 && (
-          <p className="p-4 text-sm text-gray-500">
-            Todavía no hay compañías analizadas. {can('markets.manage') ? 'Lanza una sincronización para empezar.' : ''}
-          </p>
-        )}
-      </Card>
+      <ListaDeDatos
+        fuente={fuente}
+        columnas={columnas}
+        obtenerId={obtenerId}
+        nombreDeFila={(c) => c.ticker}
+        entidad={{ singular: 'compañía', plural: 'compañías' }}
+        buscador={{ etiqueta: 'Buscar', placeholder: 'Ticker o nombre…' }}
+        filtros={[
+          { clave: 'index', etiqueta: 'Índice', opciones: INDEXES },
+          { clave: 'sector', etiqueta: 'Sector', tipo: 'texto', placeholder: 'Sector: Technology…' },
+          { clave: 'minScore', etiqueta: 'Score Graham mínimo', tipo: 'numero', placeholder: 'Graham mínimo (0–7)' },
+        ]}
+        vacio={{
+          titulo: 'Todavía no hay compañías analizadas',
+          descripcion: can('markets.manage') ? 'Lanza una sincronización para empezar.' : undefined,
+        }}
+        alHacerClic={(c) => navigate(`/mercados/${c.ticker}`)}
+        anchoMinimo="760px"
+      />
     </div>
   )
 }

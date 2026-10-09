@@ -1,18 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { filtroToListParams, filtroToParams } from './finalizadosFiltro'
-import { formatFecha, haceCuanto, ultimoResultado } from './fechas'
+import { duracion, formatFecha, haceCuanto, ultimoResultado } from './fechas'
 
 // Local midnight of a given day, built without going through a string, to compare against what the code sends.
 const local = (y: number, m: number, d: number, h = 0, min = 0, s = 0, ms = 0) => new Date(y, m - 1, d, h, min, s, ms).getTime()
 
 describe('filtroToParams', () => {
-  it('"hoy" starts at midnight of the user\'s own day, not UTC', () => {
+  it('"hoy" is the user\'s own day, from its first to its last instant, not UTC', () => {
     const ahora = new Date(2026, 9, 8, 0, 30) // 00:30 local: still the 8th for the user, whatever UTC says
-    const { desde, hasta, finalizados } = filtroToParams({ tipo: 'hoy' }, ahora)
+    const { desde, hasta, finalizados } = filtroToParams({ tipo: 'atajo', atajo: 'hoy' }, ahora)
 
     expect(new Date(desde!).getTime()).toBe(local(2026, 10, 8))
-    expect(hasta).toBeUndefined()
+    expect(new Date(hasta!).getTime()).toBe(local(2026, 10, 8, 23, 59, 59, 999))
     expect(finalizados).toBeUndefined()
+  })
+
+  it('a shortcut covers the days it names', () => {
+    const ahora = new Date(2026, 9, 8, 15, 0)
+    const { desde, hasta } = filtroToParams({ tipo: 'atajo', atajo: '7d' }, ahora)
+
+    expect(new Date(desde!).getTime()).toBe(local(2026, 10, 2))
+    expect(new Date(hasta!).getTime()).toBe(local(2026, 10, 8, 23, 59, 59, 999))
   })
 
   it('"todos" asks for no limit', () => {
@@ -74,5 +82,12 @@ describe('dates', () => {
     expect(haceCuanto(hace(5), ahora)).toBe('hace 5 min')
     expect(haceCuanto(hace(180), ahora)).toBe('hace 3 h')
     expect(haceCuanto(hace(60 * 24 * 4), ahora)).toBe('hace 4 d')
+  })
+
+  it('says how long something took in the unit that fits', () => {
+    expect(duracion(45_000)).toBe('45 s')
+    expect(duracion(3 * 60_000)).toBe('3 min')
+    expect(duracion(65 * 60_000)).toBe('1 h 05 min')
+    expect(duracion(-5)).toBe('0 s')
   })
 })

@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { PermissionsPage } from '../features/admin/pages/PermissionsPage'
 import { RolesPage } from '../features/admin/pages/RolesPage'
 import { UsersPage } from '../features/admin/pages/UsersPage'
@@ -7,6 +7,7 @@ import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { CasoDetailPage } from '../features/casos/pages/CasoDetailPage'
 import { CasosListPage } from '../features/casos/pages/CasosListPage'
 import { DashboardPage } from '../features/casos/pages/DashboardPage'
+import { NuevoCasoAvanzadoPage } from '../features/casos/pages/NuevoCasoAvanzadoPage'
 import { NuevoCasoPage } from '../features/casos/pages/NuevoCasoPage'
 import { TiposDocumentoPage } from '../features/casos/pages/TiposDocumentoPage'
 import { FlujoDetailPage } from '../features/flujos/pages/FlujoDetailPage'
@@ -177,11 +178,21 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      // The bulk actions are part of the list now; old links and bookmarks still land there.
+      { path: 'casos/acciones-masivas', element: <Navigate to="/casos/lista" replace /> },
       {
         path: 'casos/nuevo',
         element: (
           <ProtectedRoute>
             <NuevoCasoPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'casos/nuevo/avanzado',
+        element: (
+          <ProtectedRoute>
+            <NuevoCasoAvanzadoPage />
           </ProtectedRoute>
         ),
       },

@@ -20,7 +20,8 @@ internal sealed record PasoEnMarcha(
     Guid ServicioId,
     Guid EquipoId,
     DateTimeOffset ReclamadoEn,
-    int? TiempoMaximoMinutos)
+    int? TiempoMaximoMinutos,
+    string? InstanciaId = null)
 {
     /// <summary>When the step must be finished by, or null if its service has no maximum time.</summary>
     public DateTimeOffset? LimiteAt => TiempoMaximoMinutos is { } minutos ? ReclamadoEn.AddMinutes(minutos) : null;
@@ -48,6 +49,7 @@ internal sealed record PasoEnMarcha(
                 despliegue.ServicioId,
                 despliegue.EquipoId,
                 detalle.ClaimedAt,
+                detalle.InstanciaId,
                 paso.StartedAt,
                 paso.CreatedAt,
                 servicio.TiempoMaximoMinutos,
@@ -57,7 +59,7 @@ internal sealed record PasoEnMarcha(
         return filas
             .Select(f => new PasoEnMarcha(
                 f.PasoId, f.DetalleId, f.CasoId, f.Titulo, f.DespliegueId, f.ServicioId, f.EquipoId,
-                f.ClaimedAt ?? f.StartedAt ?? f.CreatedAt, f.TiempoMaximoMinutos))
+                f.ClaimedAt ?? f.StartedAt ?? f.CreatedAt, f.TiempoMaximoMinutos, f.InstanciaId))
             .OrderBy(p => p.ReclamadoEn)
             .ToList();
     }

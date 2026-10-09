@@ -127,7 +127,7 @@ const buildQuery = (params: Record<string, string | undefined>) => {
 }
 
 export const listEquipos = (filters: Record<string, string> = {}) =>
-  apiFetch<PagedResult<EquipoDto>>(`/equipos${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+  apiFetch<PagedResult<EquipoDto>>(`/equipos${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
 
 export const createEquipo = (input: CreateEquipoInput) =>
   apiFetch<EquipoDto>('/equipos', { method: 'POST', body: JSON.stringify(input) })
@@ -138,7 +138,7 @@ export const updateEquipo = (id: string, input: UpdateEquipoInput) =>
 export const deleteEquipo = (id: string) => apiFetch<void>(`/equipos/${id}`, { method: 'DELETE' })
 
 export const listServicios = (filters: Record<string, string> = {}) =>
-  apiFetch<PagedResult<ServicioDto>>(`/servicios${buildQuery({ searchTerm: filters.search, pageSize: '100' })}`)
+  apiFetch<PagedResult<ServicioDto>>(`/servicios${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
 
 export const createServicio = (input: CreateServicioInput) =>
   apiFetch<ServicioDto>('/servicios', { method: 'POST', body: JSON.stringify(input) })
@@ -162,7 +162,8 @@ export const regenerarClaveDespliegue = (id: string) =>
 
 export const deleteDespliegue = (id: string) => apiFetch<void>(`/despliegues/${id}`, { method: 'DELETE' })
 
-export const listCredenciales = () => apiFetch<PagedResult<CredencialDto>>(`/credenciales${buildQuery({ pageSize: '100' })}`)
+export const listCredenciales = (filters: Record<string, string> = {}) =>
+  apiFetch<PagedResult<CredencialDto>>(`/credenciales${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
 
 export const createCredencial = (input: CreateCredencialInput) =>
   apiFetch<CredencialDto>('/credenciales', { method: 'POST', body: JSON.stringify(input) })
@@ -189,14 +190,15 @@ export interface ServicioDesplegadoDto extends ServicioOrdenDto {
 export interface DespachoEquipoDto {
   equipoId: string
   equipoNombre: string
-  maxEjecucionesSimultaneas: number
+  /** The optional ceiling of steps at once; null = none, the robot copies the stack runs set the capacity. */
+  maxEjecucionesSimultaneas: number | null
   politica: PoliticaDespacho
   orden: ServicioOrdenDto[]
   serviciosDelEquipo: ServicioDesplegadoDto[]
 }
 
 export interface UpdateDespachoInput {
-  maxEjecucionesSimultaneas: number
+  maxEjecucionesSimultaneas: number | null
   politica: PoliticaDespacho
   /** Service ids, first to last. */
   orden: string[]
@@ -206,7 +208,7 @@ export interface PlantillaDespachoDto {
   id: string
   nombre: string
   descripcion: string | null
-  maxEjecucionesSimultaneas: number
+  maxEjecucionesSimultaneas: number | null
   politica: PoliticaDespacho
   orden: ServicioOrdenDto[]
   createdAt: string
@@ -224,6 +226,8 @@ export interface EnEjecucionDto {
   servicioId: string
   servicioNombre: string
   desde: string
+  /** The step being run, to cancel it. */
+  ejecucionPasoId: string
   tiempoMaximoMinutos: number | null
   limiteAt: string | null
   /** Past its time: it no longer counts as running and its caso is about to be cancelled. */
@@ -242,14 +246,32 @@ export interface PendienteDto {
   robotOcupado: boolean
   /** The service already has as many steps running as its global cap allows. */
   servicioAlLimiteGlobal: boolean
+  /** The priority of the execution: higher goes first among the ones waiting for the same service. */
+  prioridad: number
+  /** The step this execution is, to change its priority or cancel it. */
+  ejecucionPasoId: string
+}
+
+/** A robot of the machine and how many running copies of it there are (replicas, or processes started with its key). */
+export interface RobotDelEquipoDto {
+  despliegueId: string
+  servicioId: string
+  servicioNombre: string
+  encendido: boolean
+  conectado: boolean
+  /** Copies asking for work or holding a step. */
+  instancias: number
+  /** Of those, the ones that hold nothing and could take a step. */
+  libres: number
 }
 
 export interface ColaEquipoDto {
-  maxEjecucionesSimultaneas: number
+  maxEjecucionesSimultaneas: number | null
   enUso: number
   politica: PoliticaDespacho
   enEjecucion: EnEjecucionDto[]
   pendientes: PendienteDto[]
+  robots: RobotDelEquipoDto[]
 }
 
 export const getDespachoEquipo = (equipoId: string) => apiFetch<DespachoEquipoDto>(`/equipos/${equipoId}/despacho`)

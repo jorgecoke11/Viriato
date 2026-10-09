@@ -8,7 +8,7 @@ import { fadeVariants, pageVariants, slideInRightVariants } from '../lib/motion/
 import { SidebarContent } from './sidebar/SidebarContent'
 import { getSidebarCollapsed, setSidebarCollapsed } from './sidebar/sidebarPreferences'
 
-const EXPANDED_WIDTH = 256
+const EXPANDED_WIDTH = 272
 const COLLAPSED_WIDTH = 72
 
 export function AppLayout() {

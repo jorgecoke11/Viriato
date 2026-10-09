@@ -7,7 +7,9 @@ public static class CasosModuleEndpoints
     public static IEndpointRouteBuilder MapCasosEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapCasosCoreEndpoints();
+        endpoints.MapCreadoresDeCasoUsoEndpoints();
         endpoints.MapDocumentosEndpoints();
+        endpoints.MapDescargaMasivaDeDocumentosEndpoints();
         endpoints.MapTiposDocumentoEndpoints();
         endpoints.MapDocumentoClasificacionesEndpoints();
         endpoints.MapEvidenciasEndpoints();

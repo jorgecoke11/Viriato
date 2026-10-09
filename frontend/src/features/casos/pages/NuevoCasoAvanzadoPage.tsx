@@ -12,7 +12,7 @@ import * as casosApi from '../api'
 import { DatosCasoInput } from '../DatosCasoInput'
 import { BackLink } from '../../../components/ui/BackLink'
 
-export function NuevoCasoPage() {
+export function NuevoCasoAvanzadoPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [searchParams] = useSearchParams()
@@ -111,11 +111,13 @@ export function NuevoCasoPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <BackLink to="/casos/lista">Listado</BackLink>
+      <BackLink to="/casos/nuevo">Nuevo caso</BackLink>
 
       <div>
-        <h1 className="page-title">Nuevo caso</h1>
-        <p className="text-sm text-gray-500">Elige el flujo y, si lo necesitas, en qué estado de negocio debe arrancar.</p>
+        <h1 className="page-title">Nuevo caso (avanzado)</h1>
+        <p className="text-sm text-gray-500">
+          Sin creador: eliges tú el flujo, el tipo, el servicio por el que empieza y el título. Para el día a día, usa un creador.
+        </p>
       </div>
 
       <Card className="max-w-xl">
