@@ -1,11 +1,25 @@
 import { ChevronsLeft, ChevronsRight, LogOut, Settings, Workflow } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../../features/auth/useAuth'
+import { ThemeToggle } from '../../lib/theme/ThemeToggle'
 import { VersionBadge } from '../../lib/version/VersionBadge'
 import { navLinkClass, NavTree } from './NavTree'
 import { navTree } from './navConfig'
 import { SidebarSearch } from './SidebarSearch'
+
+function Avatar({ name, size }: { name?: string; size: 'sm' | 'md' }) {
+  return (
+    <span
+      title={name}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 font-semibold text-white ${
+        size === 'sm' ? 'h-9 w-9 text-xs' : 'h-9 w-9 text-sm'
+      }`}
+    >
+      {name?.[0]?.toUpperCase() ?? '?'}
+    </span>
+  )
+}
 
 export function SidebarContent({
   collapsed = false,
@@ -21,18 +35,19 @@ export function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex items-center gap-2.5 px-4 py-5 ${collapsed ? 'flex-col gap-3' : 'flex-row'}`}>
+      <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${collapsed ? 'flex-col gap-3' : 'flex-row'}`}>
         <Link
           to="/"
           onClick={onNavigate}
           aria-label="Viariato"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-sm"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white shadow-[0_4px_14px_-4px_rgb(99_102_241/0.7)]"
         >
           <Workflow size={18} />
         </Link>
         {!collapsed && (
-          <Link to="/" onClick={onNavigate} className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight text-gray-900">
-            Viariato
+          <Link to="/" onClick={onNavigate} className="min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-[17px] font-semibold tracking-tight text-side-strong">Viariato</span>
+            <span className="block truncate text-[11px] tracking-wide text-side-text">Procesos y robots</span>
           </Link>
         )}
         {onToggleCollapsed && (
@@ -40,7 +55,7 @@ export function SidebarContent({
             type="button"
             aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
             title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-            className="shrink-0 rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-700"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-side-text hover:bg-side-hover hover:text-side-strong"
             onClick={onToggleCollapsed}
           >
             {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
@@ -52,29 +67,29 @@ export function SidebarContent({
 
       <NavTree nodes={navTree} collapsed={collapsed} query={query} onNavigate={onNavigate} />
 
-      <div className={`border-t border-blue-100 px-3 py-3 ${collapsed ? 'flex flex-col items-center gap-2' : ''}`}>
+      <div className={`border-t border-side-border px-3 py-3 ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-2'}`}>
         {collapsed ? (
           <>
-            <Link
+            <NavLink
               to="/perfil"
               title="Configuración"
               aria-label="Configuración"
               onClick={onNavigate}
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+              className={({ isActive }) =>
+                `flex h-10 w-10 items-center justify-center rounded-lg ${
+                  isActive ? 'bg-indigo-500/15 text-side-accent' : 'text-side-text hover:bg-side-hover hover:text-side-strong'
+                }`
+              }
             >
               <Settings size={18} />
-            </Link>
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700"
-              title={user?.displayName}
-            >
-              {user?.displayName?.[0]?.toUpperCase() ?? '?'}
-            </span>
+            </NavLink>
+            <ThemeToggle compact />
+            <Avatar name={user?.displayName} size="sm" />
             <button
               type="button"
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600"
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-side-text hover:bg-red-500/15 hover:text-red-400"
               onClick={() => logout()}
             >
               <LogOut size={16} />
@@ -82,23 +97,22 @@ export function SidebarContent({
           </>
         ) : (
           <>
-            <Link to="/perfil" onClick={onNavigate} className={navLinkClass({ isActive: false })}>
+            <NavLink to="/perfil" onClick={onNavigate} className={navLinkClass}>
               <Settings size={18} />
               Configuración
-            </Link>
-            <div className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
-                {user?.displayName?.[0]?.toUpperCase() ?? '?'}
-              </span>
+            </NavLink>
+            <ThemeToggle />
+            <div className="flex items-center gap-3 rounded-lg px-1 py-1">
+              <Avatar name={user?.displayName} size="md" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-900">{user?.displayName}</p>
-                <p className="truncate text-xs text-gray-500">{user?.email}</p>
+                <p className="truncate text-sm font-medium text-side-strong">{user?.displayName}</p>
+                <p className="truncate text-xs text-side-text">{user?.email}</p>
               </div>
               <button
                 type="button"
                 aria-label="Cerrar sesión"
                 title="Cerrar sesión"
-                className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-side-text hover:bg-red-500/15 hover:text-red-400"
                 onClick={() => logout()}
               >
                 <LogOut size={16} />

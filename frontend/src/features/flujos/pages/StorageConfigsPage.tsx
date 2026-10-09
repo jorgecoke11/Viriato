@@ -2,6 +2,7 @@ import { CrudPage } from '../../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../../components/crud/types'
 import * as flujosApi from '../api'
 import type { StorageConfigDto, StorageProviderType } from '../api'
+import { ActivoBadge } from '../../../components/ui/ActivoBadge'
 
 interface StorageConfigFormValues {
   [key: string]: string | boolean
@@ -43,7 +44,7 @@ const columns: CrudColumn<StorageConfigDto>[] = [
     label: 'Credenciales',
     render: (s) => (s.proveedor === 'S3Compatible' ? (s.hasCredentials ? 'Configuradas' : 'Sin configurar') : '—'),
   },
-  { key: 'activo', label: 'Activo', render: (s) => (s.activo ? 'Sí' : 'No') },
+  { key: 'activo', label: 'Activo', render: (s) => <ActivoBadge activo={s.activo} /> },
 ]
 
 const isLocal = (values: StorageConfigFormValues) => values.proveedor === 'Local'

@@ -2,6 +2,7 @@ import { CrudPage } from '../../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../../components/crud/types'
 import * as casosApi from '../api'
 import type { TipoDocumentoDto } from '../api'
+import { ActivoBadge } from '../../../components/ui/ActivoBadge'
 
 interface TipoDocumentoFormValues {
   [key: string]: string | boolean
@@ -13,7 +14,7 @@ interface TipoDocumentoFormValues {
 const columns: CrudColumn<TipoDocumentoDto>[] = [
   { key: 'nombre', label: 'Nombre', render: (t) => t.nombre },
   { key: 'descripcion', label: 'Descripción', render: (t) => t.descripcion ?? '—' },
-  { key: 'activo', label: 'Activo', render: (t) => (t.activo ? 'Sí' : 'No') },
+  { key: 'activo', label: 'Activo', render: (t) => <ActivoBadge activo={t.activo} /> },
 ]
 
 const createFields: CrudFormConfig<

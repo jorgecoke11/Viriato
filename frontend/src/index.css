@@ -1,4 +1,321 @@
 @import "tailwindcss";
+@import "@fontsource/fira-sans/400.css";
+@import "@fontsource/fira-sans/500.css";
+@import "@fontsource/fira-sans/600.css";
+@import "@fontsource/fira-sans/700.css";
+@import "@fontsource/fira-code/400.css";
+@import "@fontsource/fira-code/500.css";
+
+/* ------------------------------------------------------------------------------------------------
+   Design tokens.
+
+   The whole interface is written with Tailwind's stock colour names (gray, indigo, blue, red, green,
+   amber, purple). Rather than touch every file, those names are re-pointed here at CSS variables, so
+   one place decides what "gray-500" or "green-100" looks like — and the dark theme is the same names
+   with other values (the `.dark` block below), not a second set of classes.
+
+   Semantics worth knowing:
+     gray    cool slate neutral. 50-100 fills, 200-300 borders, 400 icons/placeholders, 500-600 secondary text,
+             800-900 primary text. Inverts in the dark theme.
+     indigo  the brand / primary action.
+     green / amber / red / purple / blue  status — done, waiting, failed, needs a person, running. A status is
+             never colour alone: badges carry a dot or an icon and a label.
+     page / surface / raised  the canvas, the cards on it, and what floats above both (menus, dialogs).
+     side-*  the navigation rail, which is dark in both themes.
+------------------------------------------------------------------------------------------------ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Fira Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-gray-50: var(--c-gray-50);
+  --color-gray-100: var(--c-gray-100);
+  --color-gray-200: var(--c-gray-200);
+  --color-gray-300: var(--c-gray-300);
+  --color-gray-400: var(--c-gray-400);
+  --color-gray-500: var(--c-gray-500);
+  --color-gray-600: var(--c-gray-600);
+  --color-gray-700: var(--c-gray-700);
+  --color-gray-800: var(--c-gray-800);
+  --color-gray-900: var(--c-gray-900);
+  --color-gray-950: var(--c-gray-950);
+
+  --color-indigo-50: var(--c-indigo-50);
+  --color-indigo-100: var(--c-indigo-100);
+  --color-indigo-200: var(--c-indigo-200);
+  --color-indigo-300: var(--c-indigo-300);
+  --color-indigo-400: var(--c-indigo-400);
+  --color-indigo-500: var(--c-indigo-500);
+  --color-indigo-600: var(--c-indigo-600);
+  --color-indigo-700: var(--c-indigo-700);
+  --color-indigo-800: var(--c-indigo-800);
+  --color-indigo-900: var(--c-indigo-900);
+  --color-indigo-950: var(--c-indigo-950);
+
+  --color-blue-50: var(--c-blue-50);
+  --color-blue-100: var(--c-blue-100);
+  --color-blue-200: var(--c-blue-200);
+  --color-blue-300: var(--c-blue-300);
+  --color-blue-400: var(--c-blue-400);
+  --color-blue-500: var(--c-blue-500);
+  --color-blue-600: var(--c-blue-600);
+  --color-blue-700: var(--c-blue-700);
+  --color-blue-800: var(--c-blue-800);
+  --color-blue-900: var(--c-blue-900);
+  --color-blue-950: var(--c-blue-950);
+
+  --color-red-50: var(--c-red-50);
+  --color-red-100: var(--c-red-100);
+  --color-red-200: var(--c-red-200);
+  --color-red-300: var(--c-red-300);
+  --color-red-400: var(--c-red-400);
+  --color-red-500: var(--c-red-500);
+  --color-red-600: var(--c-red-600);
+  --color-red-700: var(--c-red-700);
+  --color-red-800: var(--c-red-800);
+  --color-red-900: var(--c-red-900);
+  --color-red-950: var(--c-red-950);
+
+  --color-green-50: var(--c-green-50);
+  --color-green-100: var(--c-green-100);
+  --color-green-200: var(--c-green-200);
+  --color-green-300: var(--c-green-300);
+  --color-green-400: var(--c-green-400);
+  --color-green-500: var(--c-green-500);
+  --color-green-600: var(--c-green-600);
+  --color-green-700: var(--c-green-700);
+  --color-green-800: var(--c-green-800);
+  --color-green-900: var(--c-green-900);
+  --color-green-950: var(--c-green-950);
+
+  --color-amber-50: var(--c-amber-50);
+  --color-amber-100: var(--c-amber-100);
+  --color-amber-200: var(--c-amber-200);
+  --color-amber-300: var(--c-amber-300);
+  --color-amber-400: var(--c-amber-400);
+  --color-amber-500: var(--c-amber-500);
+  --color-amber-600: var(--c-amber-600);
+  --color-amber-700: var(--c-amber-700);
+  --color-amber-800: var(--c-amber-800);
+  --color-amber-900: var(--c-amber-900);
+  --color-amber-950: var(--c-amber-950);
+
+  --color-purple-50: var(--c-purple-50);
+  --color-purple-100: var(--c-purple-100);
+  --color-purple-200: var(--c-purple-200);
+  --color-purple-300: var(--c-purple-300);
+  --color-purple-400: var(--c-purple-400);
+  --color-purple-500: var(--c-purple-500);
+  --color-purple-600: var(--c-purple-600);
+  --color-purple-700: var(--c-purple-700);
+  --color-purple-800: var(--c-purple-800);
+  --color-purple-900: var(--c-purple-900);
+  --color-purple-950: var(--c-purple-950);
+
+  --color-page: var(--c-page);
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-surface-raised);
+  --color-side: var(--c-side);
+  --color-side-hover: var(--c-side-hover);
+  --color-side-border: var(--c-side-border);
+  --color-side-text: var(--c-side-text);
+  --color-side-strong: var(--c-side-strong);
+  --color-side-accent: var(--c-side-accent);
+  --shadow-card: var(--c-shadow-card);
+  --shadow-pop: var(--c-shadow-pop);
+}
+
+:root {
+  --c-gray-50: #f8fafc;
+  --c-gray-100: #f1f5f9;
+  --c-gray-200: #e2e8f0;
+  --c-gray-300: #c3cdda;
+  --c-gray-400: #7b8aa0;
+  --c-gray-500: #5b6b82;
+  --c-gray-600: #475569;
+  --c-gray-700: #334155;
+  --c-gray-800: #1e293b;
+  --c-gray-900: #0f172a;
+  --c-gray-950: #020617;
+  --c-indigo-50: #eef2ff;
+  --c-indigo-100: #e0e7ff;
+  --c-indigo-200: #c7d2fe;
+  --c-indigo-300: #a5b4fc;
+  --c-indigo-400: #818cf8;
+  --c-indigo-500: #6366f1;
+  --c-indigo-600: #4f46e5;
+  --c-indigo-700: #4338ca;
+  --c-indigo-800: #3730a3;
+  --c-indigo-900: #312e81;
+  --c-indigo-950: #1e1b4b;
+  --c-blue-50: #eff6ff;
+  --c-blue-100: #dbeafe;
+  --c-blue-200: #bfdbfe;
+  --c-blue-300: #93c5fd;
+  --c-blue-400: #60a5fa;
+  --c-blue-500: #3b82f6;
+  --c-blue-600: #2563eb;
+  --c-blue-700: #1d4ed8;
+  --c-blue-800: #1e40af;
+  --c-blue-900: #1e3a8a;
+  --c-blue-950: #172554;
+  --c-red-50: #fef2f2;
+  --c-red-100: #fee2e2;
+  --c-red-200: #fecaca;
+  --c-red-300: #fca5a5;
+  --c-red-400: #f87171;
+  --c-red-500: #ef4444;
+  --c-red-600: #dc2626;
+  --c-red-700: #b91c1c;
+  --c-red-800: #991b1b;
+  --c-red-900: #7f1d1d;
+  --c-red-950: #450a0a;
+  --c-green-50: #f0fdf4;
+  --c-green-100: #dcfce7;
+  --c-green-200: #bbf7d0;
+  --c-green-300: #86efac;
+  --c-green-400: #4ade80;
+  --c-green-500: #22c55e;
+  --c-green-600: #16a34a;
+  --c-green-700: #15803d;
+  --c-green-800: #166534;
+  --c-green-900: #14532d;
+  --c-green-950: #052e16;
+  --c-amber-50: #fffbeb;
+  --c-amber-100: #fef3c7;
+  --c-amber-200: #fde68a;
+  --c-amber-300: #fcd34d;
+  --c-amber-400: #fbbf24;
+  --c-amber-500: #f59e0b;
+  --c-amber-600: #d97706;
+  --c-amber-700: #b45309;
+  --c-amber-800: #92400e;
+  --c-amber-900: #78350f;
+  --c-amber-950: #451a03;
+  --c-purple-50: #faf5ff;
+  --c-purple-100: #f3e8ff;
+  --c-purple-200: #e9d5ff;
+  --c-purple-300: #d8b4fe;
+  --c-purple-400: #c084fc;
+  --c-purple-500: #a855f7;
+  --c-purple-600: #9333ea;
+  --c-purple-700: #7e22ce;
+  --c-purple-800: #6b21a8;
+  --c-purple-900: #581c87;
+  --c-purple-950: #3b0764;
+  --c-page: #f3f5f9;
+  --c-surface: #ffffff;
+  --c-surface-raised: #ffffff;
+  --c-overlay: rgb(15 23 42 / 0.45);
+  --c-side: #0b1220;
+  --c-side-hover: #172033;
+  --c-side-border: #1c2740;
+  --c-side-text: #9aa8bf;
+  --c-side-strong: #f1f5f9;
+  --c-side-accent: #818cf8;
+  --c-shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --c-shadow-pop: 0 20px 50px -12px rgb(15 23 42 / 0.35);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  color-scheme: light;
+}
+
+.dark {
+  --c-gray-50: #1a2438;
+  --c-gray-100: #1d2940;
+  --c-gray-200: #27344d;
+  --c-gray-300: #3a4962;
+  --c-gray-400: #7488a3;
+  --c-gray-500: #98a8bf;
+  --c-gray-600: #b3c0d3;
+  --c-gray-700: #cbd5e1;
+  --c-gray-800: #e2e8f0;
+  --c-gray-900: #f1f5f9;
+  --c-gray-950: #f8fafc;
+  --c-indigo-50: #1e1b4b;
+  --c-indigo-100: #312e81;
+  --c-indigo-200: #3730a3;
+  --c-indigo-300: #4338ca;
+  --c-indigo-400: #818cf8;
+  --c-indigo-500: #6366f1;
+  --c-indigo-600: #6366f1;
+  --c-indigo-700: #a5b4fc;
+  --c-indigo-800: #c7d2fe;
+  --c-indigo-900: #e0e7ff;
+  --c-indigo-950: #eef2ff;
+  --c-blue-50: #172554;
+  --c-blue-100: #1e3a8a;
+  --c-blue-200: #1e40af;
+  --c-blue-300: #1d4ed8;
+  --c-blue-400: #60a5fa;
+  --c-blue-500: #3b82f6;
+  --c-blue-600: #2563eb;
+  --c-blue-700: #93c5fd;
+  --c-blue-800: #bfdbfe;
+  --c-blue-900: #dbeafe;
+  --c-blue-950: #eff6ff;
+  --c-red-50: #450a0a;
+  --c-red-100: #7f1d1d;
+  --c-red-200: #991b1b;
+  --c-red-300: #b91c1c;
+  --c-red-400: #f87171;
+  --c-red-500: #ef4444;
+  --c-red-600: #ef4444;
+  --c-red-700: #fca5a5;
+  --c-red-800: #fecaca;
+  --c-red-900: #fee2e2;
+  --c-red-950: #fef2f2;
+  --c-green-50: #052e16;
+  --c-green-100: #14532d;
+  --c-green-200: #166534;
+  --c-green-300: #15803d;
+  --c-green-400: #4ade80;
+  --c-green-500: #22c55e;
+  --c-green-600: #22c55e;
+  --c-green-700: #86efac;
+  --c-green-800: #bbf7d0;
+  --c-green-900: #dcfce7;
+  --c-green-950: #f0fdf4;
+  --c-amber-50: #451a03;
+  --c-amber-100: #78350f;
+  --c-amber-200: #92400e;
+  --c-amber-300: #b45309;
+  --c-amber-400: #fbbf24;
+  --c-amber-500: #f59e0b;
+  --c-amber-600: #f59e0b;
+  --c-amber-700: #fcd34d;
+  --c-amber-800: #fde68a;
+  --c-amber-900: #fef3c7;
+  --c-amber-950: #fffbeb;
+  --c-purple-50: #3b0764;
+  --c-purple-100: #581c87;
+  --c-purple-200: #6b21a8;
+  --c-purple-300: #7e22ce;
+  --c-purple-400: #c084fc;
+  --c-purple-500: #a855f7;
+  --c-purple-600: #a855f7;
+  --c-purple-700: #d8b4fe;
+  --c-purple-800: #e9d5ff;
+  --c-purple-900: #f3e8ff;
+  --c-purple-950: #faf5ff;
+  --c-page: #080d18;
+  --c-surface: #101828;
+  --c-surface-raised: #152033;
+  --c-overlay: rgb(2 6 15 / 0.7);
+  --c-side: #060a13;
+  --c-side-hover: #121b2d;
+  --c-side-border: #151f33;
+  --c-side-text: #8b9bb4;
+  --c-side-strong: #f1f5f9;
+  --c-side-accent: #818cf8;
+  --c-shadow-card: 0 0 0 1px rgb(255 255 255 / 0.015), 0 1px 2px rgb(0 0 0 / 0.45);
+  --c-shadow-pop: 0 24px 60px -12px rgb(0 0 0 / 0.75);
+  --scroll-thumb: #2a3750;
+  --scroll-thumb-hover: #3d4d6b;
+  color-scheme: dark;
+}
 
 @layer base {
   html {
@@ -6,8 +323,85 @@
   }
 
   body {
+    background-color: var(--color-page);
+    color: var(--color-gray-900);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-indigo-200);
+    color: var(--color-gray-900);
+  }
+
+  /* One visible focus treatment for everything keyboard-reachable that does not draw its own. */
+  :where(a, button, summary, [role='tab'], [tabindex]):focus-visible {
+    outline: 2px solid var(--color-indigo-500);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer components {
+  /* Every text input, select and textarea. A 40px control, a quiet border that firms up on hover, and a
+     ring in the brand colour on focus — the same everywhere instead of re-typed in each form. */
+  .field {
+    width: 100%;
+    min-height: 2.5rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--color-gray-300);
+    background-color: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--color-gray-900);
+  }
+  .field::placeholder {
+    color: var(--color-gray-400);
+  }
+  .field:hover:not(:disabled) {
+    border-color: var(--color-gray-400);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-indigo-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-indigo-500) 22%, transparent);
+  }
+  .field:disabled {
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-500);
+    cursor: not-allowed;
+  }
+  .field[aria-invalid='true'] {
+    border-color: var(--color-red-500);
+  }
+  .field[aria-invalid='true']:focus {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-red-500) 22%, transparent);
+  }
+
+  /* Page title: the one heading style every screen shares. */
+  .page-title {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--color-gray-900);
+  }
+
+  /* Figures that line up when they change (counters, sizes, durations). */
+  .num {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -22,6 +416,7 @@
   select,
   textarea,
   summary,
+  .field,
   .cursor-pointer {
     transition-property: color, background-color, border-color, box-shadow, transform, opacity;
     transition-duration: 150ms;
@@ -32,7 +427,7 @@
 /* Thin, unobtrusive scrollbars instead of the chunky OS default. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
@@ -42,13 +437,13 @@
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
+  background-color: var(--scroll-thumb);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af;
+  background-color: var(--scroll-thumb-hover);
 }
 
 /* Mount/unmount animation (modals, menus, accordions, page transitions, toasts) now lives in the

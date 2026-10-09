@@ -8,6 +8,7 @@ public static class RpaFleetModuleEndpoints
     {
         endpoints.MapEquiposEndpoints();
         endpoints.MapServiciosEndpoints();
+        endpoints.MapDespachoEndpoints();
         endpoints.MapDespliguesEndpoints();
         endpoints.MapCredencialesEndpoints();
         endpoints.MapCredencialesRobotEndpoints();

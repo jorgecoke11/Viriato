@@ -171,7 +171,7 @@ function ArchivoInfo({ item }: { item: CasoTimelineItemDto }) {
         type="button"
         disabled={downloading}
         onClick={handleDownload}
-        className="shrink-0 rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        className="shrink-0 rounded-md border border-gray-300 bg-surface px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
       >
         {downloading ? 'Descargando…' : 'Descargar'}
       </button>
@@ -282,7 +282,7 @@ export function CasoTimelineUnificado({ casoId }: { casoId: string }) {
               <span className={`absolute left-0 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full ring-4 ring-white ${style.node}`}>
                 {kindIcon[kind]}
               </span>
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-surface shadow-sm transition-shadow hover:shadow-md">
                 <button
                   type="button"
                   aria-expanded={abierto}

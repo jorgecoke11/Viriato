@@ -3,6 +3,7 @@ import { CrudPage } from '../../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../../components/crud/types'
 import * as flujosApi from '../api'
 import type { FlujoDto } from '../api'
+import { ActivoBadge } from '../../../components/ui/ActivoBadge'
 
 interface FlujoFormValues {
   [key: string]: string | boolean
@@ -15,7 +16,7 @@ const columns: CrudColumn<FlujoDto>[] = [
   { key: 'nombre', label: 'Nombre', render: (f) => f.nombre },
   { key: 'version', label: 'Versión activa', render: (f) => (f.numeroVersionActiva ? `v${f.numeroVersionActiva}` : 'Sin publicar') },
   { key: 'almacenamiento', label: 'Almacenamiento', render: (f) => f.storageConfigNombre ?? 'Sin asignar' },
-  { key: 'activo', label: 'Activo', render: (f) => (f.activo ? 'Sí' : 'No') },
+  { key: 'activo', label: 'Activo', render: (f) => <ActivoBadge activo={f.activo} /> },
 ]
 
 const createFields: CrudFormConfig<FlujoDto, FlujoFormValues, flujosApi.CreateFlujoRequest, flujosApi.UpdateFlujoRequest>['createFields'] = [

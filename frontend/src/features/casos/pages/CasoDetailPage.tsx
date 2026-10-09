@@ -1,5 +1,6 @@
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { CasoDetailContent } from '../CasoDetailContent'
+import { BackLink } from '../../../components/ui/BackLink'
 
 export function CasoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -8,7 +9,7 @@ export function CasoDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link to="/casos/lista" className="text-sm text-gray-500 hover:text-gray-900">← Listado</Link>
+      <BackLink to="/casos/lista">Listado</BackLink>
       <CasoDetailContent casoId={id} />
     </div>
   )

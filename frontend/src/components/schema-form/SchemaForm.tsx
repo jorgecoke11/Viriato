@@ -2,10 +2,9 @@ import { useId, useState } from 'react'
 import { estadoVacio } from './esquema'
 import type { CampoEsquema, Esquema, EstadoCampo, EstadoFormulario } from './esquema'
 
-const ENTRADA =
-  'w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-500'
-const BORDE_OK = 'border-gray-300 focus:border-indigo-400 focus:ring-indigo-100'
-const BORDE_ERROR = 'border-red-300 focus:border-red-400 focus:ring-red-100'
+const ENTRADA = 'field'
+const BORDE_OK = ''
+const BORDE_ERROR = 'border-red-500'
 
 const unir = (ruta: string, nombre: string) => (ruta === '' ? nombre : `${ruta}.${nombre}`)
 

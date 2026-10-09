@@ -50,7 +50,7 @@ export function CompaniesPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Mercados</h1>
+          <h1 className="page-title">Mercados</h1>
           <p className="text-sm text-gray-500">Screener de compañías al estilo del inversor inteligente.</p>
         </div>
         {can('markets.manage') && (
@@ -80,7 +80,7 @@ export function CompaniesPage() {
           <label htmlFor="index" className="text-sm font-medium text-gray-700">Índice</label>
           <select
             id="index"
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="field"
             value={index}
             onChange={(e) => setIndex(e.target.value)}
           >
@@ -95,16 +95,16 @@ export function CompaniesPage() {
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="border-b border-gray-200 text-gray-500">
+          <thead className="border-b border-gray-200 bg-gray-50/70">
             <tr>
-              <th className="px-4 py-3 font-medium">Ticker</th>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Sector</th>
-              <th className="px-4 py-3 font-medium">Graham</th>
-              <th className="px-4 py-3 font-medium">P/E</th>
-              <th className="px-4 py-3 font-medium">P/B</th>
-              <th className="px-4 py-3 font-medium">Margen seg.</th>
-              <th className="px-4 py-3 font-medium">Señal</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Ticker</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Nombre</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Sector</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Graham</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">P/E</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">P/B</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Margen seg.</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Señal</th>
             </tr>
           </thead>
           <tbody>

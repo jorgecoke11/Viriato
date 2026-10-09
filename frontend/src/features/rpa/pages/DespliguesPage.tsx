@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, RefreshCw, Server, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
+import { IconButton } from '../../../components/ui/IconButton'
+import { EmptyState } from '../../../components/ui/EmptyState'
+import { PageHeader } from '../../../components/ui/PageHeader'
+import { Skeleton } from '../../../components/ui/Skeleton'
+import { Switch } from '../../../components/ui/Switch'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { Modal } from '../../../components/ui/Modal'
 import { ApiError } from '../../../lib/apiClient'
@@ -88,35 +94,41 @@ export function DespliguesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Despliegues</h1>
-        <Button onClick={() => setShowNuevo(true)}>Nuevo</Button>
-      </div>
+      <PageHeader
+        title="Despliegues"
+        description="Un servicio instalado en un equipo para un proceso: de aquí sale la clave con la que se identifica el robot."
+        actions={
+          <Button onClick={() => setShowNuevo(true)}>
+            <Plus size={16} />
+            Nuevo
+          </Button>
+        }
+      />
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[980px] text-left text-sm">
-          <thead className="border-b border-gray-200 text-gray-500">
+        <table className="w-full min-w-[860px] text-left text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50/70">
             <tr>
-              <th className="px-4 py-3 font-medium">Equipo</th>
-              <th className="px-4 py-3 font-medium">Servicio</th>
-              <th className="px-4 py-3 font-medium">Proceso</th>
-              <th className="px-4 py-3 font-medium">Puede crear casos en</th>
-              <th className="px-4 py-3 font-medium">Encendido</th>
-              <th className="px-4 py-3 font-medium">Clave</th>
-              <th className="px-4 py-3 font-medium">Último uso</th>
-              <th className="px-4 py-3 font-medium">Acciones</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Equipo</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Servicio</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Proceso</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Puede crear casos en</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Encendido</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Clave</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Último uso</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {despliegues.map((despliegue) => (
-              <tr key={despliegue.id} className="border-b border-gray-100 last:border-0">
+              <tr key={despliegue.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/70">
                 <td className="px-4 py-3">{despliegue.equipoNombre}</td>
                 <td className="px-4 py-3">{despliegue.servicioNombre}</td>
                 <td className="px-4 py-3">{nombreFlujo(despliegue.flujoId)}</td>
                 <td className="px-4 py-3">
                   <select
                     aria-label={`Proceso en el que ${despliegue.servicioNombre} puede crear casos`}
-                    className="max-w-[200px] rounded-lg border border-gray-300 px-2 py-1 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    className="max-w-[200px] field !min-h-8 !w-auto !px-2 !py-1"
                     value={despliegue.flujoDestinoId ?? ''}
                     disabled={toggleMutation.isPending}
                     onChange={(e) =>
@@ -136,46 +148,59 @@ export function DespliguesPage() {
                   </select>
                 </td>
                 <td className="px-4 py-3">
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="accent-indigo-600"
+                  <span className="inline-flex items-center gap-2.5">
+                    <Switch
                       checked={despliegue.encendido}
+                      label={`${despliegue.encendido ? 'Apagar' : 'Encender'} el despliegue de ${despliegue.servicioNombre}`}
                       disabled={toggleMutation.isPending}
-                      onChange={(e) => toggleMutation.mutate({ id: despliegue.id, encendido: e.target.checked })}
+                      onChange={(encendido) => toggleMutation.mutate({ id: despliegue.id, encendido })}
                     />
-                    {despliegue.encendido ? 'Sí' : 'No'}
-                  </label>
+                    <span className={despliegue.encendido ? 'text-green-700' : 'text-gray-500'}>{despliegue.encendido ? 'Sí' : 'No'}</span>
+                  </span>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{despliegue.apiKeyPrefix}…</td>
                 <td className="px-4 py-3 text-gray-500">
                   {despliegue.lastUsedAt ? new Date(despliegue.lastUsedAt).toLocaleString() : 'Nunca'}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      className="text-gray-500 hover:text-gray-900"
+                  <div className="flex items-center gap-0.5">
+                    <IconButton
+                      size="sm"
+                      label="Regenerar clave"
                       disabled={regenerarMutation.isPending}
                       onClick={() => regenerarMutation.mutate(despliegue.id)}
                     >
-                      Regenerar clave
-                    </button>
-                    <button
-                      type="button"
-                      className="text-gray-500 hover:text-red-600"
-                      onClick={() => setPendingDelete(despliegue)}
-                    >
-                      Eliminar
-                    </button>
+                      <RefreshCw size={16} />
+                    </IconButton>
+                    <IconButton size="sm" variant="danger" label="Eliminar despliegue" onClick={() => setPendingDelete(despliegue)}>
+                      <Trash2 size={16} />
+                    </IconButton>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {despliguesQuery.isLoading && <p className="p-4 text-sm text-gray-500">Cargando…</p>}
-        {despliguesQuery.isSuccess && despliegues.length === 0 && <p className="p-4 text-sm text-gray-500">Sin despliegues.</p>}
+        {despliguesQuery.isLoading && (
+          <div role="status" aria-label="Cargando" className="flex flex-col gap-3 p-4">
+            <Skeleton className="h-5 w-11/12" />
+            <Skeleton className="h-5 w-4/5" />
+            <Skeleton className="h-5 w-3/5" />
+          </div>
+        )}
+        {despliguesQuery.isSuccess && despliegues.length === 0 && (
+          <EmptyState
+            icon={<Server size={22} />}
+            title="Sin despliegues"
+            description="Crea uno para que un robot pueda identificarse y empezar a trabajar."
+            action={
+              <Button variant="secondary" size="sm" onClick={() => setShowNuevo(true)}>
+                <Plus size={15} />
+                Nuevo
+              </Button>
+            }
+          />
+        )}
       </Card>
 
       <Modal
@@ -201,7 +226,7 @@ export function DespliguesPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Equipo</label>
             <select
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={equipoId}
               onChange={(e) => setEquipoId(e.target.value)}
             >
@@ -216,7 +241,7 @@ export function DespliguesPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Servicio</label>
             <select
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={servicioId}
               onChange={(e) => setServicioId(e.target.value)}
             >
@@ -231,7 +256,7 @@ export function DespliguesPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Proceso</label>
             <select
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={flujoId}
               onChange={(e) => setFlujoId(e.target.value)}
             >
@@ -246,7 +271,7 @@ export function DespliguesPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Puede crear casos en (opcional)</label>
             <select
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={flujoDestinoId}
               onChange={(e) => setFlujoDestinoId(e.target.value)}
             >

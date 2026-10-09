@@ -28,14 +28,18 @@ export function CrudTable<T>({
 
   return (
     <table className="w-full min-w-[640px] text-left text-sm">
-      <thead className="border-b border-gray-200 text-gray-500">
+      <thead className="border-b border-gray-200 bg-gray-50/70">
         <tr>
           {columns.map((column) => (
-            <th key={column.key} className="px-4 py-3 font-medium">
+            <th key={column.key} scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">
               {column.label}
             </th>
           ))}
-          {hasActions && <th className="px-4 py-3 font-medium">Acciones</th>}
+          {hasActions && (
+            <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">
+              Acciones
+            </th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -51,21 +55,21 @@ export function CrudTable<T>({
               initial="initial"
               animate="animate"
               exit="exit"
-              className="border-b border-gray-100 last:border-0"
+              className="border-b border-gray-100 text-gray-800 last:border-0 hover:bg-gray-50/70"
             >
               {columns.map((column) => (
-                <td key={column.key} className="px-4 py-3">
+                <td key={column.key} className="px-4 py-3 align-middle">
                   {column.render(item)}
                 </td>
               ))}
               {hasActions && (
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
+                <td className="px-4 py-2 align-middle">
+                  <div className="flex items-center gap-1">
                     {renderRowExtra?.(item)}
                     {onEdit && (canEditRow?.(item) ?? true) && (
                       <button
                         type="button"
-                        className="text-gray-500 hover:text-gray-900"
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                         onClick={() => onEdit(item)}
                         aria-label="Editar"
                         title="Editar"
@@ -76,7 +80,7 @@ export function CrudTable<T>({
                     {onDelete && (canDeleteRow?.(item) ?? true) && (
                       <button
                         type="button"
-                        className="text-gray-500 hover:text-red-600"
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600"
                         onClick={() => onDelete(item)}
                         aria-label="Eliminar"
                         title="Eliminar"

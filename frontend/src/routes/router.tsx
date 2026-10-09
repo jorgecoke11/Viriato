@@ -21,6 +21,7 @@ import { CredencialesPage } from '../features/rpa/pages/CredencialesPage'
 import { DespliguesPage } from '../features/rpa/pages/DespliguesPage'
 import { EquiposPage } from '../features/rpa/pages/EquiposPage'
 import { ServiciosPage } from '../features/rpa/pages/ServiciosPage'
+import { PlantillasDespachoPage } from '../features/rpa/pages/PlantillasDespachoPage'
 import { AppLayout } from './AppLayout'
 import { HomePage } from './HomePage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -125,6 +126,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <EquiposPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/rpa/plantillas-despacho',
+        element: (
+          <ProtectedRoute>
+            <PlantillasDespachoPage />
           </ProtectedRoute>
         ),
       },

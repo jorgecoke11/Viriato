@@ -26,6 +26,10 @@ export interface ServicioDto {
   nombre: string
   descripcion: string | null
   activo: boolean
+  /** How many steps of the service may run at once across all machines; null = no limit. */
+  maxEjecucionesGlobales: number | null
+  /** The longest a step of the service may stay in execution, in minutes; null = no limit. Past it the caso is cancelled. */
+  tiempoMaximoMinutos: number | null
   createdAt: string
   updatedAt: string
 }
@@ -33,12 +37,18 @@ export interface ServicioDto {
 export interface CreateServicioInput {
   nombre: string
   descripcion?: string | null
+  maxEjecucionesGlobales?: number | null
+  tiempoMaximoMinutos?: number | null
 }
 
 export interface UpdateServicioInput {
   nombre?: string
   descripcion?: string | null
   activo?: boolean
+  maxEjecucionesGlobales?: number | null
+  quitarLimiteGlobal?: boolean
+  tiempoMaximoMinutos?: number | null
+  quitarTiempoMaximo?: boolean
 }
 
 export interface DespliegueDto {
@@ -161,3 +171,100 @@ export const updateCredencial = (id: string, input: UpdateCredencialInput) =>
   apiFetch<CredencialDto>(`/credenciales/${id}`, { method: 'PUT', body: JSON.stringify(input) })
 
 export const deleteCredencial = (id: string) => apiFetch<void>(`/credenciales/${id}`, { method: 'DELETE' })
+
+// ---------------------------------------------------------------- dispatch: which service of a machine goes first
+
+export type PoliticaDespacho = 'Prioridad' | 'Turnos'
+
+export interface ServicioOrdenDto {
+  servicioId: string
+  servicioNombre: string
+}
+
+/** A service the machine runs (it has a Despliegue there). */
+export interface ServicioDesplegadoDto extends ServicioOrdenDto {
+  despliegues: number
+}
+
+export interface DespachoEquipoDto {
+  equipoId: string
+  equipoNombre: string
+  maxEjecucionesSimultaneas: number
+  politica: PoliticaDespacho
+  orden: ServicioOrdenDto[]
+  serviciosDelEquipo: ServicioDesplegadoDto[]
+}
+
+export interface UpdateDespachoInput {
+  maxEjecucionesSimultaneas: number
+  politica: PoliticaDespacho
+  /** Service ids, first to last. */
+  orden: string[]
+}
+
+export interface PlantillaDespachoDto {
+  id: string
+  nombre: string
+  descripcion: string | null
+  maxEjecucionesSimultaneas: number
+  politica: PoliticaDespacho
+  orden: ServicioOrdenDto[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SavePlantillaDespachoInput extends UpdateDespachoInput {
+  nombre: string
+  descripcion: string | null
+}
+
+export interface EnEjecucionDto {
+  casoId: string
+  casoTitulo: string
+  servicioId: string
+  servicioNombre: string
+  desde: string
+  tiempoMaximoMinutos: number | null
+  limiteAt: string | null
+  /** Past its time: it no longer counts as running and its caso is about to be cancelled. */
+  vencido: boolean
+}
+
+export interface PendienteDto {
+  posicion: number
+  casoId: string
+  casoTitulo: string
+  servicioId: string
+  servicioNombre: string
+  esperaDesde: string
+  robotEncendido: boolean
+  robotConectado: boolean
+  robotOcupado: boolean
+  /** The service already has as many steps running as its global cap allows. */
+  servicioAlLimiteGlobal: boolean
+}
+
+export interface ColaEquipoDto {
+  maxEjecucionesSimultaneas: number
+  enUso: number
+  politica: PoliticaDespacho
+  enEjecucion: EnEjecucionDto[]
+  pendientes: PendienteDto[]
+}
+
+export const getDespachoEquipo = (equipoId: string) => apiFetch<DespachoEquipoDto>(`/equipos/${equipoId}/despacho`)
+
+export const updateDespachoEquipo = (equipoId: string, input: UpdateDespachoInput) =>
+  apiFetch<DespachoEquipoDto>(`/equipos/${equipoId}/despacho`, { method: 'PUT', body: JSON.stringify(input) })
+
+export const getColaEquipo = (equipoId: string) => apiFetch<ColaEquipoDto>(`/equipos/${equipoId}/despacho/cola`)
+
+export const listPlantillasDespacho = () => apiFetch<PlantillaDespachoDto[]>('/plantillas-despacho')
+
+export const createPlantillaDespacho = (input: SavePlantillaDespachoInput) =>
+  apiFetch<PlantillaDespachoDto>('/plantillas-despacho', { method: 'POST', body: JSON.stringify(input) })
+
+export const updatePlantillaDespacho = (id: string, input: SavePlantillaDespachoInput) =>
+  apiFetch<PlantillaDespachoDto>(`/plantillas-despacho/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+
+export const deletePlantillaDespacho = (id: string) => apiFetch<void>(`/plantillas-despacho/${id}`, { method: 'DELETE' })

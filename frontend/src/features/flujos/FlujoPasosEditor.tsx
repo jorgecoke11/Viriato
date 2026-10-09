@@ -144,14 +144,14 @@ export function FlujoPasosEditor({ flujoId, versionId, onClose }: { flujoId: str
                 <div className="flex items-center gap-2">
                   <span className="w-6 shrink-0 text-center text-xs font-medium text-gray-400">{index + 1}</span>
                   <input
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50"
+                    className="flex-1 field min-h-9 px-3 py-1.5 text-sm disabled:bg-gray-50"
                     placeholder="Nombre del paso"
                     value={paso.nombre}
                     disabled={!esBorrador}
                     onChange={(e) => updateRow(paso.key, { nombre: e.target.value })}
                   />
                   <select
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50"
+                    className="field min-h-9 px-3 py-1.5 text-sm disabled:bg-gray-50"
                     value={paso.tipoPaso}
                     disabled={!esBorrador}
                     onChange={(e) => updateRow(paso.key, { tipoPaso: e.target.value as TipoPaso })}
@@ -175,7 +175,7 @@ export function FlujoPasosEditor({ flujoId, versionId, onClose }: { flujoId: str
 
                 {paso.tipoPaso === 'Agente' && (
                   <select
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50"
+                    className="field min-h-9 px-3 py-1.5 text-sm disabled:bg-gray-50"
                     value={paso.agenteDefinicionId ?? ''}
                     disabled={!esBorrador}
                     onChange={(e) => updateRow(paso.key, { agenteDefinicionId: e.target.value || null })}
@@ -191,7 +191,7 @@ export function FlujoPasosEditor({ flujoId, versionId, onClose }: { flujoId: str
 
                 {paso.tipoPaso === 'Rpa' && (
                   <select
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50"
+                    className="field min-h-9 px-3 py-1.5 text-sm disabled:bg-gray-50"
                     value={paso.servicioId ?? ''}
                     disabled={!esBorrador}
                     onChange={(e) => updateRow(paso.key, { servicioId: e.target.value || null })}
@@ -206,7 +206,7 @@ export function FlujoPasosEditor({ flujoId, versionId, onClose }: { flujoId: str
                 )}
 
                 <textarea
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 font-mono text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50"
+                  className="field min-h-9 px-3 py-1.5 font-mono text-xs disabled:bg-gray-50"
                   rows={2}
                   placeholder={configuracionHint[paso.tipoPaso]}
                   value={paso.configuracionJson ?? ''}

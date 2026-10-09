@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Tabs } from '../../../components/ui/Tabs'
@@ -13,6 +13,7 @@ import { FlujoEstadosPanel } from '../FlujoEstadosPanel'
 import { FlujoParametrosPanel } from '../FlujoParametrosPanel'
 import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
 import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
+import { BackLink } from '../../../components/ui/BackLink'
 
 type Tab = 'versiones' | 'estados' | 'tipos' | 'parametros'
 
@@ -29,7 +30,7 @@ export function FlujoDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link to="/admin/flujos" className="text-sm text-gray-500 hover:text-gray-900">← Procesos</Link>
+      <BackLink to="/admin/flujos">Procesos</BackLink>
 
       <Card>
         <h1 className="text-xl font-semibold text-gray-900">{flujo.nombre}</h1>
@@ -144,7 +145,7 @@ function FlujoAlmacenamientoField({ flujo }: { flujo: flujosApi.FlujoDto }) {
       </p>
       <div className="flex items-center gap-2">
         <select
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          className="field"
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
         >

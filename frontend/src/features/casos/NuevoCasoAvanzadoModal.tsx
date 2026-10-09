@@ -128,7 +128,7 @@ export function NuevoCasoModal({
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
             placeholder="Expediente 2026-014…"
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="field"
           />
         </div>
 
@@ -137,7 +137,7 @@ export function NuevoCasoModal({
             <label htmlFor="tipoCaso-modal" className="text-sm font-medium text-gray-700">Tipo de caso</label>
             <select
               id="tipoCaso-modal"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={tipoCasoId}
               onChange={(e) => handleTipoChange(e.target.value)}
             >
@@ -154,7 +154,7 @@ export function NuevoCasoModal({
             <label htmlFor="pasoInicial-modal" className="text-sm font-medium text-gray-700">Servicio a lanzar primero</label>
             <select
               id="pasoInicial-modal"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={pasoInicialId}
               onChange={(e) => setPasoInicialId(e.target.value)}
               disabled={versionQuery.isLoading || serviciosQuery.isLoading}
@@ -175,7 +175,7 @@ export function NuevoCasoModal({
             <label htmlFor="estadoNegocioInicial-modal" className="text-sm font-medium text-gray-700">Estado de negocio inicial</label>
             <select
               id="estadoNegocioInicial-modal"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field"
               value={estadoNegocioInicialId}
               onChange={(e) => setEstadoNegocioInicialId(e.target.value)}
               disabled={estadosQuery.isLoading}

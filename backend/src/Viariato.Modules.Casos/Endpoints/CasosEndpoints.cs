@@ -56,9 +56,39 @@ internal static class CasosEndpoints
         return tieneAcceso ? null : ProblemResults.NotFound(http, "Caso no encontrado.");
     }
 
+    /// <summary>
+    /// Which Casos the dashboard counts: those still moving (an active estado) always, and of the finished ones only
+    /// those that finished inside the window — nothing given -> since the start of today (UTC); <paramref name="finalizados"/>
+    /// = "todos" -> no limit; <paramref name="desde"/>/<paramref name="hasta"/> -> that window over CompletedAt specifically,
+    /// never over CreatedAt (a Caso created last month and finished today belongs to today). The summary and the
+    /// drill-down lists both go through here, so what is listed is what was counted.
+    /// </summary>
+    private static IQueryable<Caso> ConVentanaDeFinalizados(
+        IQueryable<Caso> query, string? finalizados, DateTimeOffset? desde, DateTimeOffset? hasta)
+    {
+        // EstadosActivos.Contains(c.Estado) is repeated inline (rather than pulled into a local
+        // function) because EF Core can translate that exact shape into a SQL IN (...) clause — a
+        // call to a local function inside the query wouldn't be translatable at all.
+        if (desde is not null || hasta is not null)
+        {
+            return query.Where(c => EstadosActivos.Contains(c.Estado) || (c.CompletedAt != null
+                && (desde == null || c.CompletedAt >= desde)
+                && (hasta == null || c.CompletedAt <= hasta)));
+        }
+
+        if (finalizados == "todos")
+        {
+            return query.Where(c => EstadosActivos.Contains(c.Estado) || c.CompletedAt != null);
+        }
+
+        var hoyUtc = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero);
+        return query.Where(c => EstadosActivos.Contains(c.Estado) || (c.CompletedAt != null && c.CompletedAt >= hoyUtc));
+    }
+
     private static async Task<IResult> ListCasosAsync(
         string? estado, string? tipoCasoId, string? estadoNegocioCodigo, bool? finalizado, Guid? flujoId, string? search,
-        DateTimeOffset? desde, DateTimeOffset? hasta, int? page, int? pageSize, AppDbContext db, HttpContext http, CancellationToken ct)
+        DateTimeOffset? desde, DateTimeOffset? hasta, bool? ventana, string? finalizados, DateTimeOffset? completadoDesde,
+        DateTimeOffset? completadoHasta, int? page, int? pageSize, AppDbContext db, HttpContext http, CancellationToken ct)
     {
         var currentPage = page is null or < 1 ? 1 : page.Value;
         var currentPageSize = pageSize is null or < 1 or > 100 ? 20 : pageSize.Value;
@@ -108,6 +138,9 @@ internal static class CasosEndpoints
         if (desde is not null) query = query.Where(c => c.CreatedAt >= desde);
         if (hasta is not null) query = query.Where(c => c.CreatedAt <= hasta);
 
+        // The same window the dashboard counts with, so a drill-down lists exactly the Casos that were counted.
+        if (ventana == true) query = ConVentanaDeFinalizados(query, finalizados, completadoDesde, completadoHasta);
+
         query = query.OrderByDescending(c => c.CreatedAt);
 
         var total = await query.CountAsync(ct);
@@ -134,24 +167,7 @@ internal static class CasosEndpoints
         var query = db.Set<Caso>().AsNoTracking().Where(c => flujosAsignados.Contains(c.FlujoId));
         if (flujoId is not null) query = query.Where(c => c.FlujoId == flujoId);
 
-        // EstadosActivos.Contains(c.Estado) is repeated inline (rather than pulled into a local
-        // function) because EF Core can translate that exact shape into a SQL IN (...) clause — a
-        // call to a local function inside the query wouldn't be translatable at all.
-        if (desde is not null || hasta is not null)
-        {
-            query = query.Where(c => EstadosActivos.Contains(c.Estado) || (c.CompletedAt != null
-                && (desde == null || c.CompletedAt >= desde)
-                && (hasta == null || c.CompletedAt <= hasta)));
-        }
-        else if (finalizados == "todos")
-        {
-            query = query.Where(c => EstadosActivos.Contains(c.Estado) || c.CompletedAt != null);
-        }
-        else
-        {
-            var hoyUtc = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero);
-            query = query.Where(c => EstadosActivos.Contains(c.Estado) || (c.CompletedAt != null && c.CompletedAt >= hoyUtc));
-        }
+        query = ConVentanaDeFinalizados(query, finalizados, desde, hasta);
 
         var casosCrudos = await query
             .Select(c => new

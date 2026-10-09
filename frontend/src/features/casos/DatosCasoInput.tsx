@@ -115,7 +115,7 @@ export function DatosCasoInput({ esquemaJson, value, onChange, mostrarErrores }:
         )}
         <textarea
           rows={5}
-          className="rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          className="field font-mono text-xs"
           value={value}
           onChange={(e) => cambiarJson(e.target.value)}
           placeholder={'{\n  "cliente": "ACME Corp"\n}'}
@@ -150,7 +150,7 @@ export function DatosCasoInput({ esquemaJson, value, onChange, mostrarErrores }:
         <>
           <textarea
             rows={8}
-            className="rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className="field font-mono text-xs"
             value={value}
             onChange={(e) => cambiarJson(e.target.value)}
             spellCheck={false}

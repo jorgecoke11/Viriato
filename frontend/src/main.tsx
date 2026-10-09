@@ -7,6 +7,7 @@ import { AuthProvider } from './features/auth/AuthProvider'
 import './index.css'
 import { duration, ease } from './lib/motion/tokens'
 import { queryClient } from './lib/queryClient'
+import { ThemeProvider } from './lib/theme/ThemeProvider'
 import { ToastProvider } from './lib/toast/ToastProvider'
 import { router } from './routes/router'
 
@@ -15,13 +16,15 @@ createRoot(document.getElementById('root')!).render(
     {/* Sets the app-wide default transition and honors prefers-reduced-motion in one place —
         every motion.* component inherits this unless it specifies its own. */}
     <MotionConfig reducedMotion="user" transition={{ duration: duration.base, ease: ease.standard }}>
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <AuthProvider>
-            <RouterProvider router={router} />
-          </AuthProvider>
-        </ToastProvider>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <AuthProvider>
+              <RouterProvider router={router} />
+            </AuthProvider>
+          </ToastProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
     </MotionConfig>
   </StrictMode>,
 )

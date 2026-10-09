@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Viariato.Infrastructure;
 using Viariato.Modules.Casos.Contracts;
+using Viariato.Modules.Casos.Despacho;
 using Viariato.Modules.Casos.Orchestration;
 using Viariato.Modules.Casos.Orchestration.Ejecutores;
 using Viariato.Modules.Casos.Persistence;
@@ -21,6 +22,11 @@ public static class DependencyInjection
         services.AddScoped<IDocumentStorageResolver, DocumentStorageResolver>();
 
         services.AddScoped<IEjecucionOrchestrator, EjecucionOrchestrator>();
+
+        services.Configure<DespachoOptions>(configuration.GetSection(DespachoOptions.SectionName));
+        services.AddScoped<ControlDePasos>();
+        services.AddHostedService<VigilanteDePasos>();
+
         services.AddKeyedScoped<IPasoEjecutor, RpaPasoEjecutor>(TipoPaso.Rpa);
         services.AddKeyedScoped<IPasoEjecutor, AgentePasoEjecutor>(TipoPaso.Agente);
         services.AddKeyedScoped<IPasoEjecutor, ApiPasoEjecutor>(TipoPaso.Api);

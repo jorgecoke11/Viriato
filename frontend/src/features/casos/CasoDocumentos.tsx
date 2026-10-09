@@ -137,7 +137,7 @@ function DocumentoCard({ documento, tipos, casoId }: { documento: DocumentoDto; 
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-500">Tipo</label>
             <select
-              className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="field min-h-9 px-2 py-1.5 text-sm"
               value={tipoId}
               onChange={(e) => setTipoId(e.target.value)}
             >
@@ -154,7 +154,7 @@ function DocumentoCard({ documento, tipos, casoId }: { documento: DocumentoDto; 
             <input
               type="number"
               min={1}
-              className="w-20 rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="w-20 field min-h-9 px-2 py-1.5 text-sm"
               value={desde}
               onChange={(e) => setDesde(e.target.value)}
             />
@@ -164,7 +164,7 @@ function DocumentoCard({ documento, tipos, casoId }: { documento: DocumentoDto; 
             <input
               type="number"
               min={1}
-              className="w-20 rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              className="w-20 field min-h-9 px-2 py-1.5 text-sm"
               value={hasta}
               onChange={(e) => setHasta(e.target.value)}
             />

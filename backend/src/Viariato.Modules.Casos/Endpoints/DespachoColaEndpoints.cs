@@ -1,0 +1,120 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Viariato.Infrastructure;
+using Viariato.Modules.Casos.Despacho;
+using Viariato.Modules.Casos.Domain;
+using Viariato.Modules.Flujos.Domain;
+using Viariato.Modules.RpaFleet.Domain;
+using Viariato.Shared.Authorization;
+using Viariato.Shared.Http;
+
+namespace Viariato.Modules.Casos.Endpoints;
+
+/// <param name="Desde">When the robot claimed it.</param>
+/// <param name="LimiteAt">When it must be finished by (its service's maximum time from <paramref name="Desde"/>), or
+/// null if the service has no maximum time.</param>
+/// <param name="Vencido">It is past that time: it no longer counts as running and the sweep is about to cancel its Caso.</param>
+public sealed record EnEjecucionDto(
+    Guid CasoId,
+    string CasoTitulo,
+    Guid ServicioId,
+    string ServicioNombre,
+    DateTimeOffset Desde,
+    int? TiempoMaximoMinutos,
+    DateTimeOffset? LimiteAt,
+    bool Vencido);
+
+/// <param name="ServicioAlLimiteGlobal">The service has as many steps running as its global cap allows, so this one waits.</param>
+public sealed record PendienteDto(
+    int Posicion,
+    Guid CasoId,
+    string CasoTitulo,
+    Guid ServicioId,
+    string ServicioNombre,
+    DateTimeOffset EsperaDesde,
+    bool RobotEncendido,
+    bool RobotConectado,
+    bool RobotOcupado,
+    bool ServicioAlLimiteGlobal);
+
+/// <param name="EnUso">Steps running on the machine right now, out of <paramref name="MaxEjecucionesSimultaneas"/>.</param>
+public sealed record ColaEquipoDto(
+    int MaxEjecucionesSimultaneas,
+    int EnUso,
+    string Politica,
+    IReadOnlyList<EnEjecucionDto> EnEjecucion,
+    IReadOnlyList<PendienteDto> Pendientes);
+
+/// <summary>
+/// What a machine is doing and what is waiting for it, in the order it will be served: the answer to "who goes
+/// next, and why is this one not moving". Built by the same code that hands out the steps, so it cannot disagree
+/// with what actually happens.
+/// </summary>
+internal static class DespachoColaEndpoints
+{
+    private const int PendientesPorRobot = 25;
+
+    public static void MapDespachoColaEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGroup("/api/v1/equipos/{equipoId:guid}/despacho")
+            .RequireAuthorization(Permissions.RpaManage)
+            .MapGet("/cola", GetColaAsync);
+    }
+
+    private static async Task<IResult> GetColaAsync(
+        Guid equipoId, AppDbContext db, IOptions<DespachoOptions> opciones, HttpContext http, CancellationToken ct)
+    {
+        if (!await db.Set<Equipo>().AnyAsync(e => e.Id == equipoId, ct)) return ProblemResults.NotFound(http, "Equipo no encontrado.");
+
+        var ahora = DateTimeOffset.UtcNow;
+        var estado = await DespachoEquipo.CargarAsync(db, equipoId, despliegueQueConsulta: null, ahora, opciones.Value, ct);
+        var servicios = await db.Set<Servicio>().AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Nombre, ct);
+        string NombreServicio(Guid id) => servicios.GetValueOrDefault(id, string.Empty);
+
+        // Everything claimed and unfinished — including steps past their time that the sweep has not cancelled yet,
+        // shown as overdue (they are exactly what someone looking at this screen wants to see).
+        var enEjecucion = (await PasoEnMarcha.CargarAsync(db, equipoId, ct))
+            .Select(p => new EnEjecucionDto(
+                p.CasoId, p.CasoTitulo, p.ServicioId, NombreServicio(p.ServicioId), p.ReclamadoEn, p.TiempoMaximoMinutos, p.LimiteAt, p.Vencido(ahora)))
+            .ToList();
+
+        var esperando = new List<(PendienteDto Base, Guid DetalleId, int Rango)>();
+        foreach (var robot in estado.Robots.Where(r => r.Despliegue.Encendido))
+        {
+            var d = robot.Despliegue;
+            var filas = await (
+                from detalle in db.Set<RpaEjecucionDetalle>().AsNoTracking()
+                join paso in db.Set<EjecucionPaso>().AsNoTracking() on detalle.EjecucionPasoId equals paso.Id
+                join caso in db.Set<Caso>().AsNoTracking() on paso.CasoId equals caso.Id
+                join pasoDef in db.Set<FlujoPasoDef>().AsNoTracking() on paso.FlujoPasoDefId equals pasoDef.Id
+                join version in db.Set<FlujoVersion>().AsNoTracking() on pasoDef.FlujoVersionId equals version.Id
+                where detalle.DespliegueId == null && paso.Estado == EjecucionPasoEstado.EnProgreso
+                    && pasoDef.ServicioId == d.ServicioId && version.FlujoId == d.FlujoId
+                orderby detalle.Id
+                select new { DetalleId = detalle.Id, CasoId = caso.Id, caso.Titulo, paso.StartedAt, paso.CreatedAt }
+            ).Take(PendientesPorRobot).ToListAsync(ct);
+
+            var rango = Despachador.Rango(d.ServicioId, estado.Orden, estado.Equipo.Politica, estado.UltimoServicioId);
+            var alLimite = estado.ServiciosAlLimite.Contains(d.ServicioId);
+            foreach (var fila in filas)
+            {
+                esperando.Add((
+                    new PendienteDto(
+                        0, fila.CasoId, fila.Titulo, d.ServicioId, NombreServicio(d.ServicioId),
+                        fila.StartedAt ?? fila.CreatedAt, d.Encendido, robot.Conectado, robot.Ocupado, alLimite),
+                    fila.DetalleId, rango));
+            }
+        }
+
+        var pendientes = esperando
+            .OrderBy(e => e.Rango).ThenBy(e => e.Base.EsperaDesde).ThenBy(e => e.DetalleId.ToString(), StringComparer.Ordinal)
+            .Select((e, i) => e.Base with { Posicion = i + 1 })
+            .ToList();
+
+        return Results.Ok(new ColaEquipoDto(
+            estado.Equipo.MaxEjecucionesSimultaneas, estado.EnEjecucion, estado.Equipo.Politica.ToString(), enEjecucion, pendientes));
+    }
+}

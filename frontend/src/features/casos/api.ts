@@ -225,6 +225,12 @@ export interface ListCasosFilters {
   search?: string
   desde?: string
   hasta?: string
+  /** List the Casos the dashboard counts: the ones still moving plus the finished ones inside this window
+   * (`finalizados`/`completadoDesde`/`completadoHasta`, the same meaning as in the summary). */
+  ventana?: boolean
+  finalizados?: 'todos'
+  completadoDesde?: string
+  completadoHasta?: string
 }
 
 export interface ResumenFilters {
@@ -253,6 +259,7 @@ export const listCasos = (filters: ListCasosFilters & { page?: number; pageSize?
     `/casos${buildQuery({
       ...filters,
       finalizado: filters.finalizado === undefined ? undefined : String(filters.finalizado),
+      ventana: filters.ventana ? 'true' : undefined,
       page: filters.page?.toString(),
       pageSize: filters.pageSize?.toString(),
     })}`,

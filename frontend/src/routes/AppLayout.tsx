@@ -19,7 +19,7 @@ export function AppLayout() {
 
   if (status !== 'authenticated') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-page">
         <Outlet />
       </div>
     )
@@ -34,9 +34,11 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-page">
       <motion.aside
-        className="hidden shrink-0 overflow-hidden border-r border-blue-100 bg-gradient-to-b from-blue-50/40 via-white to-white lg:block"
+        className="hidden shrink-0 overflow-hidden border-r border-side-border bg-side lg:block"
+        // initial={false}: it mounts at its real width instead of growing into it (a visible jump after signing in).
+        initial={false}
         animate={{ width: collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH }}
         transition={spring.gentle}
       >
@@ -49,7 +51,7 @@ export function AppLayout() {
         {mobileNavOpen && (
           <div className="fixed inset-0 z-40 lg:hidden">
             <motion.div
-              className="absolute inset-0 bg-black/30"
+              className="absolute inset-0 bg-[var(--c-overlay)] backdrop-blur-[2px]"
               variants={fadeVariants}
               initial="initial"
               animate="animate"
@@ -57,7 +59,7 @@ export function AppLayout() {
               onClick={() => setMobileNavOpen(false)}
             />
             <motion.div
-              className="absolute inset-y-0 left-0 w-64 border-r border-blue-100 bg-gradient-to-b from-blue-50/40 via-white to-white shadow-xl"
+              className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-side-border bg-side shadow-pop"
               variants={slideInRightVariants}
               initial="initial"
               animate="animate"
@@ -67,34 +69,36 @@ export function AppLayout() {
                 <button
                   type="button"
                   aria-label="Cerrar menú"
-                  className="rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-700"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-side-text hover:bg-side-hover hover:text-side-strong"
                   onClick={() => setMobileNavOpen(false)}
                 >
                   <X size={18} />
                 </button>
               </div>
               {/* No collapse toggle here — the mobile drawer is a temporary overlay, never an icon rail. */}
-              <SidebarContent onNavigate={() => setMobileNavOpen(false)} />
+              <div className="min-h-0 flex-1">
+                <SidebarContent onNavigate={() => setMobileNavOpen(false)} />
+              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-gray-200 bg-surface/90 px-3 py-2 backdrop-blur lg:hidden">
           <button
             type="button"
             aria-label="Abrir menú"
-            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
             onClick={() => setMobileNavOpen(true)}
           >
             <Menu size={20} />
           </button>
-          <span className="text-sm font-semibold text-gray-900">Viariato</span>
+          <span className="text-sm font-semibold tracking-tight text-gray-900">Viariato</span>
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-7xl">
             {/* Deliberately no AnimatePresence/exit here: the outgoing page can just unmount
                 instantly (React's default) — only the incoming one needs to animate in. Keying by
                 pathname gives every route a fresh mount, so motion.div's own initial->animate

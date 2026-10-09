@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Inbox, Plus, Search } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { ApiError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { EmptyState } from '../ui/EmptyState'
 import { Input } from '../ui/Input'
+import { PageHeader } from '../ui/PageHeader'
+import { SkeletonRows } from '../ui/Skeleton'
 import { CrudFormModal } from './CrudFormModal'
 import { CrudTable } from './CrudTable'
 import type { CrudApi, CrudColumn, CrudFilterConfig, CrudFormConfig } from './types'
@@ -131,35 +135,47 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{title}</h1>
-        <div className="flex items-center gap-2">
-          {headerExtra}
-          {canCreate && <Button onClick={openCreate}>Nuevo</Button>}
-        </div>
-      </div>
+      <PageHeader
+        title={title}
+        actions={
+          <>
+            {headerExtra}
+            {canCreate && (
+              <Button onClick={openCreate}>
+                <Plus size={16} />
+                Nuevo
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {filters.mode === 'general' && (
-        <Input
-          label="Buscar"
-          name="search"
-          placeholder={filters.placeholder}
-          value={filterValues.search ?? ''}
-          onChange={(e) => setFilter('search', e.target.value)}
-        />
+        <div className="relative max-w-md">
+          <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+          <input
+            type="search"
+            name="search"
+            aria-label="Buscar"
+            placeholder={filters.placeholder ?? 'Buscar…'}
+            className="field pl-9"
+            value={filterValues.search ?? ''}
+            onChange={(e) => setFilter('search', e.target.value)}
+          />
+        </div>
       )}
 
       {filters.mode === 'fields' && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {filters.fields.map((field) =>
             field.type === 'select' ? (
-              <div key={field.key} className="flex flex-col gap-1">
+              <div key={field.key} className="flex flex-col gap-1.5">
                 <label htmlFor={`filter-${field.key}`} className="text-sm font-medium text-gray-700">
                   {field.label}
                 </label>
                 <select
                   id={`filter-${field.key}`}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="field"
                   value={filterValues[field.key] ?? ''}
                   onChange={(e) => setFilter(field.key, e.target.value)}
                 >
@@ -195,16 +211,36 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
           canEditRow={canEditRow}
           canDeleteRow={canDeleteRow}
         />
-        {query.isLoading && <p className="p-4 text-sm text-gray-500">Cargando…</p>}
+        {query.isLoading && <SkeletonRows />}
         {query.isError && (
-          <div className="flex items-center justify-between p-4 text-sm">
+          <div className="flex items-center justify-between gap-3 p-4 text-sm">
             <span className="text-red-600">No se han podido cargar los datos.</span>
-            <button className="font-medium text-gray-700 hover:text-gray-900" onClick={() => query.refetch()}>
+            <Button variant="secondary" size="sm" onClick={() => query.refetch()}>
               Reintentar
-            </button>
+            </Button>
           </div>
         )}
-        {query.isSuccess && query.data.items.length === 0 && <p className="p-4 text-sm text-gray-500">Sin resultados.</p>}
+        {query.isSuccess && query.data.items.length === 0 && (
+          <EmptyState
+            icon={<Inbox size={22} />}
+            title="Sin resultados"
+            description={
+              Object.values(filterValues).some(Boolean)
+                ? 'Ningún elemento coincide con la búsqueda. Prueba con otros términos.'
+                : canCreate
+                  ? 'Todavía no hay nada aquí.'
+                  : undefined
+            }
+            action={
+              canCreate && !Object.values(filterValues).some(Boolean) ? (
+                <Button variant="secondary" size="sm" onClick={openCreate}>
+                  <Plus size={15} />
+                  Nuevo
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
       </Card>
 
       {form && (

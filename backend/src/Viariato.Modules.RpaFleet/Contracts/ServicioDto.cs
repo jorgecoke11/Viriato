@@ -5,9 +5,23 @@ public sealed record ServicioDto(
     string Nombre,
     string? Descripcion,
     bool Activo,
+    int? MaxEjecucionesGlobales,
+    int? TiempoMaximoMinutos,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
-public sealed record CreateServicioRequest(string Nombre, string? Descripcion);
+public sealed record CreateServicioRequest(
+    string Nombre, string? Descripcion, int? MaxEjecucionesGlobales = null, int? TiempoMaximoMinutos = null);
 
-public sealed record UpdateServicioRequest(string? Nombre, string? Descripcion, bool? Activo);
+/// <param name="MaxEjecucionesGlobales">Sets the global cap (null leaves it as it is).</param>
+/// <param name="QuitarLimiteGlobal">True removes the cap.</param>
+/// <param name="TiempoMaximoMinutos">Sets the longest a step may be in execution (null leaves it as it is).</param>
+/// <param name="QuitarTiempoMaximo">True removes the time limit.</param>
+public sealed record UpdateServicioRequest(
+    string? Nombre,
+    string? Descripcion,
+    bool? Activo,
+    int? MaxEjecucionesGlobales = null,
+    bool QuitarLimiteGlobal = false,
+    int? TiempoMaximoMinutos = null,
+    bool QuitarTiempoMaximo = false);

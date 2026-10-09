@@ -100,7 +100,7 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{caso.titulo}</h1>
+            <h1 className="page-title">{caso.titulo}</h1>
             <p className="text-sm text-gray-500">{flujoNombre ?? caso.flujoId}</p>
           </div>
           <div className="flex items-center gap-2">

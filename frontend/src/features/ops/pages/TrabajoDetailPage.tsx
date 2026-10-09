@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Card } from '../../../components/ui/Card'
 import * as opsApi from '../api'
 import { StatusBadge } from '../StatusBadge'
+import { BackLink } from '../../../components/ui/BackLink'
 
 const levelStyles: Record<string, string> = {
   Info: 'text-gray-700',
@@ -35,9 +36,7 @@ export function TrabajoDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link to="/ops/trabajos" className="text-sm text-gray-500 hover:text-gray-900">
-        ← Trabajos
-      </Link>
+      <BackLink to="/ops/trabajos">Trabajos</BackLink>
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -78,17 +77,17 @@ export function TrabajoDetailPage() {
         <Card className="overflow-x-auto p-0">
           <h2 className="px-4 pt-4 text-sm font-medium text-gray-700">Trabajos hijos ({trabajo.children.length})</h2>
           <table className="mt-2 w-full min-w-[560px] text-left text-sm">
-            <thead className="border-b border-gray-200 text-gray-500">
+            <thead className="border-b border-gray-200 bg-gray-50/70">
               <tr>
-                <th className="px-4 py-3 font-medium">Sujeto</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium">Resumen</th>
-                <th className="px-4 py-3 font-medium" />
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Sujeto</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Estado</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Resumen</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase" />
               </tr>
             </thead>
             <tbody>
               {trabajo.children.map((child) => (
-                <tr key={child.id} className="border-b border-gray-100 last:border-0">
+                <tr key={child.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/70">
                   <td className="px-4 py-3 text-gray-600">{child.subjectKey ?? '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={child.status} /></td>
                   <td className="px-4 py-3 text-gray-600">{child.summary ?? '—'}</td>
