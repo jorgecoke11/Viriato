@@ -13,6 +13,7 @@ public static class FlujosModuleEndpoints
         endpoints.MapParametrosEditablesEndpoints();
         endpoints.MapFlujoTiposCasoEndpoints();
         endpoints.MapCreadoresDeCasoEndpoints();
+        endpoints.MapLanzadoresDeCasoEndpoints();
         endpoints.MapAgentesEndpoints();
         endpoints.MapAsignacionesEndpoints();
         endpoints.MapStorageConfigsEndpoints();

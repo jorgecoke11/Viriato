@@ -71,7 +71,7 @@ export function NuevoCasoAvanzadoPage() {
         pasoInicialId: pasoInicialId || null,
       }),
     onSuccess: (caso) => {
-      showToast('success', 'Caso creado correctamente.')
+      showToast('success', `Se ha creado el caso «${caso.titulo}» correctamente.`)
       navigate(`/casos/${caso.id}`)
     },
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),

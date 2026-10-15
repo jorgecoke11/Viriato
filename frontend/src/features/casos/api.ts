@@ -383,6 +383,12 @@ export const updateClasificacion = (
 export const deleteClasificacion = (documentoId: string, id: string) =>
   apiFetch<void>(`/documentos/${documentoId}/clasificaciones/${id}`, { method: 'DELETE' })
 
+export type DecisionDeRevision = 'Aprobada' | 'Rechazada'
+
+/** Approve or reject a step that waits for a human review. */
+export const resolverRevision = (ejecucionPasoId: string, decision: DecisionDeRevision, comentario?: string) =>
+  apiFetch<void>(`/revisiones/${ejecucionPasoId}/resolver`, { method: 'POST', body: JSON.stringify({ decision, comentario }) })
+
 export const pausarCaso = (id: string) => apiFetch<void>(`/casos/${id}/pausar`, { method: 'POST' })
 
 export const reanudarCaso = (id: string) => apiFetch<void>(`/casos/${id}/reanudar`, { method: 'POST' })

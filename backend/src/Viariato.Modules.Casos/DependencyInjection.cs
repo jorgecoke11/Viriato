@@ -28,6 +28,10 @@ public static class DependencyInjection
         services.AddScoped<ControlDePasos>();
         services.AddHostedService<VigilanteDePasos>();
 
+        // Launchers: creators that fire by themselves on a crontab (their configuration is in Flujos, firing them needs the orchestrator).
+        services.AddScoped<Lanzadores.AbridorDeCasos>();
+        services.AddHostedService<Lanzadores.VigilanteDeLanzadores>();
+
         services.AddKeyedScoped<IPasoEjecutor, RpaPasoEjecutor>(TipoPaso.Rpa);
         services.AddKeyedScoped<IPasoEjecutor, AgentePasoEjecutor>(TipoPaso.Agente);
         services.AddKeyedScoped<IPasoEjecutor, ApiPasoEjecutor>(TipoPaso.Api);

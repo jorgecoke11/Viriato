@@ -1,14 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Button } from '../../../components/ui/Button'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { ListaDeDatos } from '../../../components/ui/ListaDeDatos'
 import { MultiSelect } from '../../../components/ui/MultiSelect'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SelectorDeRango } from '../../../components/ui/SelectorDeRango'
 import type { ConsultaDeLista } from '../../../lib/lista'
-import { esRangoElegido, finDelDia, inicioDelDia, rangoAParam, rangoDeParam, resolverRango, type RangoElegido } from '../../../lib/rangoDeFechas'
+import { esRangoElegido, instanteDesde, instanteHasta, rangoAParam, rangoDeParam, type RangoElegido } from '../../../lib/rangoDeFechas'
 import { useListaPaginada } from '../../../lib/useListaPaginada'
 import { useAuth } from '../../auth/useAuth'
 import { usePreferencia } from '../../auth/usePreferencia'
@@ -53,7 +52,9 @@ export function CasosListPage() {
   // When the Casos were created. The link the person came from can say (`?fechas=`); otherwise it is what they chose last time.
   const [recordadas, setRecordadas] = usePreferencia<RangoElegido>('casos:lista:fechas', FECHAS_POR_DEFECTO, esRangoElegido)
   const fechas = rangoDeParam(searchParams.get('fechas')) ?? recordadas
-  const { desde, hasta } = resolverRango(fechas)
+  // The instants the chosen dates (and times of day, if any) stand for; they are what the list is asked for.
+  const desde = instanteDesde(fechas)
+  const hasta = instanteHasta(fechas)
 
   const flujosQuery = useQuery({ queryKey: ['flujos-asignados'], queryFn: casosApi.listFlujosAsignados })
   const procesos = useMemo(() => [...(flujosQuery.data ?? [])].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')), [flujosQuery.data])
@@ -76,8 +77,8 @@ export function CasosListPage() {
         flujoIds: todosElegidos ? undefined : [...elegidos].join(','),
         estado: filtros.estado || undefined,
         search: busqueda || undefined,
-        desde: desde ? inicioDelDia(desde) : undefined,
-        hasta: hasta ? finDelDia(hasta) : undefined,
+        desde,
+        hasta,
         page: pagina,
         pageSize: tamano,
       })
@@ -125,7 +126,6 @@ export function CasosListPage() {
             ? 'Busca, filtra y marca casos para actuar sobre varios a la vez: cancelarlos, reprocesarlos o descargar sus documentos.'
             : 'Busca y filtra los casos de tus procesos.'
         }
-        actions={can('casos.crear') ? <Button onClick={() => navigate('/casos/nuevo')}>Nuevo caso</Button> : undefined}
       />
 
       {flujosQuery.isLoading ? (
@@ -161,6 +161,7 @@ export function CasosListPage() {
                 alCambiar={cambiarFechas}
                 textoDeTodos="Todas las fechas"
                 encabezado="Se filtran los casos por la fecha en que se crearon."
+                conHora
               />
             }
             acciones={acciones}

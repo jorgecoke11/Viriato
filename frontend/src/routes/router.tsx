@@ -17,6 +17,7 @@ import { CompaniesPage } from '../features/markets/pages/CompaniesPage'
 import { CompanyDetailPage } from '../features/markets/pages/CompanyDetailPage'
 import { TrabajoDetailPage } from '../features/ops/pages/TrabajoDetailPage'
 import { TrabajosPage } from '../features/ops/pages/TrabajosPage'
+import { CarteraPage } from '../features/cartera/CarteraPage'
 import { ProfilePage } from '../features/profile/pages/ProfilePage'
 import { CredencialesPage } from '../features/rpa/pages/CredencialesPage'
 import { DespliguesPage } from '../features/rpa/pages/DespliguesPage'
@@ -71,6 +72,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PermissionsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'cartera',
+        element: (
+          <ProtectedRoute>
+            <CarteraPage />
           </ProtectedRoute>
         ),
       },

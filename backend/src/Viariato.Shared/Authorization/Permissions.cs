@@ -41,6 +41,12 @@ public static class Permissions
     /// <summary>Download the documents of many cases at once, as a zip.</summary>
     public const string CasosDescargar = "casos.descargar";
 
+    // ---- the simulated portfolio of the trading robots
+    /// <summary>See the simulated portfolio: cash, positions and movements.</summary>
+    public const string CarteraRead = "cartera.read";
+    /// <summary>Apply or discard the changes the trading robots propose to the weights of their rules. Not for the <c>User</c> role: it changes how the robots decide.</summary>
+    public const string CarteraGestionar = "cartera.gestionar";
+
     // ---- robots (configuration)
     public const string RpaManage = "rpa.manage";
     /// <summary>Configure how each machine decides what goes first, its templates, and see its queue.</summary>
@@ -54,6 +60,7 @@ public static class Permissions
         MarketsManage,
         FlujosRead, FlujosManage, FlujosCreadores, FlujosParametros,
         CasosRead, CasosManage, CasosReview, CasosCrear, CasosCancelar, CasosPrioridad, CasosMasivas, CasosDescargar,
+        CarteraRead, CarteraGestionar,
         RpaManage, RpaDespacho, RpaCredenciales,
     ];
 
@@ -61,5 +68,5 @@ public static class Permissions
     /// create them, act on them, cancel and reprioritise them, use the bulk actions, change the parameters opened to them — and
     /// nothing to configure the platform. An administrator can change it afterwards like any other role.</summary>
     public static IReadOnlyList<string> ParaElRolUser { get; } =
-        [CasosRead, CasosManage, CasosReview, CasosCrear, CasosCancelar, CasosPrioridad, CasosMasivas, CasosDescargar, FlujosParametros];
+        [CasosRead, CasosManage, CasosReview, CasosCrear, CasosCancelar, CasosPrioridad, CasosMasivas, CasosDescargar, FlujosParametros, CarteraRead];
 }

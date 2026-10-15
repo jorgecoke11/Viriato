@@ -24,7 +24,7 @@ export function BarraDeProgreso({
       >
         <span className="block h-full rounded-full bg-indigo-500 transition-[width] duration-500" style={{ width: `${valor}%` }} />
       </span>
-      {mostrarCifra && <span className="num w-9 shrink-0 text-right font-mono text-xs font-medium text-gray-700">{valor} %</span>}
+      {mostrarCifra && <span className="num w-9 shrink-0 text-right text-xs font-medium text-gray-700">{valor} %</span>}
     </span>
   )
 }

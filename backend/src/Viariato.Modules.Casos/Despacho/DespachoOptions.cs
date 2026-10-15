@@ -17,5 +17,8 @@ public sealed class DespachoOptions
     /// past its time as running.</summary>
     public int BarridoSegundos { get; set; } = 15;
 
+    /// <summary>How often the launchers (the crontab of the processes) look at the clock. A moment is fired at most this many seconds late.</summary>
+    public int LanzadoresSegundos { get; set; } = 30;
+
     public TimeSpan VentanaConexion => TimeSpan.FromSeconds(Math.Max(1, VentanaConexionSegundos));
 }

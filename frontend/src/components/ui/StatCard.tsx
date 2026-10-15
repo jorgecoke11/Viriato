@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { ContadorAnimado } from './ContadorAnimado'
 
 type Tone = 'neutral' | 'brand' | 'info' | 'success' | 'warning' | 'danger'
 
@@ -30,7 +31,9 @@ export function StatCard({
   to?: string
 }) {
   const caja = 'flex items-center gap-4 rounded-xl border border-gray-200 bg-surface p-4 shadow-card'
-  const Contenedor = ({ children }: { children: ReactNode }) =>
+  // A function and not a component declared here: a component made on every render is a new type each time, which remounts its content
+  // (and would restart the counter below every time the page refreshes its data).
+  const envolver = (children: ReactNode) =>
     to ? (
       <Link to={to} className={`${caja} transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-indigo-500`}>
         {children}
@@ -39,15 +42,15 @@ export function StatCard({
       <div className={caja}>{children}</div>
     )
 
-  return (
-    <Contenedor>
+  return envolver(
+    <>
       {/* Hidden on a phone: two cards per row leave the text no room otherwise. */}
       {icon && <span className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg sm:flex ${tones[tone]}`}>{icon}</span>}
       <div className="min-w-0">
         <p className="truncate text-xs font-medium tracking-wide text-gray-500 uppercase">{label}</p>
-        <p className="num font-mono text-2xl leading-8 font-medium text-gray-900">{value}</p>
+        <p className="num text-2xl leading-8 font-semibold text-gray-900">{typeof value === 'number' ? <ContadorAnimado valor={value} /> : value}</p>
         {hint && <p className="truncate text-xs text-gray-500">{hint}</p>}
       </div>
-    </Contenedor>
+    </>,
   )
 }

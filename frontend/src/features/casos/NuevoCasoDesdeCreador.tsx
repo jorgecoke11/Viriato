@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -23,6 +23,7 @@ export function NuevoCasoDesdeCreador({
   alCancelar?: () => void
 }) {
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
   const [titulo, setTitulo] = useState('')
   const [datosJson, setDatosJson] = useState('')
   const [datosErrores, setDatosErrores] = useState<string[]>([])
@@ -31,7 +32,8 @@ export function NuevoCasoDesdeCreador({
   const crear = useMutation({
     mutationFn: () => casosApi.crearCasoDesdeCreador(creador.id, { titulo: titulo.trim() || null, datosJson: datosJson.trim() || null }),
     onSuccess: (caso) => {
-      showToast('success', `Caso «${caso.titulo}» creado.`)
+      showToast('success', `Se ha creado el caso «${caso.titulo}» correctamente.`)
+      for (const clave of ['casos', 'casos-resumen', 'cola-equipo']) void queryClient.invalidateQueries({ queryKey: [clave] })
       alCrear(caso)
     },
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),

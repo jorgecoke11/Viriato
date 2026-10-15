@@ -5,6 +5,9 @@
 
 export type Dia = string
 
+/** A time of day on the person's clock, written `HH:mm`. */
+export type Hora = string
+
 /** A way of naming a range that stays true as the days go by ("the last 7 days" is not a pair of dates fixed today). */
 export type AtajoDeFecha = 'hoy' | 'ayer' | '7d' | '30d' | 'mes' | 'mesPasado'
 
@@ -12,7 +15,8 @@ export type RangoElegido =
   /** No limit at all. */
   | { tipo: 'todos' }
   | { tipo: 'atajo'; atajo: AtajoDeFecha }
-  | { tipo: 'rango'; desde?: Dia; hasta?: Dia }
+  /** `horaDesde` / `horaHasta` narrow the first and last day to a time of day; without them a day is the whole day (24 hours). */
+  | { tipo: 'rango'; desde?: Dia; hasta?: Dia; horaDesde?: Hora; horaHasta?: Hora }
 
 export const TODOS_LOS_ATAJOS: readonly AtajoDeFecha[] = ['hoy', 'ayer', '7d', '30d', 'mes', 'mesPasado']
 
@@ -51,6 +55,10 @@ export const compararDias = (a: Dia, b: Dia): number => (a < b ? -1 : a > b ? 1 
 /** The two days in order, whichever way they were given. */
 export function ordenarDias(a: Dia, b: Dia): { desde: Dia; hasta: Dia } {
   return compararDias(a, b) <= 0 ? { desde: a, hasta: b } : { desde: b, hasta: a }
+}
+
+export function esHora(valor: unknown): valor is Hora {
+  return typeof valor === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(valor)
 }
 
 export function esDia(valor: unknown): valor is Dia {
@@ -94,7 +102,14 @@ export function esRangoElegido(valor: unknown): valor is RangoElegido {
   const v = valor as Record<string, unknown>
   if (v.tipo === 'todos') return true
   if (v.tipo === 'atajo') return typeof v.atajo === 'string' && (TODOS_LOS_ATAJOS as readonly string[]).includes(v.atajo)
-  if (v.tipo === 'rango') return (v.desde === undefined || esDia(v.desde)) && (v.hasta === undefined || esDia(v.hasta))
+  if (v.tipo === 'rango') {
+    return (
+      (v.desde === undefined || esDia(v.desde)) &&
+      (v.hasta === undefined || esDia(v.hasta)) &&
+      (v.horaDesde === undefined || (esHora(v.horaDesde) && v.desde !== undefined)) &&
+      (v.horaHasta === undefined || (esHora(v.horaHasta) && v.hasta !== undefined))
+    )
+  }
   return false
 }
 
@@ -104,13 +119,28 @@ export const inicioDelDia = (dia: Dia): string => new Date(`${dia}T00:00:00`).to
 /** The last instant of the given local day: a range "to the 7th" includes everything that happened on the 7th. */
 export const finDelDia = (dia: Dia): string => new Date(`${dia}T23:59:59.999`).toISOString()
 
+/** The instant a choice starts at: the start of its first day, or the time of day picked on it. Undefined if it has no lower limit. */
+export function instanteDesde(rango: RangoElegido, ahora: Date = new Date()): string | undefined {
+  const { desde } = resolverRango(rango, ahora)
+  if (!desde) return undefined
+  return rango.tipo === 'rango' && rango.horaDesde ? new Date(`${desde}T${rango.horaDesde}:00`).toISOString() : inicioDelDia(desde)
+}
+
+/** The instant a choice ends at: the last instant of its last day, or of the minute picked on it. Undefined if it has no upper limit. */
+export function instanteHasta(rango: RangoElegido, ahora: Date = new Date()): string | undefined {
+  const { hasta } = resolverRango(rango, ahora)
+  if (!hasta) return undefined
+  return rango.tipo === 'rango' && rango.horaHasta ? new Date(`${hasta}T${rango.horaHasta}:59.999`).toISOString() : finDelDia(hasta)
+}
+
 // -------------------------------------------------------------------------------------------------- in a URL
 
 /** A choice as the text of a URL parameter: `todas`, a shortcut (`7d`), or `2026-10-01_2026-10-08` ("_" leaves an end open). */
 export function rangoAParam(rango: RangoElegido): string {
   if (rango.tipo === 'todos') return 'todas'
   if (rango.tipo === 'atajo') return rango.atajo
-  return `${rango.desde ?? ''}_${rango.hasta ?? ''}`
+  const extremo = (dia: Dia | undefined, hora: Hora | undefined) => `${dia ?? ''}${dia && hora ? `T${hora}` : ''}`
+  return `${extremo(rango.desde, rango.horaDesde)}_${extremo(rango.hasta, rango.horaHasta)}`
 }
 
 /** What `rangoAParam` wrote, or null if the text is not one of ours (a link typed by hand, or from an older version). */
@@ -120,9 +150,21 @@ export function rangoDeParam(texto: string | null | undefined): RangoElegido | n
   if ((TODOS_LOS_ATAJOS as readonly string[]).includes(texto)) return { tipo: 'atajo', atajo: texto as AtajoDeFecha }
   const partes = texto.split('_')
   if (partes.length !== 2) return null
-  const [desde, hasta] = partes
-  if ((desde !== '' && !esDia(desde)) || (hasta !== '' && !esDia(hasta)) || (desde === '' && hasta === '')) return null
-  return { tipo: 'rango', desde: desde || undefined, hasta: hasta || undefined }
+  const leer = (parte: string): { dia?: Dia; hora?: Hora } | null => {
+    const [dia, hora, ...resto] = parte.split('T')
+    if (resto.length > 0 || (dia !== '' && !esDia(dia)) || (hora !== undefined && (dia === '' || !esHora(hora)))) return null
+    return { dia: dia || undefined, hora }
+  }
+  const desde = leer(partes[0])
+  const hasta = leer(partes[1])
+  if (desde === null || hasta === null || (desde.dia === undefined && hasta.dia === undefined)) return null
+  return {
+    tipo: 'rango',
+    desde: desde.dia,
+    hasta: hasta.dia,
+    ...(desde.hora ? { horaDesde: desde.hora } : {}),
+    ...(hasta.hora ? { horaHasta: hasta.hora } : {}),
+  }
 }
 
 // -------------------------------------------------------------------------------------------------- reading a range
@@ -135,7 +177,13 @@ function corto(dia: Dia, conAnio: boolean): string {
 }
 
 /** "8 oct", "1 – 8 oct", "28 sep – 3 oct": the year only when it is not the current one, or when the two ends differ in it. */
-export function describirDias(desde: Dia | undefined, hasta: Dia | undefined, ahora: Date = new Date()): string {
+export function describirDias(desde: Dia | undefined, hasta: Dia | undefined, ahora: Date = new Date(), horaDesde?: Hora, horaHasta?: Hora): string {
+  if (desde && hasta && (horaDesde || horaHasta)) {
+    const dia = (d: Dia, conAnio: boolean) => corto(d, conAnio)
+    const conAnio = deDia(desde).getFullYear() !== ahora.getFullYear() || deDia(hasta).getFullYear() !== ahora.getFullYear()
+    if (desde === hasta) return `${dia(desde, conAnio)}, ${horaDesde ?? '00:00'} – ${horaHasta ?? '23:59'}`
+    return `${dia(desde, conAnio)} ${horaDesde ?? ''} – ${dia(hasta, conAnio)} ${horaHasta ?? ''}`.replace(/ +/g, ' ').trim()
+  }
   if (desde && hasta) {
     if (desde === hasta) return corto(desde, deDia(desde).getFullYear() !== ahora.getFullYear())
     const anioA = deDia(desde).getFullYear()
@@ -152,7 +200,7 @@ export function describirDias(desde: Dia | undefined, hasta: Dia | undefined, ah
 export function describirRango(rango: RangoElegido, ahora: Date = new Date(), textoDeTodos = 'Todo'): string {
   if (rango.tipo === 'todos') return textoDeTodos
   if (rango.tipo === 'atajo') return etiquetaDeAtajo(rango.atajo)
-  return describirDias(rango.desde, rango.hasta, ahora)
+  return describirDias(rango.desde, rango.hasta, ahora, rango.horaDesde, rango.horaHasta)
 }
 
 // -------------------------------------------------------------------------------------------------- the calendar

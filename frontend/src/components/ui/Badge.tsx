@@ -20,16 +20,18 @@ type Props = HTMLAttributes<HTMLSpanElement> & {
   dot?: boolean
   /** The dot breathes: something is running right now. Skipped when the OS asks for reduced motion. */
   live?: boolean
+  /** `lg` for what a screen is about (the situation of the case in its own page); `md` everywhere else. */
+  size?: 'md' | 'lg'
 }
 
-export function Badge({ tone = 'neutral', dot = true, live = false, className = '', children, ...props }: Props) {
+export function Badge({ tone = 'neutral', dot = true, live = false, size = 'md', className = '', children, ...props }: Props) {
   const { box, dot: dotColor } = tones[tone]
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${box} ${className}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md font-medium ${size === 'lg' ? 'px-3.5 py-1.5 text-sm' : 'px-2.5 py-0.5 text-xs'} ${box} ${className}`}
       {...props}
     >
-      {dot && <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotColor} ${live ? 'motion-safe:animate-pulse' : ''}`} />}
+      {dot && <span aria-hidden="true" className={`${size === 'lg' ? 'h-2 w-2' : 'h-1.5 w-1.5'} shrink-0 rounded-full ${dotColor} ${live ? 'motion-safe:animate-pulse' : ''}`} />}
       {children}
     </span>
   )

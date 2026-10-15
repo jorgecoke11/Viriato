@@ -64,3 +64,10 @@ cuelgan del detalle de una compañía o de un trabajo. Tienen pocas filas, siemp
 
 `GET …?search=…&page=1&pageSize=25` y la respuesta `{ items, page, pageSize, total }`. Los listados de catálogo ya pasan `page` y
 `pageSize` (antes algunos fijaban 100 e ignoraban `page`, así que más de 100 elementos no se veían).
+
+## Piezas genéricas de la interfaz (acciones, estados, contadores, fechas)
+
+- **`Badge`** — rectángulo redondeado (no píldora); `size="lg"` para lo que es el asunto de una pantalla (situación, estado de negocio y tipo de caso en la página del caso).
+- **`SelectorDeRango`** — un clic = un día entero (24 h), dos = rango; con `conHora` se acota desde/hasta qué hora (`lib/rangoDeFechas`: `instanteDesde` / `instanteHasta`).
+- **`RevisarPaso`** (casos) — aprobar o rechazar un paso en revisión humana, con comentario opcional y confirmación.
+

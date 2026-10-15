@@ -49,6 +49,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Viriato.Rpa.Client.Selenium
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Viariato.Modules.RpaFleet.Tests", "tests\Viariato.Modules.RpaFleet.Tests\Viariato.Modules.RpaFleet.Tests.csproj", "{AC5F59B5-4E02-4EF8-95BD-B80E8098481C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Viariato.Modules.Cartera", "src\Viariato.Modules.Cartera\Viariato.Modules.Cartera.csproj", "{72F61A82-DF8E-4898-887A-496C91B58B81}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -299,6 +301,18 @@ Global
 		{AC5F59B5-4E02-4EF8-95BD-B80E8098481C}.Release|x64.Build.0 = Release|Any CPU
 		{AC5F59B5-4E02-4EF8-95BD-B80E8098481C}.Release|x86.ActiveCfg = Release|Any CPU
 		{AC5F59B5-4E02-4EF8-95BD-B80E8098481C}.Release|x86.Build.0 = Release|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Debug|x64.Build.0 = Debug|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Debug|x86.Build.0 = Debug|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Release|x64.ActiveCfg = Release|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Release|x64.Build.0 = Release|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Release|x86.ActiveCfg = Release|Any CPU
+		{72F61A82-DF8E-4898-887A-496C91B58B81}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -324,5 +338,6 @@ Global
 		{F22F3652-26A2-45DA-AD65-19638B3E6C6A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{375F1788-B94B-4714-B618-D42D035849BE} = {FF13A09E-0E72-1904-124B-A4E979EF28D3}
 		{AC5F59B5-4E02-4EF8-95BD-B80E8098481C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{72F61A82-DF8E-4898-887A-496C91B58B81} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

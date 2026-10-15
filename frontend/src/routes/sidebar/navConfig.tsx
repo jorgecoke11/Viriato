@@ -14,6 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  Wallet,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -58,6 +59,7 @@ export const navTree: NavNode[] = [
     ],
   },
   { type: 'link', to: '/mercados', label: 'Mercados', icon: <LineChart size={18} /> },
+  { type: 'link', to: '/cartera', label: 'Cartera', icon: <Wallet size={18} />, permission: 'cartera.read' },
   { type: 'link', to: '/ops/trabajos', label: 'Trabajos', icon: <ListChecks size={18} /> },
   {
     type: 'group',

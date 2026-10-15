@@ -139,6 +139,371 @@ namespace Viariato.Infrastructure.Migrations
                     b.ToTable("trabajo_logs", "ops");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Cartera.Domain.CarteraCotizacion", b =>
+                {
+                    b.Property<string>("Ticker")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("ticker");
+
+                    b.Property<decimal>("EurUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("eur_usd");
+
+                    b.Property<decimal>("PrecioUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("precio_usd");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Ticker")
+                        .HasName("pk_cotizaciones");
+
+                    b.ToTable("cotizaciones", "cartera");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Cartera.Domain.CarteraEstado", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("CapitalInicialEur")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("capital_inicial_eur");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_estado");
+
+                    b.ToTable("estado", "cartera");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Cartera.Domain.CarteraModelo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreadoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creado_en");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("estado");
+
+                    b.Property<string>("ModeloJson")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("modelo_json");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("motivo");
+
+                    b.Property<int>("MuestrasDeEntrenamiento")
+                        .HasColumnType("integer")
+                        .HasColumnName("muestras_de_entrenamiento");
+
+                    b.Property<int>("MuestrasDePrueba")
+                        .HasColumnType("integer")
+                        .HasColumnName("muestras_de_prueba");
+
+                    b.Property<double>("Precision")
+                        .HasColumnType("double precision")
+                        .HasColumnName("precision");
+
+                    b.Property<double>("PrecisionBase")
+                        .HasColumnType("double precision")
+                        .HasColumnName("precision_base");
+
+                    b.Property<double>("RetornoMedioConSenalPorcentaje")
+                        .HasColumnType("double precision")
+                        .HasColumnName("retorno_medio_con_senal_porcentaje");
+
+                    b.Property<double>("RetornoMedioGeneralPorcentaje")
+                        .HasColumnType("double precision")
+                        .HasColumnName("retorno_medio_general_porcentaje");
+
+                    b.Property<int>("Senales")
+                        .HasColumnType("integer")
+                        .HasColumnName("senales");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_modelos");
+
+                    b.HasIndex("Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_modelos_version");
+
+                    b.ToTable("modelos", "cartera");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Cartera.Domain.CarteraMovimiento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("cantidad");
+
+                    b.Property<string>("CasoId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("caso_id");
+
+                    b.Property<decimal>("ComisionEur")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("comision_eur");
+
+                    b.Property<decimal>("EfectivoTrasEur")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("efectivo_tras_eur");
+
+                    b.Property<decimal>("EurUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("eur_usd");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha");
+
+                    b.Property<decimal>("ImporteEur")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("importe_eur");
+
+                    b.Property<string>("Lado")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("lado");
+
+                    b.Property<decimal>("PrecioUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("precio_usd");
+
+                    b.Property<decimal?>("StopUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("stop_usd");
+
+                    b.Property<string>("Ticker")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("ticker");
+
+                    b.HasKey("Id")
+                        .HasName("pk_movimientos");
+
+                    b.HasIndex("CasoId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_movimientos_caso_id");
+
+                    b.HasIndex("Fecha")
+                        .HasDatabaseName("ix_movimientos_fecha");
+
+                    b.ToTable("movimientos", "cartera");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Cartera.Domain.CarteraPesos", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreadaEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creada_en");
+
+                    b.Property<string>("DetalleJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("detalle_json");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("estado");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("motivo");
+
+                    b.Property<int>("Muestras")
+                        .HasColumnType("integer")
+                        .HasColumnName("muestras");
+
+                    b.Property<string>("PesosJson")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("pesos_json");
+
+                    b.Property<DateTimeOffset?>("ResueltaEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resuelta_en");
+
+                    b.Property<Guid?>("ResueltaPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resuelta_por");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pesos");
+
+                    b.HasIndex("Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pesos_version");
+
+                    b.ToTable("pesos", "cartera");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Cartera.Domain.CarteraSenal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool?>("Acierto")
+                        .HasColumnType("boolean")
+                        .HasColumnName("acierto");
+
+                    b.Property<string>("CasoId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("caso_id");
+
+                    b.Property<int?>("ConfianzaIa")
+                        .HasColumnType("integer")
+                        .HasColumnName("confianza_ia");
+
+                    b.Property<DateTimeOffset>("CreadaEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creada_en");
+
+                    b.Property<DateTimeOffset?>("EvaluadaEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("evaluada_en");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha");
+
+                    b.Property<DateOnly?>("FechaEvaluacion")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_evaluacion");
+
+                    b.Property<DateTimeOffset?>("OrdenCreadaEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("orden_creada_en");
+
+                    b.Property<string>("OrdenLado")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("orden_lado");
+
+                    b.Property<decimal?>("PrecioEvaluacionUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("precio_evaluacion_usd");
+
+                    b.Property<decimal>("PrecioUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("precio_usd");
+
+                    b.Property<decimal?>("ProbabilidadMl")
+                        .HasPrecision(6, 4)
+                        .HasColumnType("numeric(6,4)")
+                        .HasColumnName("probabilidad_ml");
+
+                    b.Property<decimal>("Puntos")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasColumnName("puntos");
+
+                    b.Property<decimal?>("RetornoPorcentaje")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("numeric(10,4)")
+                        .HasColumnName("retorno_porcentaje");
+
+                    b.Property<string>("Senal")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("senal");
+
+                    b.Property<string>("SenalIa")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("senal_ia");
+
+                    b.Property<string>("Ticker")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("ticker");
+
+                    b.Property<string>("VotosJson")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("votos_json");
+
+                    b.HasKey("Id")
+                        .HasName("pk_senales");
+
+                    b.HasIndex("CasoId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_senales_caso_id");
+
+                    b.HasIndex("EvaluadaEn", "Fecha")
+                        .HasDatabaseName("ix_senales_evaluada_en_fecha");
+
+                    b.HasIndex("Ticker", "OrdenCreadaEn")
+                        .HasDatabaseName("ix_senales_ticker_orden_creada_en");
+
+                    b.ToTable("senales", "cartera");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.AgenteEjecucionDetalle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1268,6 +1633,90 @@ namespace Viariato.Infrastructure.Migrations
                     b.ToTable("flujo_versiones", "flujos");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.LanzadorDeCaso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("activo");
+
+                    b.Property<Guid>("CreadorDeCasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("creador_de_caso_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Cron")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cron");
+
+                    b.Property<string>("DatosJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("datos_json");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<Guid>("FlujoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_id");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre");
+
+                    b.Property<int>("ToleranciaMinutos")
+                        .HasColumnType("integer")
+                        .HasColumnName("tolerancia_minutos");
+
+                    b.Property<Guid?>("UltimoCasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ultimo_caso_id");
+
+                    b.Property<DateTimeOffset?>("UltimoDisparoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_disparo_en");
+
+                    b.Property<string>("UltimoError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("ultimo_error");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("ZonaHoraria")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zona_horaria");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lanzadores_de_caso");
+
+                    b.HasIndex("CreadorDeCasoId")
+                        .HasDatabaseName("ix_lanzadores_de_caso_creador_de_caso_id");
+
+                    b.HasIndex("FlujoId", "Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("ix_lanzadores_de_caso_flujo_id_nombre");
+
+                    b.ToTable("lanzadores_de_caso", "flujos");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.StorageConfig", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2368,6 +2817,27 @@ namespace Viariato.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_flujo_versiones_flujos_flujo_id");
+
+                    b.Navigation("Flujo");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.LanzadorDeCaso", b =>
+                {
+                    b.HasOne("Viariato.Modules.Flujos.Domain.CreadorDeCaso", "CreadorDeCaso")
+                        .WithMany()
+                        .HasForeignKey("CreadorDeCasoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_lanzadores_de_caso_creadores_de_caso_creador_de_caso_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", "Flujo")
+                        .WithMany()
+                        .HasForeignKey("FlujoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_lanzadores_de_caso_flujos_flujo_id");
+
+                    b.Navigation("CreadorDeCaso");
 
                     b.Navigation("Flujo");
                 });

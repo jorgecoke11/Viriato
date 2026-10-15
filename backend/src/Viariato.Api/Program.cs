@@ -15,6 +15,8 @@ using Viariato.Modules.Casos;
 using Viariato.Modules.Casos.Endpoints;
 using Viariato.Modules.Flujos;
 using Viariato.Modules.Flujos.Endpoints;
+using Viariato.Modules.Cartera;
+using Viariato.Modules.Cartera.Endpoints;
 using Viariato.Modules.Ops;
 using Viariato.Modules.Ops.Endpoints;
 using Viariato.Modules.RpaFleet;
@@ -38,6 +40,7 @@ builder.Services.AddMarketsModule(builder.Configuration);
 builder.Services.AddFlujosModule(builder.Configuration);
 builder.Services.AddRpaFleetModule(builder.Configuration);
 builder.Services.AddCasosModule(builder.Configuration);
+builder.Services.AddCarteraModule(builder.Configuration);
 builder.Services.AddOpenApi();
 
 // Markets exposes enums (MarketSignal, CriterionResult) straight through its DTOs — serialize them
@@ -152,6 +155,7 @@ app.MapMarketsEndpoints();
 app.MapFlujosEndpoints();
 app.MapRpaFleetEndpoints();
 app.MapCasosEndpoints();
+app.MapCarteraEndpoints();
 
 app.Run();
 
