@@ -1,4 +1,5 @@
 using Viariato.Modules.Flujos.Domain;
+using Viariato.Modules.Flujos.Esquemas;
 
 namespace Viariato.Modules.Flujos.Contracts;
 
@@ -59,6 +60,18 @@ public static class FlujosDtoMapper
         creador.Id, creador.FlujoId, creador.Nombre, creador.Descripcion, creador.TipoCasoId, creador.TipoCaso?.Nombre,
         creador.PasoInicialNombre, creador.EstadoNegocioInicialId, creador.EstadoNegocioInicial?.Display, creador.PlantillaTitulo,
         creador.Orden, creador.Activo, creador.CreatedAt, creador.UpdatedAt);
+
+    public static LanzadorDeCasoDto ToDto(this LanzadorDeCaso lanzador, DateTimeOffset ahora)
+    {
+        var zona = CronDeLanzador.BuscarZona(lanzador.ZonaHoraria);
+        DateTimeOffset? proximo = null;
+        if (zona is not null && CronDeLanzador.TryLeer(lanzador.Cron, out var expresiones, out _)) proximo = CronDeLanzador.Proximo(ahora, zona, expresiones);
+
+        return new LanzadorDeCasoDto(
+            lanzador.Id, lanzador.FlujoId, lanzador.CreadorDeCasoId, lanzador.CreadorDeCaso?.Nombre ?? string.Empty, lanzador.Nombre, lanzador.Descripcion,
+            lanzador.DatosJson, lanzador.Cron, lanzador.ZonaHoraria, lanzador.ToleranciaMinutos, lanzador.Activo, proximo, lanzador.UltimoDisparoEn,
+            lanzador.UltimoCasoId, lanzador.UltimoError, lanzador.CreatedAt, lanzador.UpdatedAt);
+    }
 
     public static StorageConfigDto ToDto(this StorageConfig config) => new(
         config.Id,

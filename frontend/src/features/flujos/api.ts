@@ -364,3 +364,47 @@ export const replaceCreadorDeCaso = (flujoId: string, id: string, request: Guard
 
 export const deleteCreadorDeCaso = (flujoId: string, id: string) =>
   apiFetch<void>(`/flujos/${flujoId}/creadores/${id}`, { method: 'DELETE' })
+
+export interface LanzadorDeCasoDto {
+  id: string
+  flujoId: string
+  creadorDeCasoId: string
+  creadorNombre: string
+  nombre: string
+  descripcion: string | null
+  datosJson: string | null
+  /** Crontab expressions of five fields, one per line. */
+  cron: string
+  zonaHoraria: string
+  toleranciaMinutos: number
+  activo: boolean
+  proximoDisparoEn: string | null
+  ultimoDisparoEn: string | null
+  ultimoCasoId: string | null
+  ultimoError: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** The whole launcher, for creating and for replacing one. */
+export interface GuardarLanzadorDeCasoRequest {
+  nombre: string
+  descripcion: string | null
+  creadorDeCasoId: string
+  datosJson: string | null
+  cron: string
+  zonaHoraria: string
+  toleranciaMinutos: number
+  activo: boolean
+}
+
+export const listLanzadoresDeCaso = (flujoId: string) => apiFetch<LanzadorDeCasoDto[]>(`/flujos/${flujoId}/lanzadores`)
+
+export const createLanzadorDeCaso = (flujoId: string, request: GuardarLanzadorDeCasoRequest) =>
+  apiFetch<LanzadorDeCasoDto>(`/flujos/${flujoId}/lanzadores`, { method: 'POST', body: JSON.stringify(request) })
+
+export const replaceLanzadorDeCaso = (flujoId: string, id: string, request: GuardarLanzadorDeCasoRequest) =>
+  apiFetch<LanzadorDeCasoDto>(`/flujos/${flujoId}/lanzadores/${id}`, { method: 'PUT', body: JSON.stringify(request) })
+
+export const deleteLanzadorDeCaso = (flujoId: string, id: string) =>
+  apiFetch<void>(`/flujos/${flujoId}/lanzadores/${id}`, { method: 'DELETE' })

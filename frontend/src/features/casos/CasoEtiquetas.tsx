@@ -15,25 +15,25 @@ const AYUDA_TIPO_DE_CASO = 'La clase de caso que es. Se fija al crearlo.'
 
 /** The estado a process puts a case in. One that ends the case is solid green with a tick; one the case is only passing through is
  *  an outline, dashed and blue — so the two are different in shape and weight, not only in colour. */
-export function EstadoDeNegocioBadge({ display, esFinal = false }: { display: string; esFinal?: boolean }) {
+export function EstadoDeNegocioBadge({ display, esFinal = false, size = 'md' }: { display: string; esFinal?: boolean; size?: 'md' | 'lg' }) {
   const Icono = esFinal ? CircleCheck : CircleDashed
   return (
     <span
       title={`${AYUDA_ESTADO_DE_NEGOCIO} ${esFinal ? 'Este estado cierra el caso.' : 'El caso sigue en curso.'}`}
-      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs whitespace-nowrap ${
+      className={`inline-flex items-center rounded-md whitespace-nowrap ${size === 'lg' ? 'gap-1.5 px-3.5 py-1.5 text-sm' : 'gap-1 px-2 py-0.5 text-xs'} ${
         esFinal
           ? 'border border-green-300 bg-green-100 font-semibold text-green-800'
           : 'border border-dashed border-blue-300 bg-blue-50 font-medium text-blue-700'
       }`}
     >
-      <Icono size={12} aria-hidden="true" />
+      <Icono size={size === 'lg' ? 16 : 12} aria-hidden="true" />
       {display}
     </span>
   )
 }
 
-export function TipoDeCasoBadge({ nombre }: { nombre: string }) {
-  return <EtiquetaDeCategoria nombre={nombre} title={AYUDA_TIPO_DE_CASO} />
+export function TipoDeCasoBadge({ nombre, size }: { nombre: string; size?: 'md' | 'lg' }) {
+  return <EtiquetaDeCategoria nombre={nombre} title={AYUDA_TIPO_DE_CASO} size={size} />
 }
 
 /** The three descriptions of a Caso side by side, each under its caption. A missing one is left out. */
@@ -42,25 +42,29 @@ export function CasoEtiquetas({
   estadoNegocio,
   estadoNegocioFinal = false,
   tipoCaso,
+  grande = false,
 }: {
   estado: string
   estadoNegocio: string | null
   estadoNegocioFinal?: boolean
   tipoCaso: string | null
+  /** The case's own page: the three descriptions are what it is about, so they are drawn big. */
+  grande?: boolean
 }) {
+  const size = grande ? 'lg' : 'md'
   return (
-    <div className="flex flex-wrap gap-x-7 gap-y-3">
+    <div className={`flex flex-wrap ${grande ? "gap-x-9 gap-y-4" : "gap-x-7 gap-y-3"}`}>
       <DatoRotulado rotulo="Situación" ayuda={AYUDA_SITUACION}>
-        <CasoEstadoBadge estado={estado} />
+        <CasoEstadoBadge estado={estado} size={size} />
       </DatoRotulado>
       {estadoNegocio && (
         <DatoRotulado rotulo="Estado de negocio" ayuda={AYUDA_ESTADO_DE_NEGOCIO}>
-          <EstadoDeNegocioBadge display={estadoNegocio} esFinal={estadoNegocioFinal} />
+          <EstadoDeNegocioBadge display={estadoNegocio} esFinal={estadoNegocioFinal} size={size} />
         </DatoRotulado>
       )}
       {tipoCaso && (
         <DatoRotulado rotulo="Tipo de caso" ayuda={AYUDA_TIPO_DE_CASO}>
-          <TipoDeCasoBadge nombre={tipoCaso} />
+          <TipoDeCasoBadge nombre={tipoCaso} size={size} />
         </DatoRotulado>
       )}
     </div>

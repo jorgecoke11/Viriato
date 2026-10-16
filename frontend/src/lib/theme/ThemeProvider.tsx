@@ -6,10 +6,10 @@ const STORAGE_KEY = 'viariato:theme'
 function readStoredTheme(): Theme {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored === 'light' || stored === 'dark' ? stored : 'system'
+    return stored === 'dark' || stored === 'system' ? stored : 'light'
   } catch {
-    // Storage can be blocked (private window, site data cleared): the theme just follows the system then.
-    return 'system'
+    // Storage can be blocked (private window, site data cleared): the light theme then.
+    return 'light'
   }
 }
 

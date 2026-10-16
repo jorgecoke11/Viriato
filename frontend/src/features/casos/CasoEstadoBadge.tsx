@@ -17,10 +17,10 @@ const states: Record<string, { tone: BadgeTone; label: string; live?: boolean }>
   Cancelada: { tone: 'neutral', label: 'Cancelada' },
 }
 
-export function CasoEstadoBadge({ estado }: { estado: string }) {
+export function CasoEstadoBadge({ estado, size }: { estado: string; size?: 'md' | 'lg' }) {
   const { tone, label, live } = states[estado] ?? { tone: 'neutral' as const, label: estado }
   return (
-    <Badge tone={tone} live={live}>
+    <Badge tone={tone} live={live} size={size}>
       {label}
     </Badge>
   )

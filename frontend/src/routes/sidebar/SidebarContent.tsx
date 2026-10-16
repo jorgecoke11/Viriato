@@ -13,7 +13,7 @@ function Avatar({ name, size }: { name?: string; size: 'sm' | 'md' }) {
   return (
     <span
       title={name}
-      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 font-semibold text-white ${
+      className={`flex shrink-0 items-center justify-center rounded-full bg-indigo-600 font-semibold text-white ${
         size === 'sm' ? 'h-9 w-9 text-xs' : 'h-9 w-9 text-sm'
       }`}
     >
@@ -35,13 +35,13 @@ export function SidebarContent({
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex h-full flex-col bg-[radial-gradient(120%_50%_at_0%_0%,rgb(99_102_241/0.20),transparent_60%)]">
+    <div className="flex h-full flex-col">
       <div className={`flex items-center gap-3 px-4 pt-5 pb-4 ${collapsed ? 'flex-col gap-3' : 'flex-row'}`}>
         <Link
           to="/"
           onClick={onNavigate}
           aria-label="Viariato"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white shadow-[0_6px_18px_-4px_rgb(99_102_241/0.8)]"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white"
         >
           <Workflow size={20} />
         </Link>
@@ -78,7 +78,7 @@ export function SidebarContent({
               type="button"
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-side-text hover:bg-red-500/15 hover:text-red-400"
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-side-text hover:bg-red-50 hover:text-red-700"
               onClick={() => logout()}
             >
               <LogOut size={16} />
@@ -88,7 +88,7 @@ export function SidebarContent({
           <>
             <EnlaceDeMenu to="/perfil" icono={<Settings size={18} />} etiqueta="Configuración" onNavigate={onNavigate} />
             <ThemeToggle />
-            <div className="flex items-center gap-3 rounded-xl border border-side-border bg-white/5 p-2">
+            <div className="flex items-center gap-3 rounded-xl border border-side-border bg-surface p-2">
               <Avatar name={user?.displayName} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-side-strong">{user?.displayName}</p>
@@ -98,7 +98,7 @@ export function SidebarContent({
                 type="button"
                 aria-label="Cerrar sesión"
                 title="Cerrar sesión"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-side-text hover:bg-red-500/15 hover:text-red-400"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-side-text hover:bg-red-50 hover:text-red-700"
                 onClick={() => logout()}
               >
                 <LogOut size={16} />

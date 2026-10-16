@@ -43,7 +43,7 @@ export function FilterChips<T extends string>({
           >
             {Icono && <Icono size={13} aria-hidden="true" />}
             {etiqueta}
-            {cantidad !== undefined && <span className={`num font-mono ${activa ? 'text-white/80' : 'text-gray-500'}`}>{cantidad}</span>}
+            {cantidad !== undefined && <span className={`num ${activa ? 'text-white/80' : 'text-gray-500'}`}>{cantidad}</span>}
           </button>
         )
       })}

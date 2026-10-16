@@ -140,7 +140,6 @@ function TipoCasoRow({ tipo, onSelect }: { tipo: TipoCasoConteoDto; onSelect: (f
                 <p className="py-1 text-sm text-gray-500">Sin casos.</p>
               ) : (
                 <>
-                  <p className="px-1 text-[11px] font-medium tracking-wide text-gray-500 uppercase">Estado de negocio</p>
                   <GrupoDeEstados final={false} estados={porEstado.filter((e) => !e.esFinal)} onSelect={onSelect} />
                   <GrupoDeEstados final estados={porEstado.filter((e) => e.esFinal)} onSelect={onSelect} />
                 </>

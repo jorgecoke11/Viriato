@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Ban, Check, Copy, Hourglass, OctagonAlert, Pause, PauseCircle, Play, RotateCcw, XCircle, type LucideIcon } from 'lucide-react'
+import { Ban, Check, Copy, Eye, Hourglass, OctagonAlert, Pause, PauseCircle, Play, RotateCcw, XCircle, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -24,6 +24,7 @@ import { CasoTimelineUnificado } from './CasoTimelineUnificado'
 import { DatosDelCasoCard } from './DatosDelCasoCard'
 import { duracion, formatFecha, formatFechaCompleta, haceCuanto } from './fechas'
 import { PrioridadChip } from './PrioridadChip'
+import { RevisarPaso } from './RevisarPaso'
 import { pasosResueltos, progresoDelProceso } from './progreso'
 
 const ESTADOS_ACTIVOS = ['Iniciado', 'Pendiente', 'EnProgreso', 'Pausado', 'EsperandoRevisionHumana']
@@ -165,6 +166,7 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
   const puedeGestionar = can('casos.manage')
   const puedeCancelar = can('casos.cancelar')
   const puedePriorizar = can('casos.prioridad')
+  const puedeRevisar = can('casos.review')
   const activo = ESTADOS_ACTIVOS.includes(caso.estado)
 
   const pasosDelCaso = caso.ejecucionActual?.pasos ?? []
@@ -172,6 +174,7 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
   const fallido = progreso.find((p) => p.estado === 'fallido')
   const enCola = progreso.find((p) => p.estado === 'en-cola')
   const enMarcha = progreso.find((p) => p.estado === 'en-curso')
+  const enRevision = progreso.find((p) => p.estado === 'revision')
   const cancelado = progreso.find((p) => p.estado === 'cancelado' && p.ultimo?.errorMensaje)
 
   const terminadoEn = caso.completedAt
@@ -216,6 +219,7 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
                 estadoNegocio={caso.estadoNegocio?.display ?? null}
                 estadoNegocioFinal={caso.estadoNegocio?.esFinal}
                 tipoCaso={caso.tipoCaso}
+                grande
               />
             </div>
             <h1 className="page-title break-words">{caso.titulo}</h1>
@@ -324,6 +328,15 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
 
       {/* A robot is running it and said where its screen is: anyone who can see the case can watch it, right here. */}
       {caso.estado === 'EnProgreso' && <PanelEnDirecto url={enMarcha?.ultimo?.vistaEnDirectoUrl} titulo={caso.titulo} />}
+
+      {caso.estado === 'EsperandoRevisionHumana' && enRevision?.ultimo && (
+        <Aviso tono="brand" icono={Eye} titulo={`«${enRevision.nombre}» espera una revisión`}>
+          {puedeRevisar
+            ? 'Una persona tiene que aprobarlo o rechazarlo para que el caso siga. Revisa el historial y los datos antes de decidir.'
+            : 'Una persona con permiso de revisión tiene que aprobarlo o rechazarlo para que el caso siga.'}
+          {puedeRevisar && <RevisarPaso ejecucionPasoId={enRevision.ultimo.id} nombre={enRevision.nombre} />}
+        </Aviso>
+      )}
 
       {caso.estado === 'Pendiente' && enCola?.ultimo && (
         <Aviso

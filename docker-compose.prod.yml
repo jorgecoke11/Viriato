@@ -105,6 +105,8 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
       CADDY_EMAIL: ${CADDY_EMAIL}
+      # Dónde está la pantalla del robot que se sirve en /vista/ (ver docs/ver-la-ejecucion-en-directo.md).
+      VISTA_UPSTREAM: ${VISTA_UPSTREAM:-extractor:6080}
     ports:
       # Con Cloudflare Tunnel el túnel llega a "web" por la red de Docker: estos puertos del PC solo sirven para probar en local.
       # Si Windows no deja usar el 80 (error "socket no permitido por sus permisos"), pon HTTP_PORT=8088 en el .env.
@@ -130,6 +132,12 @@ services:
     depends_on:
       - web
     restart: unless-stopped
+
+networks:
+  # Nombre fijo, sea cual sea el nombre del proyecto (la carpeta o -p): los robots del mismo PC se unen a esta red para que "web"
+  # sirva la pantalla del extractor en /vista/ (ver docs/ver-la-ejecucion-en-directo.md). Cambiarlo solo recrea los contenedores.
+  default:
+    name: viriato
 
 volumes:
   postgres_data:

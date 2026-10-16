@@ -38,36 +38,58 @@ Tres cosas, todas desde el caso en Viriato:
 
 La cámara pide el mismo permiso que ver el caso (`casos.read`): la vista es de solo mirar.
 
-## Verla también desde fuera (la forma recomendada)
+## Verla desde fuera (cualquier usuario de Viriato, esté donde esté)
 
 La vista se sirve por **la misma dirección de Viriato**, en `/vista/`: el Caddy de Viriato (`web`) le pasa al extractor las peticiones de
-`/vista/*`. Así comparte el HTTPS y el login de Cloudflare Access, no hace falta un segundo nombre en el túnel y no hay problema de
-contenido mixto ni de marcos. Probado: la página de noVNC, sus archivos y el websocket llegan por `/vista/` (el websocket responde 101).
+`/vista/*`. Así comparte el HTTPS, no hace falta un segundo nombre en el túnel y no hay problema de contenido mixto ni de marcos.
 
-1. Viriato (con el `Caddyfile` nuevo: `docker compose … up -d --build web`) y el extractor tienen que estar **en el mismo PC**, y el extractor
-   en la red de Docker de Viriato. En el repositorio de los robots, `docker-compose.vista-publica.yml` lo hace:
-   ```powershell
-   docker compose -f docker-compose.yml -f docker-compose.vista-publica.yml up -d extractor
-   ```
-2. En el `.env` de los robots:
+**La puerta es el login de Viriato.** La pantalla del robot enseña cómo se teclean el usuario y la contraseña del portal, así que no puede
+quedar abierta a quien sepa la dirección:
+
+```
+ navegador ──POST /api/v1/casos/vista/pase──▶ API: ¿tiene casos.read? → cookie «viriato_vista» (HttpOnly, solo para /vista, 1 hora)
+ navegador ──GET /vista/… (página, archivos, websocket)──▶ Caddy ──¿pase válido?──▶ API /api/v1/casos/vista/comprobar
+                                                           ├─ 204: pasa al extractor (noVNC)
+                                                           └─ 401: no pasa
+```
+
+El front pide el pase él solo cada vez que muestra una pantalla servida por la dirección de Viriato; quien mira no tiene que hacer nada
+ni saber ninguna contraseña más. El pase va firmado con una clave derivada de `Jwt__SigningKey` (vale tras reiniciar y en varias copias de
+la API) y no sirve como token de la API. Probado de punta a punta con Caddy: sin pase, 401 en la página y en el websocket; con pase, la
+página llega y el websocket abre (101).
+
+Para ponerlo en marcha, **en el PC donde corren Viriato y el extractor** (tienen que ser el mismo):
+
+1. Actualiza Viriato: `git pull` y `docker compose -f docker-compose.prod.yml --profile tunnel up -d --build api web`. La red de Viriato
+   pasa a llamarse siempre `viriato` (antes dependía del nombre del proyecto): Docker recrea los contenedores, los datos no se tocan.
+2. Comprueba la puerta antes de enchufar el robot: `curl -I https://app.viriato.org/vista/vnc.html` tiene que dar **401**. (502 es un
+   Viriato sin actualizar o sin extractor; 200 sin pase es que no está la puerta: no sigas.)
+3. En el repositorio de los robots, `git pull` (su `docker-compose.vista-publica.yml` ya busca la red `viriato`) y en su `.env`:
    ```
    VISTA_EN_DIRECTO=true
    VISTA_URL_PUBLICA=https://app.viriato.org/vista/vnc.html?path=vista/websockify
-   VNC_PASSWORD=<una contraseña>
    ```
-   (`path=vista/websockify` le dice a noVNC por dónde abrir el websocket; sin él lo buscaría en la raíz.)
-3. Quien mire entra con su login de Access, abre el caso en ejecución y ve el panel. Con `VNC_PASSWORD`, noVNC pide además esa contraseña.
+   (`path=vista/websockify` le dice a noVNC por dónde abrir el websocket; sin él lo buscaría en la raíz.) `VNC_PASSWORD` ya no hace falta:
+   si la pones, cada persona que mire tendrá que teclearla.
+4. Arranca el extractor unido a la red de Viriato (el arranque automático, [arranque-automatico.md](arranque-automatico.md), ya lo hace así):
+   ```powershell
+   docker compose -f docker-compose.yml -f docker-compose.vista-publica.yml up -d extractor
+   ```
+5. Pruébalo desde el móvil **con datos**: entra en Viriato, abre un caso en ejecución y mira el panel *En directo*.
 
 Límites: **un solo extractor** (con varias copias, el nombre `extractor` no sabría a cuál mandar) y los dos en el mismo PC. Si el extractor
-corre en otra máquina, cambia el destino con la variable `VISTA_UPSTREAM` del servicio `web` (por defecto `extractor:6080`).
+corre en otra máquina alcanzable desde la de Viriato, pon su dirección en `VISTA_UPSTREAM` del `.env` de Viriato (por defecto
+`extractor:6080`). Lo que se sirve en `/vista/` corre con la dirección de Viriato: pon detrás solo tus propios robots. Cloudflare Access sigue
+siendo una capa extra opcional por delante de todo.
 
 ## Poner la dirección de la vista a mano (`VISTA_URL_PUBLICA`)
 
 La dirección se abre **desde el navegador de quien mira**, así que tiene que ser una que ese navegador alcance:
 
-- Viriato y robot en el **mismo PC**, entrando por `http://localhost:5173`: la de por defecto (`http://localhost:6080/vnc.html`).
+- Viriato y robot en el **mismo PC**, entrando por `http://localhost:5173`: la de por defecto (`http://localhost:6080/vnc.html`). Esa no
+  pasa por la puerta de Viriato: solo se ve desde ese PC.
 - Viriato publicado por HTTPS: la de `/vista/` de arriba. Un navegador no deja incrustar una página `http` en una `https` (aunque `localhost`
-  suele permitirse), y un segundo nombre en el túnel necesitaría su propio Access.
+  suele permitirse), y un segundo nombre en el túnel no tendría la puerta del login.
 - El puerto 6080 solo se publica en `127.0.0.1` en el compose de los robots, a propósito.
 
 ## Para el desarrollador del robot

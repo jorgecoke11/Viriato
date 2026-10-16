@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Modal } from '../../components/ui/Modal'
 import { TarjetasDeOpciones } from '../../components/ui/TarjetasDeOpciones'
 import { useAuth } from '../auth/useAuth'
@@ -25,7 +25,6 @@ export function NuevoCasoModal({
   flujoNombre: string
   onClose: () => void
 }) {
-  const navigate = useNavigate()
   const { can } = useAuth()
   const [elegidoId, setElegidoId] = useState<string | null>(null)
   const [avanzado, setAvanzado] = useState(false)
@@ -75,10 +74,7 @@ export function NuevoCasoModal({
                 key={creador.id}
                 creador={creador}
                 alCancelar={onClose}
-                alCrear={(caso) => {
-                  onClose()
-                  navigate(`/casos/${caso.id}`)
-                }}
+                alCrear={onClose}
               />
             )}
           </>

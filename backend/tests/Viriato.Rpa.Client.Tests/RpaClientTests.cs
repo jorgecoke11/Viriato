@@ -122,6 +122,20 @@ public sealed class RpaClientTests
     }
 
     [Fact]
+    public async Task ActualizarDatosCasoAsync_PostsTheObject_ToTheDataRoute()
+    {
+        var pasoId = Guid.NewGuid();
+        var (client, handler) = CreateClient();
+
+        await client.ActualizarDatosCasoAsync(pasoId, "{\"orden\":{\"lado\":\"Compra\"}}");
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal($"/api/v1/rpa/pasos/{pasoId}/datos", request.Uri.AbsolutePath);
+        Assert.Equal("{\"orden\":{\"lado\":\"Compra\"}}", JsonDocument.Parse(request.Body).RootElement.GetProperty("datosJson").GetString());
+    }
+
+    [Fact]
     public async Task AgregarEvidenciaAsync_SendsAMultipartFormWithTheFileAndFields()
     {
         var pasoId = Guid.NewGuid();

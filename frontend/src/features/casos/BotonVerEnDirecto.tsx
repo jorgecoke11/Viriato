@@ -1,9 +1,58 @@
+import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ExternalLink, Video } from 'lucide-react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { IconButton } from '../../components/ui/IconButton'
 import { Modal } from '../../components/ui/Modal'
-import { direccionDeVistaSegura, direccionParaElMarco } from './vistaEnDirecto'
+import * as casosApi from './api'
+import { direccionDeVistaSegura, direccionParaElMarco, necesitaPaseDeViriato } from './vistaEnDirecto'
+
+/**
+ * The frame with the robot's screen. When the screen is served by Viriato's own address, the frame first gets a pass (a cookie the
+ * server only sends to /vista) and waits for it; each frame asks for its own, so it always opens with a full hour left. A screen
+ * anywhere else loads straight away.
+ */
+function MarcoDeVista({ direccion, titulo, className }: { direccion: string; titulo: string; className: string }) {
+  const conPase = necesitaPaseDeViriato(direccion)
+  const marco = useId()
+  const pase = useQuery({
+    queryKey: ['pase-de-vista', marco],
+    queryFn: async () => {
+      await casosApi.pedirPaseDeVista()
+      return true
+    },
+    enabled: conPase,
+    staleTime: Infinity,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+  })
+
+  if (conPase && pase.isError) {
+    return (
+      <div role="alert" className={`flex items-center justify-center p-6 text-sm text-gray-500 ${className}`}>
+        No se pudo abrir la pantalla del robot: {pase.error.message}
+      </div>
+    )
+  }
+  if (conPase && !pase.isSuccess) {
+    return (
+      <div role="status" className={`flex items-center justify-center text-sm text-gray-400 motion-safe:animate-pulse ${className}`}>
+        Conectando con la pantalla del robot…
+      </div>
+    )
+  }
+
+  return (
+    // The robot's screen is another program: it gets a frame of its own, with the permissions a viewer needs and no more.
+    <iframe
+      title={titulo}
+      src={direccionParaElMarco(direccion)}
+      sandbox="allow-scripts allow-same-origin"
+      referrerPolicy="no-referrer"
+      className={className}
+    />
+  )
+}
 
 /** The window with the robot's screen, live, over the page (and a way to open it in its own tab). Nothing here controls the robot. */
 export function VentanaDeVistaEnDirecto({
@@ -47,12 +96,9 @@ export function VentanaDeVistaEnDirecto({
       }
     >
       {abierta && (
-        // The robot's screen is another site: it gets a frame of its own, with the permissions a viewer needs and no more.
-        <iframe
-          title={`Ver en directo: ${titulo}`}
-          src={direccionParaElMarco(direccion)}
-          sandbox="allow-scripts allow-same-origin"
-          referrerPolicy="no-referrer"
+        <MarcoDeVista
+          direccion={direccion}
+          titulo={`Ver en directo: ${titulo}`}
           className="h-[60vh] w-full rounded-lg border border-gray-200 bg-black"
         />
       )}
@@ -124,11 +170,9 @@ export function PanelEnDirecto({ url, titulo }: { url: string | null | undefined
         </div>
       </div>
       {visible && (
-        <iframe
-          title={`En directo: ${titulo}`}
-          src={direccionParaElMarco(direccion)}
-          sandbox="allow-scripts allow-same-origin"
-          referrerPolicy="no-referrer"
+        <MarcoDeVista
+          direccion={direccion}
+          titulo={`En directo: ${titulo}`}
           className="block aspect-[16/10] max-h-[70vh] w-full border-t border-gray-200 bg-black"
         />
       )}

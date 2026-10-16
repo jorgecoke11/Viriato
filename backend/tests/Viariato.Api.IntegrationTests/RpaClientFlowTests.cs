@@ -192,4 +192,38 @@ public sealed class RpaClientFlowTests(ViariatoApiFactory factory) : IClassFixtu
 
         Assert.True(ex.IsConflict);
     }
+
+    [Fact]
+    public async Task AStep_AddsToTheDataOfItsCaso_ForTheNextOne_WithoutLosingWhatWasThere()
+    {
+        var escenario = await CreateEscenarioAsync();
+        var robot = RobotClient(escenario.ApiKey);
+        var casoId = await StartCasoAsync(escenario, "Caso con datos");
+        var ejecucion = await robot.ObtenerSiguienteEjecucionAsync();
+        Assert.NotNull(ejecucion);
+
+        await robot.ActualizarDatosCasoAsync(ejecucion.EjecucionPasoId, "{\"orden\":{\"lado\":\"Compra\",\"cantidad\":0.5},\"beneficio\":20}");
+
+        var caso = await escenario.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{casoId}");
+        var datos = JsonDocument.Parse(caso.GetProperty("datosJson").GetString()!).RootElement;
+        Assert.Equal("Balay", datos.GetProperty("proveedor").GetString()); // what was there stays
+        Assert.Equal(20, datos.GetProperty("beneficio").GetInt32());       // what has the same name is replaced
+        Assert.Equal("Compra", datos.GetProperty("orden").GetProperty("lado").GetString()); // what is new is added
+
+        // Data that is not an object is refused with the reason, and the Caso keeps what it had.
+        var error = await Assert.ThrowsAsync<ViriatoApiException>(() => robot.ActualizarDatosCasoAsync(ejecucion.EjecucionPasoId, "[1,2]"));
+        Assert.True(error.IsConflict);
+    }
+
+    [Fact]
+    public async Task ARobot_CannotWriteTheDataOfAStepItDidNotClaim()
+    {
+        var escenario = await CreateEscenarioAsync();
+        var robot = RobotClient(escenario.ApiKey);
+        await StartCasoAsync(escenario, "Caso ajeno");
+
+        var error = await Assert.ThrowsAsync<ViriatoApiException>(() => robot.ActualizarDatosCasoAsync(Guid.NewGuid(), "{\"x\":1}"));
+
+        Assert.True(error.IsNotFound);
+    }
 }

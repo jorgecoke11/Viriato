@@ -1,4 +1,4 @@
-import { describirDias, finDelDia, inicioDelDia, resolverRango, type AtajoDeFecha, type RangoElegido } from '../../lib/rangoDeFechas'
+import { describirDias, instanteDesde, instanteHasta, type AtajoDeFecha, type RangoElegido } from '../../lib/rangoDeFechas'
 import type { ListCasosFilters, ResumenFilters } from './api'
 
 // Which finished Casos to show is one question — "finished when?" — whether the answer is a shortcut ("today", "the last 7
@@ -12,8 +12,7 @@ export const FINALIZADOS_DE_HOY: FinalizadosFiltro = { tipo: 'atajo', atajo: 'ho
 // would read them as midnight UTC, which cuts the last day of a range out and moves "today" by the time-zone offset.
 export function filtroToParams(filtro: FinalizadosFiltro, ahora: Date = new Date()): Pick<ResumenFilters, 'finalizados' | 'desde' | 'hasta'> {
   if (filtro.tipo === 'todos') return { finalizados: 'todos' }
-  const { desde, hasta } = resolverRango(filtro, ahora)
-  return { desde: desde ? inicioDelDia(desde) : undefined, hasta: hasta ? finDelDia(hasta) : undefined }
+  return { desde: instanteDesde(filtro, ahora), hasta: instanteHasta(filtro, ahora) }
 }
 
 /** The same window, named the way the Casos list takes it, for opening a group from the dashboard. */

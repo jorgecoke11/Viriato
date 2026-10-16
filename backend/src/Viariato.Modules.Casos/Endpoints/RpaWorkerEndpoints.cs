@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +45,7 @@ internal static class RpaWorkerEndpoints
         group.MapPost("/pasos/{id:guid}/fallar", FallarAsync);
         group.MapPost("/pasos/{id:guid}/evidencias", AgregarEvidenciaAsync).DisableAntiforgery();
         group.MapPost("/pasos/{id:guid}/estado-negocio", CambiarEstadoNegocioAsync);
+        group.MapPost("/pasos/{id:guid}/datos", ActualizarDatosAsync);
         group.MapPost("/pasos/{id:guid}/en-vivo", ReportarEnVivoAsync);
     }
 
@@ -494,6 +496,60 @@ internal static class RpaWorkerEndpoints
         detalle.ProgresoAt = ahora;
 
         await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+
+    /// <summary>A step hands what it found to the next one by writing it into the Caso's data: each property of the object sent replaces the
+    /// one of the same name (the others stay). Only the step the robot has claimed can do it, on its own Caso. The data of a Caso is what
+    /// every robot of the process reads (<c>DatosCasoJson</c>), so this is how a chain of services passes the baton. It is not checked against
+    /// the type's form: that form is what a person fills in, and this is what a robot adds afterwards.</summary>
+    private static async Task<IResult> ActualizarDatosAsync(
+        Guid id, ActualizarDatosCasoRobotRequest request, ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
+    {
+        var detalle = await RpaWorkerAuthorization.RequireClaimedStepAsync(db, principal.GetDespliegueId(), id, ct);
+        if (detalle is null) return ProblemResults.NotFound(http, "Paso no encontrado.");
+
+        JsonObject nuevos;
+        try
+        {
+            nuevos = JsonNode.Parse(request.DatosJson ?? string.Empty) as JsonObject ?? throw new JsonException();
+        }
+        catch (JsonException)
+        {
+            return ProblemResults.Conflict(http, "Los datos tienen que ser un objeto JSON, p. ej. {\"orden\": {...}}.");
+        }
+
+        var paso = await db.Set<EjecucionPaso>().AsNoTracking().FirstAsync(p => p.Id == id, ct);
+        var caso = await db.Set<Caso>().FirstAsync(c => c.Id == paso.CasoId, ct);
+
+        JsonObject actuales;
+        try
+        {
+            actuales = string.IsNullOrWhiteSpace(caso.DatosJson) ? new JsonObject() : JsonNode.Parse(caso.DatosJson) as JsonObject ?? new JsonObject();
+        }
+        catch (JsonException)
+        {
+            actuales = new JsonObject();
+        }
+
+        foreach (var propiedad in nuevos.ToList())
+        {
+            nuevos.Remove(propiedad.Key);
+            actuales[propiedad.Key] = propiedad.Value;
+        }
+
+        caso.DatosJson = actuales.ToJsonString();
+        caso.UpdatedAt = DateTimeOffset.UtcNow;
+        db.Add(new CasoEvento
+        {
+            CasoId = caso.Id,
+            EjecucionId = paso.EjecucionId,
+            Accion = CasoEventoAccion.DatosActualizados,
+            DetalleJson = JsonSerializer.Serialize(new { porRobot = true, propiedades = actuales.Select(p => p.Key) }),
+            OccurredAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync(ct);
+
         return Results.NoContent();
     }
 

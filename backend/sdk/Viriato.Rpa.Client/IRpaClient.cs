@@ -43,6 +43,13 @@ public interface IRpaClient
     Task CambiarEstadoCasoAsync(Guid ejecucionPasoId, string codigoEstado, CancellationToken ct = default);
 
     /// <summary>
+    /// Writes what this step found into the business data of the Caso, so the next step can work from it (a robot reads the data in
+    /// <c>DatosCasoJson</c> of what it claims). <paramref name="datosJson"/> is a JSON object: each of its properties replaces the one of the
+    /// same name in the Caso's data and the rest stay. This is how one service hands the baton to the next within a Caso.
+    /// </summary>
+    Task ActualizarDatosCasoAsync(Guid ejecucionPasoId, string datosJson, CancellationToken ct = default);
+
+    /// <summary>
     /// Tells Viriato how the step is going so that people can follow it: how far along it is (<paramref name="porcentaje"/>, 0 to
     /// 100), what it is doing now (<paramref name="mensaje"/>), and where the robot's screen can be watched live
     /// (<paramref name="vistaUrl"/>, an http(s) address). Only what is sent changes; an empty text clears it. Viriato keeps the latest

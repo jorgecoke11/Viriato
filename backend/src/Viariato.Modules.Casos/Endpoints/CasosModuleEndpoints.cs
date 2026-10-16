@@ -16,6 +16,7 @@ public static class CasosModuleEndpoints
         endpoints.MapRevisionesEndpoints();
         endpoints.MapRpaWorkerEndpoints();
         endpoints.MapDespachoColaEndpoints();
+        endpoints.MapVistaEnDirectoEndpoints();
 
         return endpoints;
     }

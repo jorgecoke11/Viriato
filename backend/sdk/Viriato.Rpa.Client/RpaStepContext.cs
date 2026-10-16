@@ -60,6 +60,10 @@ public sealed class RpaStepContext
         }
     }
 
+    /// <inheritdoc cref="IRpaClient.ActualizarDatosCasoAsync"/>
+    public Task ActualizarDatosCasoAsync(string datosJson, CancellationToken ct = default) =>
+        _client.ActualizarDatosCasoAsync(Ejecucion.EjecucionPasoId, datosJson, ct);
+
     /// <inheritdoc cref="IRpaClient.CambiarEstadoCasoAsync"/>
     public Task CambiarEstadoCasoAsync(string codigoEstado, CancellationToken ct = default) =>
         _client.CambiarEstadoCasoAsync(Ejecucion.EjecucionPasoId, codigoEstado, ct);

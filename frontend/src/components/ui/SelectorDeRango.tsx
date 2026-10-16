@@ -9,6 +9,7 @@ import {
   resolverRango,
   TODOS_LOS_ATAJOS,
   type AtajoDeFecha,
+  type Hora,
   type RangoElegido,
 } from '../../lib/rangoDeFechas'
 import { Button } from './Button'
@@ -45,6 +46,8 @@ interface Props {
   pie?: (cerrar: () => void) => ReactNode
   /** A line above the choices that says what they are for. */
   encabezado?: ReactNode
+  /** Offers to narrow the chosen days to a time of day (from / to). Without it, a day is always the whole day. */
+  conHora?: boolean
 }
 
 function Panel({
@@ -55,14 +58,22 @@ function Panel({
   maximo,
   pie,
   encabezado,
+  conHora,
   cerrar,
-}: Required<Pick<Props, 'valor' | 'alCambiar' | 'atajos'>> & Pick<Props, 'textoDeTodos' | 'pie' | 'encabezado'> & { maximo?: string; cerrar: () => void }) {
+}: Required<Pick<Props, 'valor' | 'alCambiar' | 'atajos'>> & Pick<Props, 'textoDeTodos' | 'pie' | 'encabezado' | 'conHora'> & { maximo?: string; cerrar: () => void }) {
   const ahora = new Date()
   const actual = resolverRango(valor, ahora)
   // What is being picked in the calendar; nothing until the person clicks (the calendar shows the current choice meanwhile).
   const [borrador, setBorrador] = useState<RangoEnCalendario | null>(null)
-  const completo = borrador !== null && borrador.desde !== undefined && borrador.hasta !== undefined
+  // A day picked on its own is complete: the whole day (24 hours). A second click widens it to a range.
+  const completo = borrador !== null && borrador.desde !== undefined
   const mostrado = borrador ?? actual
+  const [horaDesde, setHoraDesde] = useState<Hora>(valor.tipo === 'rango' ? (valor.horaDesde ?? '') : '')
+  const [horaHasta, setHoraHasta] = useState<Hora>(valor.tipo === 'rango' ? (valor.horaHasta ?? '') : '')
+  const desdeBorrador = borrador?.desde
+  const hastaBorrador = borrador?.hasta ?? borrador?.desde
+  // Same day with the end before the start: nothing to look at.
+  const horasAlReves = completo && desdeBorrador === hastaBorrador && horaDesde !== '' && horaHasta !== '' && horaHasta < horaDesde
 
   function aplicar(nuevo: RangoElegido) {
     alCambiar(nuevo)
@@ -94,7 +105,38 @@ function Panel({
           )}
           {textoDeTodos && opcion(valor.tipo === 'todos' && borrador === null, textoDeTodos, () => aplicar({ tipo: 'todos' }))}
         </div>
-        <Calendario valor={mostrado} alCambiar={setBorrador} maximo={maximo} />
+        <div className="flex flex-col gap-3">
+          <Calendario
+            valor={mostrado}
+            alCambiar={(rango) => setBorrador(rango.hasta === undefined && rango.desde !== undefined ? { desde: rango.desde, hasta: rango.desde } : rango)}
+            maximo={maximo}
+          />
+          {conHora && completo && (
+            <fieldset className="flex flex-wrap items-end gap-3 border-t border-gray-100 pt-3">
+              <legend className="sr-only">Hora del día</legend>
+              <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
+                Desde las
+                <input type="time" className="field w-28" value={horaDesde} onChange={(e) => setHoraDesde(e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium text-gray-600">
+                Hasta las
+                <input type="time" className="field w-28" value={horaHasta} onChange={(e) => setHoraHasta(e.target.value)} />
+              </label>
+              {(horaDesde !== '' || horaHasta !== '') && (
+                <button
+                  type="button"
+                  className="pb-2 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                  onClick={() => {
+                    setHoraDesde('')
+                    setHoraHasta('')
+                  }}
+                >
+                  Todo el día
+                </button>
+              )}
+            </fieldset>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
@@ -107,10 +149,15 @@ function Panel({
                 <span className="text-gray-500">Ahora:</span> <span className="font-medium text-gray-900">{describirDias(actual.desde, actual.hasta, ahora)}</span>
               </>
             )
-          ) : completo ? (
-            <span className="font-medium text-gray-900">{describirDias(borrador.desde, borrador.hasta, ahora)}</span>
+          ) : horasAlReves ? (
+            <span className="text-red-600">La hora final es anterior a la inicial.</span>
           ) : (
-            <span className="text-gray-500">Elige el último día del rango</span>
+            <>
+              <span className="font-medium text-gray-900">
+                {describirDias(desdeBorrador, hastaBorrador, ahora, conHora ? horaDesde || undefined : undefined, conHora ? horaHasta || undefined : undefined)}
+              </span>
+              {desdeBorrador === hastaBorrador && horaDesde === '' && horaHasta === '' && <span className="text-gray-500"> · 24 horas · pulsa otro día para un rango</span>}
+            </>
           )}
         </span>
         <span className="flex items-center gap-2">
@@ -118,8 +165,17 @@ function Panel({
           <Button
             type="button"
             size="sm"
-            disabled={!completo}
-            onClick={() => completo && aplicar({ tipo: 'rango', desde: borrador.desde, hasta: borrador.hasta })}
+            disabled={!completo || horasAlReves}
+            onClick={() =>
+              completo &&
+              aplicar({
+                tipo: 'rango',
+                desde: borrador.desde,
+                hasta: borrador.hasta ?? borrador.desde,
+                ...(conHora && horaDesde ? { horaDesde } : {}),
+                ...(conHora && horaHasta ? { horaHasta } : {}),
+              })
+            }
           >
             Aplicar
           </Button>
@@ -131,10 +187,11 @@ function Panel({
 
 /**
  * Picks a range of days: a few shortcuts that stay true as the days go by ("Últimos 7 días"), an optional "no limit", and a
- * calendar for anything else, in a panel that hangs from a button showing what is chosen. A shortcut applies at once; a range
- * from the calendar applies with «Aplicar». It does not know what it filters — that is the caller's.
+ * calendar for anything else, in a panel that hangs from a button showing what is chosen. A shortcut applies at once; what is picked
+ * in the calendar applies with «Aplicar»: one click is a whole day (24 hours), a second click widens it to a range, and with `conHora` the
+ * first and last day can be narrowed to a time of day. It does not know what it filters — that is the caller's.
  */
-export function SelectorDeRango({ titulo, valor, alCambiar, atajos = TODOS_LOS_ATAJOS, textoDeTodos = null, maximo, resumen, disparador, pie, encabezado }: Props) {
+export function SelectorDeRango({ titulo, valor, alCambiar, atajos = TODOS_LOS_ATAJOS, textoDeTodos = null, maximo, resumen, disparador, pie, encabezado, conHora = false }: Props) {
   const limite = maximo === null ? undefined : maximo !== undefined && esDia(maximo) ? maximo : aDia(new Date())
   const texto = resumen ?? describirRango(valor, new Date(), textoDeTodos ?? 'Todo')
   const ancho = typeof window === 'undefined' ? 600 : Math.min(600, window.innerWidth - 24)
@@ -162,7 +219,7 @@ export function SelectorDeRango({ titulo, valor, alCambiar, atajos = TODOS_LOS_A
         )
       }
     >
-      {(cerrar) => <Panel valor={valor} alCambiar={alCambiar} atajos={atajos} textoDeTodos={textoDeTodos} maximo={limite} pie={pie} encabezado={encabezado} cerrar={cerrar} />}
+      {(cerrar) => <Panel valor={valor} alCambiar={alCambiar} atajos={atajos} textoDeTodos={textoDeTodos} maximo={limite} pie={pie} encabezado={encabezado} conHora={conHora} cerrar={cerrar} />}
     </Popover>
   )
 }

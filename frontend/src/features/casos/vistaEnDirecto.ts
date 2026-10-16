@@ -13,6 +13,15 @@ export function direccionDeVistaSegura(url: string | null | undefined): string |
   }
 }
 
+/**
+ * Whether the screen is served by Viriato's own address (under /vista/, through its Caddy, which is how it is seen from outside the
+ * robot's PC). Viriato keeps that door: the browser needs a pass before it may load the screen. A screen anywhere else
+ * (http://localhost:6080 on the robot's own PC) has no such door.
+ */
+export function necesitaPaseDeViriato(url: string, origen: string = window.location.origin): boolean {
+  return new URL(url).origin === origen
+}
+
 /** The same screen, in a form made for a small frame: scaled to fit and without the controls that let a person touch it. */
 export function direccionParaElMarco(url: string): string {
   const direccion = new URL(url)

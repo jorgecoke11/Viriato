@@ -53,6 +53,8 @@ public sealed class RpaWorkerTests
 
         public Task CambiarEstadoCasoAsync(Guid id, string codigoEstado, CancellationToken ct = default) => Report($"estado:{codigoEstado}");
 
+        public Task ActualizarDatosCasoAsync(Guid ejecucionPasoId, string datosJson, CancellationToken ct = default) => Task.CompletedTask;
+
         public Task ReportarEnVivoAsync(Guid ejecucionPasoId, int? porcentaje = null, string? mensaje = null, string? vistaUrl = null, CancellationToken ct = default) => Report($"en-vivo:{porcentaje}:{mensaje}");
 
         public Task<CredencialRobotDto> ObtenerCredencialAsync(string nombre, CancellationToken ct = default) => throw new NotSupportedException();

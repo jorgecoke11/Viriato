@@ -1,8 +1,8 @@
 @import "tailwindcss";
-@import "@fontsource/fira-sans/400.css";
-@import "@fontsource/fira-sans/500.css";
-@import "@fontsource/fira-sans/600.css";
-@import "@fontsource/fira-sans/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 @import "@fontsource/fira-code/400.css";
 @import "@fontsource/fira-code/500.css";
 
@@ -15,19 +15,25 @@
    with other values (the `.dark` block below), not a second set of classes.
 
    Semantics worth knowing:
-     gray    cool slate neutral. 50-100 fills, 200-300 borders, 400 icons/placeholders, 500-600 secondary text,
+     gray    warm neutral (paper and graphite, not blue-grey slate). 50-100 fills, 200-300 borders, 400 icons/placeholders, 500-600 secondary text,
              800-900 primary text. Inverts in the dark theme.
-     indigo  the brand / primary action.
+     indigo  the brand / primary action. The name stayed, the colour is a petrol blue.
      green / amber / red / purple / blue  status — done, waiting, failed, needs a person, running. A status is
              never colour alone: badges carry a dot or an icon and a label.
      page / surface / raised  the canvas, the cards on it, and what floats above both (menus, dialogs).
-     side-*  the navigation rail, which is dark in both themes.
+     side-*  the navigation rail (warm paper in the light theme, graphite in the dark one).
 ------------------------------------------------------------------------------------------------ */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Fira Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Esquinas más sobrias: una herramienta de trabajo, no una tarjeta de aplicación de moda. */
+  --radius-lg: 0.4rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.625rem;
+
+  /* La fuente del sistema de Apple (San Francisco) donde existe; en Windows y Android, Inter, la más parecida, que va incluida. */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --color-gray-50: var(--c-gray-50);
@@ -128,28 +134,28 @@
 }
 
 :root {
-  --c-gray-50: #f8fafc;
-  --c-gray-100: #f1f5f9;
-  --c-gray-200: #e2e8f0;
-  --c-gray-300: #c3cdda;
-  --c-gray-400: #7b8aa0;
-  --c-gray-500: #5b6b82;
-  --c-gray-600: #475569;
-  --c-gray-700: #334155;
-  --c-gray-800: #1e293b;
-  --c-gray-900: #0f172a;
-  --c-gray-950: #020617;
-  --c-indigo-50: #eef2ff;
-  --c-indigo-100: #e0e7ff;
-  --c-indigo-200: #c7d2fe;
-  --c-indigo-300: #a5b4fc;
-  --c-indigo-400: #818cf8;
-  --c-indigo-500: #6366f1;
-  --c-indigo-600: #4f46e5;
-  --c-indigo-700: #4338ca;
-  --c-indigo-800: #3730a3;
-  --c-indigo-900: #312e81;
-  --c-indigo-950: #1e1b4b;
+  --c-gray-50: #faf9f6;
+  --c-gray-100: #f3f1ec;
+  --c-gray-200: #e6e2da;
+  --c-gray-300: #cfc9be;
+  --c-gray-400: #85807a;
+  --c-gray-500: #605c55;
+  --c-gray-600: #4b4842;
+  --c-gray-700: #38352f;
+  --c-gray-800: #282621;
+  --c-gray-900: #1b1a17;
+  --c-gray-950: #0f0e0c;
+  --c-indigo-50: #eef6f8;
+  --c-indigo-100: #d6eaef;
+  --c-indigo-200: #aed3dd;
+  --c-indigo-300: #7db7c7;
+  --c-indigo-400: #4a97ae;
+  --c-indigo-500: #2d7d95;
+  --c-indigo-600: #1f6a82;
+  --c-indigo-700: #1a566a;
+  --c-indigo-800: #174557;
+  --c-indigo-900: #153a49;
+  --c-indigo-950: #0b232d;
   --c-blue-50: #eff6ff;
   --c-blue-100: #dbeafe;
   --c-blue-200: #bfdbfe;
@@ -194,57 +200,57 @@
   --c-amber-800: #92400e;
   --c-amber-900: #78350f;
   --c-amber-950: #451a03;
-  --c-purple-50: #faf5ff;
-  --c-purple-100: #f3e8ff;
-  --c-purple-200: #e9d5ff;
-  --c-purple-300: #d8b4fe;
-  --c-purple-400: #c084fc;
-  --c-purple-500: #a855f7;
-  --c-purple-600: #9333ea;
-  --c-purple-700: #7e22ce;
-  --c-purple-800: #6b21a8;
-  --c-purple-900: #581c87;
-  --c-purple-950: #3b0764;
-  --c-page: #ebeef4;
+  --c-purple-50: #f8f0f6;
+  --c-purple-100: #f0dce9;
+  --c-purple-200: #e2bcd4;
+  --c-purple-300: #cf92b6;
+  --c-purple-400: #bb6b98;
+  --c-purple-500: #a14d7e;
+  --c-purple-600: #873d68;
+  --c-purple-700: #6e3254;
+  --c-purple-800: #582a45;
+  --c-purple-900: #482439;
+  --c-purple-950: #2c1423;
+  --c-page: #f5f3ee;
   --c-surface: #ffffff;
   --c-surface-raised: #ffffff;
-  --c-overlay: rgb(15 23 42 / 0.45);
-  --c-side: #0b1220;
-  --c-side-hover: #172033;
-  --c-side-border: #1c2740;
-  --c-side-text: #9aa8bf;
-  --c-side-strong: #f1f5f9;
-  --c-side-accent: #818cf8;
-  --c-shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 2px 8px rgb(15 23 42 / 0.07);
-  --c-shadow-pop: 0 20px 50px -12px rgb(15 23 42 / 0.35);
-  --scroll-thumb: #cbd5e1;
-  --scroll-thumb-hover: #94a3b8;
+  --c-overlay: rgb(27 26 23 / 0.45);
+  --c-side: #faf8f4;
+  --c-side-hover: #efece5;
+  --c-side-border: #e6e2da;
+  --c-side-text: #5f5a52;
+  --c-side-strong: #1b1a17;
+  --c-side-accent: #1f6a82;
+  --c-shadow-card: 0 1px 2px rgb(40 34 24 / 0.07);
+  --c-shadow-pop: 0 12px 32px -8px rgb(40 34 24 / 0.28);
+  --scroll-thumb: #d3cdc2;
+  --scroll-thumb-hover: #b5aea1;
   color-scheme: light;
 }
 
 .dark {
-  --c-gray-50: #1a2438;
-  --c-gray-100: #1d2940;
-  --c-gray-200: #27344d;
-  --c-gray-300: #3a4962;
-  --c-gray-400: #7488a3;
-  --c-gray-500: #98a8bf;
-  --c-gray-600: #b3c0d3;
-  --c-gray-700: #cbd5e1;
-  --c-gray-800: #e2e8f0;
-  --c-gray-900: #f1f5f9;
-  --c-gray-950: #f8fafc;
-  --c-indigo-50: #1e1b4b;
-  --c-indigo-100: #312e81;
-  --c-indigo-200: #3730a3;
-  --c-indigo-300: #4338ca;
-  --c-indigo-400: #818cf8;
-  --c-indigo-500: #6366f1;
-  --c-indigo-600: #6366f1;
-  --c-indigo-700: #a5b4fc;
-  --c-indigo-800: #c7d2fe;
-  --c-indigo-900: #e0e7ff;
-  --c-indigo-950: #eef2ff;
+  --c-gray-50: #1f1e1b;
+  --c-gray-100: #262421;
+  --c-gray-200: #32302c;
+  --c-gray-300: #46433e;
+  --c-gray-400: #8b867e;
+  --c-gray-500: #a8a39a;
+  --c-gray-600: #bfbab1;
+  --c-gray-700: #d6d2ca;
+  --c-gray-800: #e8e5df;
+  --c-gray-900: #f3f1ed;
+  --c-gray-950: #faf9f6;
+  --c-indigo-50: #0e2b36;
+  --c-indigo-100: #153a49;
+  --c-indigo-200: #1a4a5d;
+  --c-indigo-300: #1f5b72;
+  --c-indigo-400: #5aa5bc;
+  --c-indigo-500: #3b8fa8;
+  --c-indigo-600: #2b7a93;
+  --c-indigo-700: #8ec3d3;
+  --c-indigo-800: #b4d9e4;
+  --c-indigo-900: #d6eaef;
+  --c-indigo-950: #eef6f8;
   --c-blue-50: #172554;
   --c-blue-100: #1e3a8a;
   --c-blue-200: #1e40af;
@@ -289,31 +295,31 @@
   --c-amber-800: #fde68a;
   --c-amber-900: #fef3c7;
   --c-amber-950: #fffbeb;
-  --c-purple-50: #3b0764;
-  --c-purple-100: #581c87;
-  --c-purple-200: #6b21a8;
-  --c-purple-300: #7e22ce;
-  --c-purple-400: #c084fc;
-  --c-purple-500: #a855f7;
-  --c-purple-600: #a855f7;
-  --c-purple-700: #d8b4fe;
-  --c-purple-800: #e9d5ff;
-  --c-purple-900: #f3e8ff;
-  --c-purple-950: #faf5ff;
-  --c-page: #080d18;
-  --c-surface: #101828;
-  --c-surface-raised: #152033;
-  --c-overlay: rgb(2 6 15 / 0.7);
-  --c-side: #060a13;
-  --c-side-hover: #121b2d;
-  --c-side-border: #151f33;
-  --c-side-text: #8b9bb4;
-  --c-side-strong: #f1f5f9;
-  --c-side-accent: #818cf8;
-  --c-shadow-card: 0 0 0 1px rgb(255 255 255 / 0.015), 0 1px 2px rgb(0 0 0 / 0.45);
-  --c-shadow-pop: 0 24px 60px -12px rgb(0 0 0 / 0.75);
-  --scroll-thumb: #2a3750;
-  --scroll-thumb-hover: #3d4d6b;
+  --c-purple-50: #2c1423;
+  --c-purple-100: #482439;
+  --c-purple-200: #582a45;
+  --c-purple-300: #6e3254;
+  --c-purple-400: #c47fa8;
+  --c-purple-500: #b0608f;
+  --c-purple-600: #b0608f;
+  --c-purple-700: #dba3c3;
+  --c-purple-800: #e8c3d9;
+  --c-purple-900: #f3e0ec;
+  --c-purple-950: #faf1f6;
+  --c-page: #141311;
+  --c-surface: #1c1b18;
+  --c-surface-raised: #24221f;
+  --c-overlay: rgb(8 7 5 / 0.7);
+  --c-side: #100f0d;
+  --c-side-hover: #1d1c19;
+  --c-side-border: #26241f;
+  --c-side-text: #a09a90;
+  --c-side-strong: #f3f1ed;
+  --c-side-accent: #8ec3d3;
+  --c-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --c-shadow-pop: 0 18px 48px -12px rgb(0 0 0 / 0.7);
+  --scroll-thumb: #3a3732;
+  --scroll-thumb-hover: #524e47;
   color-scheme: dark;
 }
 
@@ -359,7 +365,7 @@
   .field {
     width: 100%;
     min-height: 2.5rem;
-    border-radius: 0.625rem;
+    border-radius: 0.5rem;
     border: 1px solid var(--color-gray-300);
     background-color: var(--color-surface);
     padding: 0.5rem 0.75rem;

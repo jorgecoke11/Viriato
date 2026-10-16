@@ -39,6 +39,8 @@ public sealed class ViariatoApiFactory : WebApplicationFactory<Program>, IAsyncL
                 // The background sweep that cancels overdue steps is run by hand in the tests that need it: left to its
                 // own schedule it could cancel a Caso in the middle of a test that is looking at it overdue.
                 ["Despacho:BarridoSegundos"] = "3600",
+                // Same for the launchers: the tests that need one turn of the clock run it by hand with a clock of their own.
+                ["Despacho:LanzadoresSegundos"] = "3600",
             });
         });
     }

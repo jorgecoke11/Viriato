@@ -1,6 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { ApiError } from '../../lib/apiClient'
@@ -30,7 +29,7 @@ export function NuevoCasoAvanzadoModal({
   flujoNombre: string
   onClose: () => void
 }) {
-  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { showToast } = useToast()
 
   const [estadoNegocioInicialId, setEstadoNegocioInicialId] = useState('')
@@ -95,9 +94,9 @@ export function NuevoCasoAvanzadoModal({
         pasoInicialId: pasoInicialId || null,
       }),
     onSuccess: (caso) => {
-      showToast('success', 'Caso creado correctamente.')
+      showToast('success', `Se ha creado el caso «${caso.titulo}» correctamente.`)
+      for (const clave of ['casos', 'casos-resumen', 'cola-equipo']) void queryClient.invalidateQueries({ queryKey: [clave] })
       onClose()
-      navigate(`/casos/${caso.id}`)
     },
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),
   })

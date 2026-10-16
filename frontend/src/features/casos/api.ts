@@ -304,6 +304,12 @@ export const listCasos = (filters: ListCasosFilters & { page?: number; pageSize?
 
 export const getCaso = (id: string) => apiFetch<CasoDetailDto>(`/casos/${id}`)
 
+/**
+ * A pass to watch the robots' screens served by Viriato's own address (/vista/): the server answers with a cookie only sent there,
+ * valid for an hour. Without it Caddy does not let the screen through.
+ */
+export const pedirPaseDeVista = () => apiFetch<void>('/casos/vista/pase', { method: 'POST' })
+
 /** Cancels an execution (an RPA step waiting for a robot or being run) and, with it, its Caso. */
 export const cancelarEjecucion = (casoId: string, ejecucionPasoId: string) =>
   apiFetch<void>(`/casos/${casoId}/pasos/${ejecucionPasoId}/cancelar`, { method: 'POST' })
@@ -382,6 +388,12 @@ export const updateClasificacion = (
 
 export const deleteClasificacion = (documentoId: string, id: string) =>
   apiFetch<void>(`/documentos/${documentoId}/clasificaciones/${id}`, { method: 'DELETE' })
+
+export type DecisionDeRevision = 'Aprobada' | 'Rechazada'
+
+/** Approve or reject a step that waits for a human review. */
+export const resolverRevision = (ejecucionPasoId: string, decision: DecisionDeRevision, comentario?: string) =>
+  apiFetch<void>(`/revisiones/${ejecucionPasoId}/resolver`, { method: 'POST', body: JSON.stringify({ decision, comentario }) })
 
 export const pausarCaso = (id: string) => apiFetch<void>(`/casos/${id}/pausar`, { method: 'POST' })
 

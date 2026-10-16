@@ -22,7 +22,32 @@ hizo y lo que comprobó.
 ### Título corto
 Qué quieres, con el detalle que tengas. -->
 
-_(Vacío: no queda nada pendiente. Añade aquí lo siguiente.)_
+> Todo lo de interfaz de esta lista se hace con **componentes genéricos** de `components/ui` (regla del proyecto) y con la skill `ui-ux-pro-max`:
+> se cambia el componente, no cada pantalla.
+
+### 26. Menos texto, más iconos — a medias
+En muchas pantallas hay demasiado texto. Repasar el panel y los componentes genéricos y sustituir texto por icono (con `title`/etiqueta accesible)
+donde el icono se entienda solo; dejar texto solo donde aporte. Empezar por: tarjetas de proceso, filas del Listado, cabeceras de las tablas CRUD y el
+detalle del caso. Criterio: una pantalla se entiende de un vistazo, sin leer párrafos.
+**Hecho hasta ahora (parte de la tarea):** los contadores de situación, el «Activo» de las tablas y las acciones de los CRUD ya se leen por su icono (tareas 28 y 30), y se quitó el
+rótulo «Estado de negocio» del tipo de caso (27). **Falta y necesita tu criterio:** qué pantallas te parecen más cargadas de texto; no he recortado explicaciones a ciegas porque
+algunas orientan al usuario nuevo (ver «Dudas»).
+
+
+### 31. Trading con IA local — fases siguientes
+Planteamiento en [docs/trading-ia-local.md](docs/trading-ia-local.md); código en `C:\Users\Jorge\Desktop\Proyectos jorge\trading_robots`. **Hecho:** fase 0 (datos, indicadores, reglas, riesgo, cartera simulada), la prueba simple de la fase 1
+(IA local como segunda opinión), la cartera en Viriato, el **funcionamiento 24 h** (planificador por horas del mercado, sin órdenes repetidas) y el **aprendizaje** (juzga análisis, propone pesos, reentrena un modelo con puerta de validación).
+**Siguiente:** que el modelo aprendido pueda decidir (hoy solo se mide), ver en pantalla la lectura de la IA junto a las reglas, y decidir en qué PC corre (ver «Dudas»). La estructura actual es **un solo proceso («Trading simulado»)**, ver «Hecho».
+
+### 34. Selector desplegable de creador de caso, con buscador — pendiente (apuntado, sin empezar)
+Componente genérico para el modal «Nuevo caso» del panel, en lugar de las tarjetas de opciones: un **desplegable de selección única** con los creadores de caso del proceso y un **buscador** dentro de la lista,
+para que el modal sea más pequeño. Pedido por el usuario el 10/10 («lo apuntas, no lo hagas ahora»). Notas para cuando se haga: ya existen `Popover` y `SearchField` (los usa `MultiSelect`, que es de selección múltiple) y
+`opcionesDeCreadores` (nombre, descripción, proceso y tipo de cada creador); `TarjetasDeOpciones` se queda para lo que necesite verse en tarjetas. Nombre sugerido: `SelectorConBusqueda` en `components/ui`, genérico (no sabe qué son las opciones),
+con teclado (flechas, Enter, Escape), `aria-activedescendant` y «Nada coincide con…». El modal debería pasar a tamaño `md` y, si el proceso tiene un solo creador, seguir sin pedir elección.
+
+### 35. Rehacer la vista de procesos del panel (tipos de caso) — pendiente, con preguntas
+Pedido el 10/10 con `/design`: cambiar el enfoque de todo el componente de proceso del panel (tarjeta de proceso, tipos de caso, filas, estados), menos «de IA» y más enfocado al usuario. **Antes de empezar, preguntar qué es lo que no encaja**: los dos rediseños
+anteriores del panel no gustaron y se deshicieron (ver «Rediseños del panel — probados y DESHECHOS»). Ya está hecho el cambio de estilo global (claro, cálido, azul petróleo), que el panel hereda.
 
 ## Hecho
 
@@ -197,6 +222,36 @@ _(Vacío: no queda nada pendiente. Añade aquí lo siguiente.)_
     - Decisión: no hay Selenium Hub (reparte sesiones; aquí solo se quiere mirar) sino noVNC dentro de cada contenedor; el 6080 solo se publica en 127.0.0.1.
     - Falta ver el icono y la barra con un caso real en marcha (requiere cambiar el extractor a la imagen nueva entre dos casos).
 
+- **Tipografía (tarea 25):** la letra pasa a la del sistema de Apple donde existe (San Francisco en iPhone y Mac) y a **Inter**, incluida en la web, en Windows y Android
+  (`index.css`: `--font-sans`; `@fontsource/inter` sustituye a Fira Sans; Fira Code se queda para el código).
+- **Revisiones desde la web (tarea 32):** un caso que espera revisión muestra un aviso con **Aprobar** y **Rechazar** (comentario opcional, cada decisión pide confirmación) en su
+  página; solo con el permiso `casos.review`. Componente `RevisarPaso`; llama a `POST /api/v1/revisiones/{ejecucionPasoId}/resolver`. Verificado en pantalla.
+- **Selector de fecha (tarea 29):** un clic en el calendario es **un día entero (24 h)**; un segundo clic lo amplía a rango; con `conHora` (el Listado lo usa) se puede acotar
+  desde/hasta qué hora. Cambios en `lib/rangoDeFechas.ts` (`Hora`, `instanteDesde/Hasta`, enlace con `T09:00`), `SelectorDeRango` y el Listado. 5 tests nuevos.
+- **Contadores e iconos (tareas 28 y 30) — probado y DESHECHO por no gustar:** hice un componente de contadores con icono grande en bloque, «Activo» con icono de encendido y acciones de
+  fila con fondo de color; se vieron demasiado llamativos y el usuario pidió volver a los iconos sutiles de antes. Quedan como estaban (chips de las tarjetas de proceso, `ActivoBadge`,
+  `IconButton`, iconos de 16 px). **Se conserva** del trabajo de la 30: `Badge` como rectángulo redondeado (ya no píldora) y el tamaño `lg` de la situación, el estado de negocio y el tipo
+  en la página del caso. Si se retoma, hay que preguntar primero qué es lo que molestaba exactamente (el tamaño, el color de fondo o la forma).
+- **Trading, fase 1 simple y cartera en Viriato (tarea 31):** módulo nuevo `Viariato.Modules.Cartera` (tablas `cartera.estado/movimientos/cotizaciones`, migración `Cartera`, permiso `cartera.read`
+  para Admin y el rol User), API de los robots (`/api/v1/rpa/cartera`: leer, registrar un movimiento idempotente por caso, guardar cotización) y de las personas (`GET /api/v1/cartera`), y la pantalla **Cartera**
+  (menú, patrimonio, efectivo, invertido, rentabilidad, posiciones y movimientos). Los robots usan esa cartera por defecto. 3 pruebas de integración + 6 de formato. La IA local (Ollama, `qwen2.5:3b`) da una
+  lectura como evidencia del caso con el parámetro `ia_activa`; **probado con datos reales**: carga ~3 min la primera vez y ~1 min por valor en CPU; devuelve JSON válido pero repite lo que dicen las reglas.
+  El Dockerfile de la API ahora copia el proyecto de Cartera (sin eso la imagen no construía). Probado de punta a punta en pre: análisis de SPY con IA → orden → aprobada → ejecutada → visible en Cartera.
+- **Lanzadores de caso — el cron de la plataforma (tarea 33, 10/10):** entidad nueva del proceso, al lado de los creadores: un creador que se dispara solo con una o varias expresiones **cron** (5 campos, una por línea), zona horaria, datos JSON del caso y tolerancia.
+  Backend: `Flujos` (entidad `LanzadorDeCaso`, tabla `flujos.lanzadores_de_caso`, migración `Lanzadores`, API `/api/v1/flujos/{id}/lanzadores`, lógica pura `CronDeLanzador` con la librería Cronos) y `Casos` (`AbridorDeCasos`, que abre el caso sin usuario ni HTTP con las mismas comprobaciones que un creador, y `VigilanteDeLanzadores`, que mira cada 30 s con cerrojo para varias réplicas).
+  Un reinicio no repite un momento, los momentos perdidos se saltan pasada la tolerancia (varios perdidos → un caso), un fallo se ve en el propio lanzador. Front: pestaña **Lanzadores** en el proceso. Pruebas: 15 de integración (cron en zona, tolerancia, no repetir, pausa, error) y 10 unitarias (incl. cambio de hora). Documentado en [docs/lanzadores-de-caso.md](docs/lanzadores-de-caso.md).
+- **Trading en UN proceso, con los servicios uno detrás de otro (tarea 31, 10/10):** a petición del usuario («la premisa de esta aplicación son las transiciones de servicios; los casos tienen una ejecución con un servicio asociado; un solo proceso, no tres»).
+  Antes eran T01, T02 y «Trading» y los robots se pasaban el trabajo **creando casos**. Ahora: proceso **«Trading simulado»** con tres pasos —Analizar valor (Analista) → Ejecutar orden (Ejecutor) → Aprender (Aprendiz)— y dos tipos de caso: **Valor** (empieza en el primer paso; si no hay orden termina ahí; si la hay, el caso pasa solo al Ejecutor)
+  y **Aprendizaje** (empieza en el tercero). **Sin aprobación humana** (lo pidió el usuario): el Ejecutor ejecuta lo que propone el Analista, dentro de los límites de riesgo y siempre en la cartera simulada. Desaparecen el robot Lanzador y el caso «Lote».
+  Dos mejoras genéricas de la plataforma para hacerlo posible: (1) **un paso puede escribir en los datos de su caso** (`POST /api/v1/rpa/pasos/{id}/datos`, SDK 0.8.0 `ActualizarDatosCasoAsync`, contratos 1.4.0): así el Analista deja la orden para el Ejecutor; (2) **un lanzador con lista**: sus datos pueden ser una lista de objetos y abre **un caso por elemento**
+  (la lista de valores vive ahora en el lanzador, no en un parámetro). Lo viejo (T01, T02, «Trading», con sus casos y claves) quedó **desactivado, no borrado**, y sus lanzadores en pausa. Pasar un caso a otro **proceso** (regla «cuando acabe en tal estado, crea un caso en otro proceso») queda como excepción y **no está construido**.
+  Probado en pre: el lanzador abrió un caso por valor y los robots los analizaron de punta a punta; 232 pruebas de integración, 95 en los robots, 83 del cliente. **Pendiente del usuario:** publicar `Viriato.Rpa.Client` 0.8.0 y `Viariato.ApiContracts` 1.4.0 en el feed de GitHub (`backend/sdk/publish-packages.ps1`, necesita su token) para poder construir las imágenes de los robots; en este PC se construyen con la carpeta `paquetes-locales/`.
+  Aprendizaje: el aprendiz juzga análisis tras 5 días, propone pesos con ≥30 muestras por regla (una persona los aplica en Cartera) y reentrena una regresión logística con validación temporal y puerta campeón/aspirante; el primer modelo con datos reales quedó «Rechazado» (56,5 % frente a 56,6 % de la apuesta obvia). Cripto 24/7 y velas por horas: **aparcado**, lo define el usuario.
+- **Rediseños del panel — probados y DESHECHOS por no gustar (10/10):** unir «en curso» con los pendientes en dos grupos, el icono de flechas para «en curso» con los finalizados en gris,
+  tres cifras de negocio en banda, y reconstruir el panel entero como lista de procesos (filas con reparto, cifras y estados desplegables). Se volvió al panel de antes. **Lo único que
+  se conserva es quitar el rótulo «Estado de negocio»** de dentro de cada tipo de caso. Antes de volver a tocarlo, preguntar qué es lo que no encaja.
+- **Rótulo «Estado de negocio» (tarea 27):** quitado de dentro de cada tipo de caso en las tarjetas de proceso (interpretado así: era el único sitio donde aparecía dentro del tipo).
+
 ## Bloqueado / necesita al usuario
 
 - **Abrir el PR:** hay que commitear todo lo hecho desde el último commit. Lo hace Claude cuando se lo pidas.
@@ -217,3 +272,15 @@ _(Vacío: no queda nada pendiente. Añade aquí lo siguiente.)_
   `CalculadorPrecios`) y «Lavavajillas Balay» (motivo sin mirar). Decide qué hacer con una celda sin precio (saltarla, dejarla vacía o fallar con un mensaje claro).
 - **Publicar la vista en directo fuera de tu PC** (Cloudflare Tunnel) necesita un segundo *Public hostname* para el puerto 6080 y protegerlo con Cloudflare Access: ver
   `docs/ver-la-ejecucion-en-directo.md`.
+
+## Dudas (para plantear al usuario)
+
+*Respondidas el 10/10: valores de la lista (vale AAPL, MSFT, NVDA, SPY y QQQ), IA local con Ollama (hecha la prueba simple) y cartera en Viriato (hecha). Pendiente de explicar lo de las aprobaciones.*
+
+1. **Menos texto, más iconos (26):** ¿qué pantallas te parecen más cargadas de texto? No recorté explicaciones a ciegas.
+2. **Aprobaciones de órdenes:** el usuario no entendía de dónde salen. Vienen del proceso Trading de pre (paso «Aprobar operación», revisión humana) que se conservó en T02 antes de ejecutar. Decidir si se
+   mantiene (una persona aprueba cada orden simulada) o si el ejecutor opera solo mientras es de papel.
+3. **Dónde correrá el trading:** en qué PC (RAM / GPU NVIDIA) y con qué modelo; hoy la IA tarda ~1 min por valor en este PC.
+4. **Horas de los lanzadores de trading (hechas con valores por defecto):** análisis 10:00, 12:30 y 15:45 (hora de Nueva York) y aprendizaje 16:30, solo laborables. ¿Te valen? Se cambian en el proceso T01 → Lanzadores. **Ojo:** ya están activos en pre, así que el lunes abrirán casos de análisis aunque no haya robots escuchando (se quedarán en cola).
+5. **Festivos de EE. UU.:** el cron abre casos también en festivos (el mercado está cerrado y Yahoo devuelve el último día, así que no se opera con datos nuevos, pero se gasta un análisis). ¿Añado un calendario de festivos?
+6. **¿Debe decidir el modelo?** Hoy solo se mide. Propongo no dejarlo decidir hasta tener meses de acierto «en la práctica» por encima de la apuesta obvia.
