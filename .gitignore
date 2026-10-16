@@ -12,9 +12,10 @@ dist/
 .env
 .env.prod
 
-## Arranque automático: las carpetas de cada PC y su registro
+## Arranque automático: las carpetas de cada PC, su registro y lo desplegado en él
 ops/arranque/pilas.psd1
 ops/arranque/arranque.log*
+ops/arranque/desplegado.json
 
 ## Editors / OS
 .vs/

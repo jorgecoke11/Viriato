@@ -83,7 +83,7 @@ GitHub Packages (`read:packages`) en `GITHUB_PACKAGES_TOKEN`; no queda dentro de
 
 | Tarea | Comando |
 |---|---|
-| Actualizar a una versión nueva | `git pull` y `docker compose -f docker-compose.prod.yml --profile tunnel up -d --build` (la base se actualiza sola al arrancar la API) |
+| Actualizar a una versión nueva | Doble clic en «Actualizar Viriato» en el escritorio ([arranque-automatico.md](arranque-automatico.md)): trae lo último y redespliega lo que cambió, robots incluidos. A mano: `git pull` y `docker compose -f docker-compose.prod.yml --profile tunnel up -d --build`. La base se actualiza sola al arrancar la API. |
 | Ver registros | `docker compose -f docker-compose.prod.yml logs -f api` |
 | Copia de seguridad ahora | `docker compose -f docker-compose.prod.yml run --rm backup now` |
 | Parar todo | `docker compose -f docker-compose.prod.yml --profile tunnel down` (sin `-v`: **no borra** los datos) |
