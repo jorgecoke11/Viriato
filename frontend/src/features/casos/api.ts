@@ -304,6 +304,12 @@ export const listCasos = (filters: ListCasosFilters & { page?: number; pageSize?
 
 export const getCaso = (id: string) => apiFetch<CasoDetailDto>(`/casos/${id}`)
 
+/**
+ * A pass to watch the robots' screens served by Viriato's own address (/vista/): the server answers with a cookie only sent there,
+ * valid for an hour. Without it Caddy does not let the screen through.
+ */
+export const pedirPaseDeVista = () => apiFetch<void>('/casos/vista/pase', { method: 'POST' })
+
 /** Cancels an execution (an RPA step waiting for a robot or being run) and, with it, its Caso. */
 export const cancelarEjecucion = (casoId: string, ejecucionPasoId: string) =>
   apiFetch<void>(`/casos/${casoId}/pasos/${ejecucionPasoId}/cancelar`, { method: 'POST' })

@@ -12,8 +12,13 @@
 	}
 
 	# La pantalla del robot en directo (noVNC del contenedor del extractor), por la misma dirección que Viriato: así comparte HTTPS y
-	# el login de Cloudflare Access. Solo hay una si el extractor está en la misma red de Docker (ver docs/ver-la-ejecucion-en-directo.md).
+	# se ve desde fuera. Solo hay una si el extractor está en la misma red de Docker (ver docs/ver-la-ejecucion-en-directo.md).
+	# La puerta es el login de Viriato: antes de cada petición (página, archivos y websocket) la API mira el pase que el front pide
+	# para quien puede ver casos (cookie solo para /vista). Sin pase, 401: nadie de fuera ve al robot teclear las contraseñas del portal.
 	handle_path /vista/* {
+		forward_auth api:8080 {
+			uri /api/v1/casos/vista/comprobar
+		}
 		reverse_proxy {$VISTA_UPSTREAM:extractor:6080}
 	}
 

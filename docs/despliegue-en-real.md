@@ -15,7 +15,8 @@ estén, usan la misma dirección pública.
 1. **Un PC con Windows 10/11 siempre encendido** (o cualquier máquina con Docker). 8 GB de RAM libres bastan para empezar.
 2. **Docker Desktop** (con WSL2), con *«Start Docker Desktop when you sign in»* activado, y el PC **sin suspensión**
    (Configuración → Sistema → Inicio/apagado y batería → «Nunca»). Todos los servicios llevan `restart: unless-stopped`: si el PC se
-   reinicia, vuelven solos al iniciar sesión Docker Desktop.
+   reinicia, vuelven solos al iniciar sesión Docker Desktop. Para que eso pase **sin nadie delante** (inicio de sesión automático,
+   arranque de Viriato y los robots en orden): [arranque-automatico.md](arranque-automatico.md).
 3. **Un dominio que gestione Cloudflare.** Un túnel con dirección fija necesita que el DNS del dominio esté en Cloudflare. Opciones:
    - Mover el DNS de un dominio que ya tengas (lee **antes** todos sus registros —web, correo— para no romper nada) o,
    - comprar un dominio barato (~10 €/año) directamente en Cloudflare, o
@@ -106,4 +107,4 @@ sube fuera del PC junto con los documentos. Las evidencias, que pesan mucho, no 
 | La dirección pública da error 502/1033 | `docker compose … logs cloudflared`: ¿token correcto?, ¿el *public hostname* apunta a `web:80`? |
 | Carga la web pero «error de red» | `docker compose … logs api`: ¿cadena de conexión y contraseña de Postgres iguales? |
 | «No se puede descifrar» en credenciales | `Credenciales__ClaveCifrado` cambió respecto a la que las cifró. |
-| Tras reiniciar el PC no vuelve nada | Docker Desktop no arrancó: activa su inicio con la sesión (o inicio de sesión automático). |
+| Tras reiniciar el PC no vuelve nada | [arranque-automatico.md](arranque-automatico.md): inicio de sesión automático y `ops\arranque\arranque.log`. |

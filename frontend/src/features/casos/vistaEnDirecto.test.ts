@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { direccionDeVistaSegura, direccionParaElMarco } from './vistaEnDirecto'
+import { direccionDeVistaSegura, direccionParaElMarco, necesitaPaseDeViriato } from './vistaEnDirecto'
 
 describe('direccionDeVistaSegura', () => {
   it.each([
@@ -29,4 +29,17 @@ describe('direccionParaElMarco', () => {
   it('otra dirección se deja como está', () => {
     expect(direccionParaElMarco('https://otro.ejemplo.com/pantalla')).toBe('https://otro.ejemplo.com/pantalla')
   })
+})
+
+describe('necesitaPaseDeViriato', () => {
+  it('la pantalla servida por la dirección de Viriato (/vista/) pide pase', () => {
+    expect(necesitaPaseDeViriato('https://app.viriato.org/vista/vnc.html?path=vista/websockify', 'https://app.viriato.org')).toBe(true)
+  })
+
+  it.each(['http://localhost:6080/vnc.html', 'https://otra.viriato.org/vista/vnc.html', 'http://app.viriato.org/vista/vnc.html'])(
+    'una pantalla en otra dirección se abre sin pase: %s',
+    (url) => {
+      expect(necesitaPaseDeViriato(url, 'https://app.viriato.org')).toBe(false)
+    },
+  )
 })
