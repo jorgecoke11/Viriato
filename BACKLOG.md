@@ -49,6 +49,19 @@ con teclado (flechas, Enter, Escape), `aria-activedescendant` y «Nada coincide 
 Pedido el 10/10 con `/design`: cambiar el enfoque de todo el componente de proceso del panel (tarjeta de proceso, tipos de caso, filas, estados), menos «de IA» y más enfocado al usuario. **Antes de empezar, preguntar qué es lo que no encaja**: los dos rediseños
 anteriores del panel no gustaron y se deshicieron (ver «Rediseños del panel — probados y DESHECHOS»). Ya está hecho el cambio de estilo global (claro, cálido, azul petróleo), que el panel hereda.
 
+### 36. Opciones de un desplegable que salen de un parámetro del proceso — pendiente (apuntado, sin empezar)
+Pedido el 16/10. Hoy las opciones de un `enum` se escriben fijas en el esquema del **tipo de caso** (p. ej. `"proveedor": {"enum": ["Balay"]}`); se quiere que puedan salir de
+un **parámetro del proceso** que guarde la lista (`proveedores` = `["Balay", "Bosch", "Siemens"]`), para que añadir un proveedor no obligue a tocar el esquema. Si ese parámetro
+está abierto al panel, quien trabaja el proceso lo amplía desde *Cambiar parámetros*. Notas para cuando se haga:
+- **Extensión del esquema**, p. ej. `"x-opciones-del-parametro": "proveedores"` en un campo `string`/`number`, con `enumNames` opcional (o una lista `[{valor, nombre}]` en el parámetro).
+  Pensarlo como fuente genérica de opciones (hoy parámetros; mañana quizá otra cosa), no como caso suelto.
+- **Dos validadores a la par**: `frontend/src/components/schema-form/esquema.ts` y `backend/src/Viariato.Modules.Flujos/Esquemas/EsquemaDatos.cs` aceptan y rechazan lo mismo.
+- **Al guardar el esquema**: el parámetro existe en el proceso y su valor es una lista válida; si no, error claro.
+- **Al dibujar el formulario**: ruta que dé **solo las listas que usa el esquema** a quien tiene `casos.crear` y está asignado al proceso (leer parámetros hoy es `flujos.manage`/`flujos.parametros`).
+- **Al crear el caso**: el servidor comprueba el valor contra la lista **actual** del parámetro. Si el parámetro desapareció o dejó de ser una lista, se rechaza con un mensaje que lo diga.
+- **Casos antiguos** conservan su valor aunque salga de la lista; solo deja de ofrecerse.
+- Tests de los dos validadores, de la ruta (permisos y asignación) y de la creación con un valor de fuera de la lista; verlo en el formulario de «Nuevo caso».
+
 ## Hecho
 
 - Despacho por equipo con tiempo máximo por servicio (sin latidos), prioridades por ejecución, estados Pendiente / En ejecución,
