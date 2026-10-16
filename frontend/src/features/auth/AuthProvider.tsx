@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { setAccessToken } from '../../lib/tokenStore'
 import { SESSION_EXPIRED_EVENT } from '../../lib/apiClient'
+import { comprobarSesion } from '../../lib/sesion'
 import * as authApi from './api'
 import type { UserDto } from './types'
 
@@ -24,15 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasBootstrapped = useRef(false)
 
   // A page reload always starts with no access token in memory, so the only way to know
-  // whether the session is still alive is to attempt one silent refresh before rendering routes.
+  // whether the session is still alive is to attempt a silent refresh before rendering routes.
+  // Only a 401 sends the person to the login: a server restarting or busy is asked again (comprobarSesion).
   // Guarded by a ref so React 18 StrictMode's dev-only double-invoke doesn't burn two calls
   // against the /auth/refresh rate limit on every mount.
   useEffect(() => {
     if (hasBootstrapped.current) return
     hasBootstrapped.current = true
 
-    authApi
-      .refresh()
+    comprobarSesion(authApi.refresh)
       .then((data) => {
         setAccessToken(data.accessToken)
         setUser(data.user)

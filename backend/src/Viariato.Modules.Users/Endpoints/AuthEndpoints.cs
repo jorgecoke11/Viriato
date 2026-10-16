@@ -32,7 +32,7 @@ internal static class AuthEndpoints
 
         group.MapPost("/register", RegisterAsync).RequireRateLimiting(RateLimitPolicyNames.AuthByCredentials);
         group.MapPost("/login", LoginAsync).RequireRateLimiting(RateLimitPolicyNames.AuthByCredentials);
-        group.MapPost("/refresh", RefreshAsync).RequireRateLimiting(RateLimitPolicyNames.AuthByIp);
+        group.MapPost("/refresh", RefreshAsync).RequireRateLimiting(RateLimitPolicyNames.AuthRefresh);
         group.MapPost("/logout", LogoutAsync);
     }
 
