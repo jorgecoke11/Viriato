@@ -27,10 +27,10 @@ $fallos = $total - $resueltas.Count
 
 $proyectos = ProyectosDeDocker
 foreach ($p in $resueltas) {
-    # Never build at sign-in: a missing image is an error to fix by hand (building the robots needs a token), not ten minutes of compiling.
-    $argumentos = (ArgumentosCompose $p $proyectos) + @('up', '-d', '--no-build') + (Servicios $p)
-    Anotar "[$($p.Nombre)] docker $($argumentos -join ' ')"
-    $r = Ejecutar 'docker' $argumentos
+    # Never build at sign-in: a missing image is for the update button (building the robots needs a token), not ten minutes of compiling.
+    $base = ArgumentosCompose $p $proyectos
+    Anotar "[$($p.Nombre)] docker $(($base + @('up', '-d', '--no-build') + (Servicios $p)) -join ' ')"
+    $r = Levantar $base (Servicios $p)
     if ($r.Codigo -eq 0) {
         Anotar "[$($p.Nombre)] En marcha." 'Green'
     } else {

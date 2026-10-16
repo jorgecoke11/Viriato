@@ -67,32 +67,41 @@ function Actualizar {
         $base = ArgumentosCompose $p $proyectos
         $clave = $p.Archivos -join '|'
         $commit = if (Test-Path (Join-Path $p.Carpeta '.git')) { & git -C $p.Carpeta rev-parse HEAD } else { $null }
+        $construida = $false
         if ($Todo -or ($commit -and $desplegado[$clave] -ne $commit)) {
             # The version the build bakes in (Viriato shows it at the foot of the menu and in /api/v1/version).
             $env:GIT_SHA = if ($commit) { $commit.Substring(0, 7) } else { $null }
             $version = Join-Path $p.Carpeta 'VERSION'
             $env:APP_VERSION = if (Test-Path $version) { (Get-Content $version -TotalCount 1).Trim() } else { $null }
 
-            Anotar "[$($p.Nombre)] Construyendo y desplegando la versión nueva..."
-            $r = Ejecutar 'docker' ($base + @('up', '-d', '--build') + (Servicios $p))
-            if ($r.Codigo -eq 0) {
-                Anotar "[$($p.Nombre)] Desplegada." 'Green'
-                $nuevas++
-                if ($commit) {
-                    $desplegado[$clave] = $commit
-                    $desplegado | ConvertTo-Json | Set-Content $registroDeDespliegues -Encoding UTF8
+            # Built apart from starting, so each failure says what it is: a build that fails has touched no container.
+            Anotar "[$($p.Nombre)] Construyendo la versión nueva (unos minutos; el detalle va al registro)..."
+            $b = Ejecutar 'docker' ($base + @('build') + (Servicios $p)) -Callado
+            if ($b.Codigo -eq 0) {
+                $construida = $true
+            } else {
+                Anotar "[$($p.Nombre)] No se pudo construir: se queda con la versión que tenía." 'Red'
+                if ($b.Salida -match "GITHUB_PACKAGES_TOKEN|NU1301|401 \(Unauthorized\)|Parameter 'password'") {
+                    Anotar '    Parece que falta el token de GitHub Packages (GITHUB_PACKAGES_TOKEN): ver docs/arranque-automatico.md.' 'Yellow'
                 }
-                continue
+                $fallos++
             }
-            # The build fails before any container is touched: the previous version keeps running.
-            Anotar "[$($p.Nombre)] No se pudo construir: sigue funcionando la versión anterior." 'Red'
-            if ($r.Salida -match 'GITHUB_PACKAGES_TOKEN|NU1301|401 \(Unauthorized\)') {
-                Anotar '    Parece que falta el token de GitHub Packages (GITHUB_PACKAGES_TOKEN): ver docs/arranque-automatico.md.' 'Yellow'
-            }
-            $fallos++
         }
-        $r = Ejecutar 'docker' ($base + @('up', '-d', '--no-build') + (Servicios $p))
-        if ($r.Codigo -eq 0) { Anotar "[$($p.Nombre)] En marcha." } else { Anotar "[$($p.Nombre)] HA FALLADO (código $($r.Codigo))." 'Red'; $fallos++ }
+
+        $r = Levantar $base (Servicios $p)
+        if ($r.Codigo -ne 0) {
+            Anotar "[$($p.Nombre)] NO ARRANCA (código $($r.Codigo)): mira las líneas de arriba." 'Red'
+            $fallos++
+        } elseif ($construida) {
+            Anotar "[$($p.Nombre)] Desplegada la versión nueva." 'Green'
+            $nuevas++
+            if ($commit) {
+                $desplegado[$clave] = $commit
+                $desplegado | ConvertTo-Json | Set-Content $registroDeDespliegues -Encoding UTF8
+            }
+        } else {
+            Anotar "[$($p.Nombre)] En marcha."
+        }
     }
 
     # 3. Each rebuild leaves the previous image behind without a name (the extractor's weighs 3 GB). Only those go: nothing in use.

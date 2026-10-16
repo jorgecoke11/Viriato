@@ -123,6 +123,8 @@ mostrarlo todo `Up` y `arranque.log` terminar en `Hecho: 4 de 4 en marcha.`
 | `arranque.log` no existe o no tiene la hora del último inicio | El acceso directo: ¿está en `shell:startup` (Win+R)? Vuelve a pasar `instalar.ps1`. |
 | «Docker no ha respondido en 10 minutos» | Abre Docker Desktop a mano y mira su error; a menudo lo arregla `wsl --update`. |
 | «No such image» / «pull access denied» al arrancar | Esa pila nunca se construyó en este PC: doble clic en «Actualizar Viriato». |
+| Viriato no arranca: «port is already allocated» o «socket no permitido» (puerto 80) | Con el túnel el 80 no hace falta: en el `.env` de Viriato, `HTTP_PORT=8088` y `HTTPS_PORT=8443`, y otra vez «Actualizar Viriato». |
+| «network … not found» | Ya lo arregla solo (vuelve a crear los contenedores sin tocar los datos). A mano: `docker compose … up -d --no-build --force-recreate`. |
 | Al actualizar: «No se pudo traer lo nuevo» | En esa carpeta, `git status`: cambios hechos a mano en el servidor o rama separada de GitHub. |
 | Al actualizar: «falta el token de GitHub Packages» | El paso 3 (y cerrar sesión y volver a entrar después de guardarlo). |
 | «network viriato declared as external, but could not be found» | Viriato no arrancó (mira sus líneas más arriba) o es anterior al nombre fijo de red: actualízalo, o pon su red en `VIRIATO_RED` en el `.env` de los robots. |

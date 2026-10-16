@@ -8,20 +8,38 @@ $registro = Join-Path $PSScriptRoot 'arranque.log'
 # The log is kept small: past 1 MB the old one stays as arranque.log.1.
 if ((Test-Path $registro) -and (Get-Item $registro).Length -gt 1MB) { Move-Item $registro "$registro.1" -Force }
 
-function Anotar([string]$texto, [string]$color = '') {
+function Anotar([string]$texto, [string]$color = '', [switch]$SoloRegistro) {
     $linea = '{0:yyyy-MM-dd HH:mm:ss}  {1}' -f (Get-Date), $texto
     Add-Content -Path $registro -Value $linea -Encoding UTF8
+    if ($SoloRegistro) { return }
     if ($color) { Write-Host $linea -ForegroundColor $color } else { Write-Host $linea }
 }
 
-# Runs a program, writes what it says to the log and returns its exit code and its output.
-function Ejecutar([string]$programa, [string[]]$argumentos) {
+# Runs a program, writes what it says to the log and returns its exit code and its output. -Callado keeps it off the screen (a build
+# prints hundreds of lines); if it fails, its last lines are shown in red so the window still says why.
+function Ejecutar([string]$programa, [string[]]$argumentos, [switch]$Callado) {
     # Windows PowerShell wraps each line a program writes to stderr in an error record; the line itself is its TargetObject (an empty
     # line would otherwise read "System.Management.Automation.RemoteException").
     $salida = @(& $programa @argumentos 2>&1 | ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { "$($_.TargetObject)" } else { "$_" } })
     $codigo = $LASTEXITCODE
-    foreach ($linea in $salida) { if ($linea.Trim()) { Anotar "    $linea" } }
+    $lineas = @($salida | Where-Object { $_.Trim() })
+    foreach ($linea in $lineas) { Anotar "    $linea" -SoloRegistro:$Callado }
+    if ($Callado -and $codigo -ne 0) {
+        foreach ($linea in @($lineas | Select-Object -Last 12)) { Write-Host "    $linea" -ForegroundColor Red }
+    }
     return [pscustomobject]@{ Codigo = $codigo; Salida = $salida }
+}
+
+# docker compose … up -d with the images there are. Docker does not recreate a container whose network changed name: it tries to
+# start the old one and fails with "network … not found" (it happened when Viriato's network became "viriato"). Then the containers
+# are made again; their data lives in volumes and folders, which this does not touch.
+function Levantar([string[]]$base, [string[]]$servicios) {
+    $r = Ejecutar 'docker' ($base + @('up', '-d', '--no-build') + $servicios)
+    if ($r.Codigo -ne 0 -and ($r.Salida -match 'network .*not found')) {
+        Anotar '    Algún contenedor apunta a una red que ya no existe: los vuelvo a crear (los datos no se tocan).' 'Yellow'
+        $r = Ejecutar 'docker' ($base + @('up', '-d', '--no-build', '--force-recreate') + $servicios)
+    }
+    return $r
 }
 
 function DockerResponde {
