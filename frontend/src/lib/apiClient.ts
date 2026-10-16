@@ -1,3 +1,4 @@
+import { sesionTerminada } from './sesion'
 import { getAccessToken, setAccessToken } from './tokenStore'
 
 const API_BASE = '/api/v1'
@@ -19,7 +20,10 @@ export class ApiError extends Error {
 // Concurrent 401s must share a single /auth/refresh call: rotating refresh tokens invalidates
 // the previous one, so firing several refresh requests in parallel would trip reuse detection
 // and log everyone out.
-let refreshPromise: Promise<boolean> | null = null
+// 'terminada': the server says the session is over. 'fallida': it could not be asked (restarting, busy, no connection), which
+// says nothing about the session, so the person stays signed in and the next request tries again.
+type Renovacion = 'renovada' | 'terminada' | 'fallida'
+let refreshPromise: Promise<Renovacion> | null = null
 
 async function rawFetch(path: string, options: RequestInit): Promise<Response> {
   const token = getAccessToken()
@@ -38,21 +42,21 @@ async function rawFetch(path: string, options: RequestInit): Promise<Response> {
   })
 }
 
-function refreshAccessToken(): Promise<boolean> {
+function refreshAccessToken(): Promise<Renovacion> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
         const response = await rawFetch(REFRESH_PATH, { method: 'POST' })
         if (!response.ok) {
+          if (!sesionTerminada(response.status)) return 'fallida'
           setAccessToken(null)
-          return false
+          return 'terminada'
         }
         const data = await response.json()
         setAccessToken(data.accessToken)
-        return true
+        return 'renovada'
       } catch {
-        setAccessToken(null)
-        return false
+        return 'fallida'
       } finally {
         refreshPromise = null
       }
@@ -79,10 +83,13 @@ async function fetchWithRefresh(path: string, options: RequestInit): Promise<Res
   let response = await rawFetch(path, options)
 
   if (response.status === 401 && path !== REFRESH_PATH) {
-    const refreshed = await refreshAccessToken()
-    if (!refreshed) {
+    const renovacion = await refreshAccessToken()
+    if (renovacion === 'terminada') {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
       throw new ApiError('La sesión ha expirado.', 401)
+    }
+    if (renovacion === 'fallida') {
+      throw new ApiError('No se ha podido renovar la sesión ahora mismo. Inténtalo de nuevo en unos segundos.', 503)
     }
     response = await rawFetch(path, options)
   }

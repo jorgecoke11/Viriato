@@ -12,10 +12,14 @@ public static class AuthRateLimiting
 
     // 5 attempts / 15 minutes per §6.4. Overridable via RateLimiting:Auth:{PermitLimit,WindowMinutes}
     // so integration tests can raise the ceiling instead of tripping over it mid-flow.
+    // Renewing the session is not guessing a password (a refresh token is 256 random bits), and every page load does it once, so
+    // it has a ceiling of its own, high enough for an office behind one IP reloading at will: RateLimiting:Refresh:{…}.
     public static void AddAuthRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
         var permitLimit = configuration.GetValue("RateLimiting:Auth:PermitLimit", 5);
         var window = TimeSpan.FromMinutes(configuration.GetValue("RateLimiting:Auth:WindowMinutes", 15));
+        var renovacionesPermitidas = configuration.GetValue("RateLimiting:Refresh:PermitLimit", 120);
+        var ventanaDeRenovaciones = TimeSpan.FromMinutes(configuration.GetValue("RateLimiting:Refresh:WindowMinutes", 15));
 
         services.AddRateLimiter(options =>
         {
@@ -31,13 +35,13 @@ public static class AuthRateLimiting
                 });
             });
 
-            options.AddPolicy(RateLimitPolicyNames.AuthByIp, httpContext =>
+            options.AddPolicy(RateLimitPolicyNames.AuthRefresh, httpContext =>
             {
                 var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = permitLimit,
-                    Window = window,
+                    PermitLimit = renovacionesPermitidas,
+                    Window = ventanaDeRenovaciones,
                     QueueLimit = 0,
                 });
             });

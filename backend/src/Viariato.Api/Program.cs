@@ -101,6 +101,7 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddIpDelCliente();
 builder.Services.AddAuthRateLimiting(builder.Configuration);
 
 var app = builder.Build();
@@ -123,6 +124,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+// First: everything after it (the rate limits above all) must see the client's IP, not Caddy's.
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 
 app.UseAuthCredentialsCapture();

@@ -2,6 +2,12 @@
 # DOMAIN=:80 (detrás de Cloudflare Tunnel, que ya pone el HTTPS): Caddy sirve HTTP plano y no pide ningún certificado.
 {
 	email {$CADDY_EMAIL}
+	# Quién es el cliente: Cloudflare Tunnel (cloudflared, en la red privada de Docker) lo dice en X-Forwarded-For, y Caddy se lo pasa
+	# a la API solo si viene de una red privada. A cualquier otro le cambia esa cabecera por su propia dirección, así que nadie desde
+	# Internet puede inventarse una IP para saltarse los límites del login (ver backend/src/Viariato.Api/IpDelCliente.cs).
+	servers {
+		trusted_proxies static private_ranges
+	}
 }
 
 {$DOMAIN} {
