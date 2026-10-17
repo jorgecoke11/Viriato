@@ -62,6 +62,28 @@ está abierto al panel, quien trabaja el proceso lo amplía desde *Cambiar pará
 - **Casos antiguos** conservan su valor aunque salga de la lista; solo deja de ofrecerse.
 - Tests de los dos validadores, de la ruta (permisos y asignación) y de la creación con un valor de fuera de la lista; verlo en el formulario de «Nuevo caso».
 
+### 37. Robot «Cierre mensual de finanzas» — pendiente (apuntado, sin empezar)
+Pedido el 17/10. Un proceso con robot que, una vez al mes, lee los extractos de las cuentas personales, los categoriza y deja un resumen con avisos. El usuario
+**exporta los CSV a mano** (2 minutos al mes): el robot **no inicia sesión en ningún banco** (credenciales bancarias guardadas, reautenticación PSD2 cada pocos meses,
+detección de bots y condiciones de uso). Notas para cuando se haga:
+- **Proceso y lanzador:** proceso «Finanzas personales» con un lanzador cron el día 1 de cada mes (zona Europe/Madrid) que abre un caso «Cierre AAAA-MM». Los CSV
+  entran como documentos del caso (subidos desde el detalle) o desde una carpeta que el robot vigila; elegir lo más simple con lo que ya existe.
+- **Entrada:** extractos CSV con las columnas `Tipo, Producto, Fecha de inicio, Fecha de finalización, Descripción, Importe, Comisión, Divisa, State, Saldo`
+  (formato de exportación del banco actual; hay tres cuentas: conjunta, personal y la de cobro). Solo cuentan los movimientos `COMPLETADO`.
+- **Paso 1 — Leer y limpiar:** quitar duplicados entre extractos que se solapan y **descartar los traspasos entre cuentas propias** (recargas desde la cuenta de cobro,
+  transferencias a y desde la conjunta) para no contar el mismo euro dos veces. La cuenta conjunta cuenta al 50 %.
+- **Paso 2 — Categorizar:** reglas «texto de la descripción → categoría» (alquiler, supermercado, combustible, suministros, restaurantes y ocio, ropa y caprichos,
+  viajes, suscripciones, gimnasio…) guardadas como **parámetro del proceso** abierto al panel, para que el usuario las amplíe sin tocar código.
+- **Paso 3 — Revisar lo desconocido:** si quedan movimientos sin categoría, paso de **revisión humana** (como `RevisarPaso`): el usuario asigna la categoría y el robot la
+  guarda como regla nueva para los meses siguientes.
+- **Paso 4 — Resumen:** evidencia del caso con los cuatro números del mes: inversión aportada (700 €), caprichos frente a presupuesto (275 €), saldo de la cuenta
+  conjunta (que no baje de ~300 € de colchón) y ahorros frente al colchón de 6 meses. Más el gasto por categoría y la comparación con la media de los meses anteriores.
+  Los presupuestos van también como **parámetros del proceso**.
+- **Avisos:** si se supera un presupuesto, el caso termina en un estado de negocio de aviso visible en el panel (y, si se añade más adelante, Telegram o correo).
+- **Datos sensibles:** los extractos son datos bancarios reales. No se suben a ningún servicio externo, no van a git (carpeta ignorada) y en las pruebas se usan CSV
+  inventados con el mismo formato, nunca los reales.
+- Tests: lectura del CSV, descarte de traspasos internos, reglas de categorización, cálculo de los cuatro números y un cierre de punta a punta con un CSV de prueba.
+
 ## Hecho
 
 - Despacho por equipo con tiempo máximo por servicio (sin latidos), prioridades por ejecución, estados Pendiente / En ejecución,
