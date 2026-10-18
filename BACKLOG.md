@@ -84,6 +84,23 @@ detección de bots y condiciones de uso). Notas para cuando se haga:
   inventados con el mismo formato, nunca los reales.
 - Tests: lectura del CSV, descarte de traspasos internos, reglas de categorización, cálculo de los cuatro números y un cierre de punta a punta con un CSV de prueba.
 
+### 38. Robot «Vigilante de precios» — pendiente (apuntado, sin empezar)
+Pedido el 18/10. Un robot que mira cada día el precio de los productos que el usuario quiere comprar en varias tiendas y le avisa cuando bajan de un precio límite.
+Primer caso real: **MacBook Air 15" M5, 16 GB / 512 GB, límite 1.500 €** (precio el 18/10: 1.629 € en Amazon y MediaMarkt; oficial 1.729 €; Black Friday el 27/11).
+Notas para cuando se haga:
+- **Proceso y lanzador:** proceso «Vigilante de precios» con un lanzador cron (p. ej. 9:00 y 21:00, Europe/Madrid; más a menudo del 20/11 al 1/12) que abre **un caso por producto vigilado** con
+  la función de lanzador con lista (la lista de productos vive en el lanzador o en un parámetro del proceso abierto al panel, para añadir productos sin tocar código).
+- **Datos de cada producto:** nombre, precio límite y una lista de `{tienda, url}` (Amazon, MediaMarkt, El Corte Inglés, Fnac, PcComponentes).
+- **Paso — Mirar precios:** Playwright abre cada URL y lee el precio, la disponibilidad y si es vendido por la propia tienda. Un lector por tienda (selector o JSON-LD `offers.price`
+  cuando la página lo tenga, que es más estable que el HTML). Si una tienda falla o bloquea, se apunta en el caso y se sigue con las demás; no hace fallar el caso entero.
+- **Ojo con Amazon:** detecta bots y puede pedir captcha. No resolver captchas ni saltarse protecciones: si bloquea, se marca «no disponible» y se sigue. Pocas peticiones
+  (dos al día por producto), con pausas y sin sesión iniciada.
+- **Histórico:** guardar cada lectura (fecha, tienda, precio, disponible) para ver la evolución en el detalle del caso o en una tabla genérica; reutilizable para comparar con el mínimo histórico.
+- **Aviso:** si alguna tienda baja del límite, el caso termina en un estado de negocio final «Precio alcanzado» visible en el panel y se manda un aviso por **Telegram**
+  (bot propio; el token va solo en `.env`, nunca en git) con producto, tienda, precio y enlace. No repetir el aviso si el precio no ha cambiado desde el último.
+- **Fuera de alcance:** comprar. El robot solo avisa; la compra la hace el usuario.
+- Tests: lectores de precio con HTML guardado de cada tienda (sin red), comparación con el límite, no repetir avisos, y una tienda caída no rompe el caso.
+
 ## Hecho
 
 - Despacho por equipo con tiempo máximo por servicio (sin latidos), prioridades por ejecución, estados Pendiente / En ejecución,
