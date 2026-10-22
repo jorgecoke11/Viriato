@@ -41,11 +41,12 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
   }, [open, initialValues])
 
   // Frozen so the panel keeps showing the right title/fields/error while it animates out, even
-  // though the caller may already be resetting those props back to their "closed" defaults.
-  const [frozen, setFrozen] = useState({ title, fields, error })
+  // though the caller may already be resetting those props back to their "closed" defaults. While open, the live props.
+  const [ultimo, setUltimo] = useState({ title, fields, error })
   useEffect(() => {
-    if (open) setFrozen({ title, fields, error })
+    if (open) setUltimo({ title, fields, error })
   }, [open, title, fields, error])
+  const frozen = open ? { title, fields, error } : ultimo
 
   function handleChange(name: string, value: string | boolean) {
     setValues((prev) => ({ ...prev, [name]: value }))

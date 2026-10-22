@@ -37,10 +37,12 @@ export function ConfirmDialog({
 
   // Frozen so the dialog keeps showing valid content while it animates out, even if the caller
   // clears the underlying data (e.g. the item pending deletion) the moment `open` goes false.
-  const [frozen, setFrozen] = useState({ title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText })
+  // While open, the live props (the frozen copy is a render behind).
+  const [ultimo, setUltimo] = useState({ title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText })
   useEffect(() => {
-    if (open) setFrozen({ title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText })
+    if (open) setUltimo({ title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText })
   }, [open, title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText])
+  const frozen = open ? { title, message, confirmLabel, pendingLabel, onConfirm, pending, requireText } : ultimo
 
   return (
     <Modal
