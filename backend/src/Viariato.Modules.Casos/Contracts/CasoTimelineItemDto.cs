@@ -27,4 +27,7 @@ public static class CasoTimelineItemTipo
     /// <summary>A notification that went out (EstadoCodigo "enviado") or could not (EstadoCodigo "fallido"); ContenidoJson has the subject,
     /// the recipients and, if it failed, why.</summary>
     public const string Aviso = "Aviso";
+    /// <summary>What a reprocessing rule did with the case: EstadoCodigo "programado" (a step will run again), "agotado" (the limit ran out)
+    /// or "fallido" (it could not run).</summary>
+    public const string Reprocesamiento = "Reprocesamiento";
 }

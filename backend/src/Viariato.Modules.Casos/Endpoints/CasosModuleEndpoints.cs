@@ -18,6 +18,7 @@ public static class CasosModuleEndpoints
         endpoints.MapDespachoColaEndpoints();
         endpoints.MapVistaEnDirectoEndpoints();
         endpoints.MapAlmacenRobotEndpoints();
+        endpoints.MapReprocesamientosEndpoints();
 
         return endpoints;
     }

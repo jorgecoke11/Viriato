@@ -77,6 +77,13 @@ Del 16/10. (1) Si Edge no arranca, el fallo es de la máquina, no del caso: el r
 
 ## Hecho
 
+- Reprocesamientos (22/10): pestaña propia en cada proceso. Una regla dice cuándo (estado de negocio y/o cómo acabó la última ejecución), qué
+  paso se relanza (o el que terminó), cuánto esperar, el límite opcional por caso y el estado final al agotarlo; gana la primera por orden.
+  Se decide al acabar el caso, en el mismo guardado (interceptor como las notificaciones), y lo ejecuta un reprocesador cada 10 s; los
+  descartes manuales nunca se reprocesan. Historia del caso con filtro «Reprocesos». Arreglado de paso: tras reprocesar un paso anterior, los
+  siguientes se crean como intento nuevo (antes chocaban con el índice único). Doc en `docs/reprocesamientos.md`. Verificado: backend
+  completo, front (tsc, eslint, vitest) y en el navegador sobre una copia de la base (3 reprocesos y el caso a «Error» al cuarto fallo).
+
 - Formularios fuera de los tipos de caso, asociados a los creadores (22/10): biblioteca de formularios por proceso (compartibles), valores por defecto en el creador
   (modo parcial) y en el lanzador (solo lo que cambia, mezclado campo a campo), el caso recuerda su formulario, robots con `Creador` opcional, migración sin pérdida.
   Componentes genéricos `DatosConFormulario`, `ListaDeDatosConFormulario`, `EditorDeEsquema`, `ControlSegmentado` y campos `custom` en el kit CRUD. Diseño en

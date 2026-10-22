@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Braces, Camera, FolderOpen, History, MessageSquare, Paperclip, Play, Tag, Video, Workflow, type LucideIcon, Mail } from 'lucide-react'
+import { Braces, Camera, FolderOpen, History, MessageSquare, Paperclip, Play, Tag, Video, Workflow, type LucideIcon, Mail, RotateCcw } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Badge, type BadgeTone } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -26,9 +26,10 @@ const estilos: Record<TipoDeEntrada, { icono: LucideIcon; nodo: TonoDeNodo; badg
   datos: { icono: Braces, nodo: 'green', badge: 'success', etiqueta: 'Datos', filtro: 'Datos' },
   nota: { icono: MessageSquare, nodo: 'gray', badge: 'neutral', etiqueta: 'Nota', filtro: 'Notas' },
   aviso: { icono: Mail, nodo: 'blue', badge: 'info', etiqueta: 'Aviso', filtro: 'Avisos' },
+  reproceso: { icono: RotateCcw, nodo: 'amber', badge: 'warning', etiqueta: 'Reproceso', filtro: 'Reprocesos' },
 }
 
-const ORDEN_DE_FILTROS: TipoDeEntrada[] = ['estado', 'captura', 'video', 'archivo', 'datos', 'nota', 'aviso']
+const ORDEN_DE_FILTROS: TipoDeEntrada[] = ['estado', 'captura', 'video', 'archivo', 'datos', 'nota', 'aviso', 'reproceso']
 
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 
@@ -247,6 +248,19 @@ export function CasoTimelineUnificado({ casoId, alVerDocumento }: { casoId: stri
             <Hora iso={item.occurredAt} />
           </div>
           {item.contenidoJson && <ContenidoDeEvidencia raw={item.contenidoJson} />}
+        </TimelineItem>
+      )
+    }
+
+    if (tipo === 'reproceso') {
+      const fallido = item.estadoCodigo === 'fallido'
+      return (
+        <TimelineItem key={entrada.id} icono={icono} tono={fallido ? 'red' : nodo} compacto>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-0.5 text-sm text-gray-700">
+            <span>{item.titulo}</span>
+            {fallido && <Badge tone="danger">Fallido</Badge>}
+            <Hora iso={item.occurredAt} />
+          </div>
         </TimelineItem>
       )
     }

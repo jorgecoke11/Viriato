@@ -12,6 +12,7 @@ import * as flujosApi from '../api'
 import { FlujoCreadoresPanel } from '../FlujoCreadoresPanel'
 import { FlujoLanzadoresPanel } from '../FlujoLanzadoresPanel'
 import { FlujoNotificacionesPanel } from '../../notificaciones/FlujoNotificacionesPanel'
+import { FlujoReprocesamientosPanel } from '../../reprocesamientos/FlujoReprocesamientosPanel'
 import { FlujoEstadosPanel } from '../FlujoEstadosPanel'
 import { FlujoFormulariosPanel } from '../FlujoFormulariosPanel'
 import { FlujoParametrosPanel } from '../FlujoParametrosPanel'
@@ -19,7 +20,7 @@ import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
 import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
 import { BackLink } from '../../../components/ui/BackLink'
 
-type Tab = 'versiones' | 'estados' | 'tipos' | 'formularios' | 'creadores' | 'lanzadores' | 'notificaciones' | 'parametros'
+type Tab = 'versiones' | 'estados' | 'tipos' | 'formularios' | 'creadores' | 'lanzadores' | 'notificaciones' | 'reprocesamientos' | 'parametros'
 
 export function FlujoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -55,6 +56,7 @@ export function FlujoDetailPage() {
             { value: 'creadores', label: 'Creadores' },
             { value: 'lanzadores', label: 'Lanzadores' },
             { value: 'notificaciones', label: 'Notificaciones' },
+            { value: 'reprocesamientos', label: 'Reprocesamientos' },
             { value: 'parametros', label: 'Parámetros' },
           ]}
           active={tab}
@@ -149,6 +151,19 @@ export function FlujoDetailPage() {
             >
               <Card className="mt-4">
                 <FlujoNotificacionesPanel flujoId={flujo.id} />
+              </Card>
+            </motion.div>
+          )}
+
+          {tab === 'reprocesamientos' && (
+            <motion.div
+              key="reprocesamientos"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
+              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+            >
+              <Card className="mt-4">
+                <FlujoReprocesamientosPanel flujoId={flujo.id} />
               </Card>
             </motion.div>
           )}

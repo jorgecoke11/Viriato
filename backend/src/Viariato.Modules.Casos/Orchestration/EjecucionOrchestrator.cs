@@ -437,7 +437,11 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
             return;
         }
 
-        await CrearYDespacharPasoAsync(ejecucion, caso, siguientePasoDef, numeroIntento: 1, ct);
+        // After an earlier step was reprocessed, the steps after it run again: each as its next attempt, not a second first one.
+        var intentosPrevios = await db.Set<EjecucionPaso>()
+            .Where(p => p.EjecucionId == ejecucion.Id && p.FlujoPasoDefId == siguientePasoDef.Id)
+            .MaxAsync(p => (int?)p.NumeroIntento, ct) ?? 0;
+        await CrearYDespacharPasoAsync(ejecucion, caso, siguientePasoDef, numeroIntento: intentosPrevios + 1, ct);
     }
 
     /// <summary>Walks forward from <paramref name="desdeOrden"/>, skipping any step already marked

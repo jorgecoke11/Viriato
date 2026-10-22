@@ -20,5 +20,8 @@ public sealed class DespachoOptions
     /// <summary>How often the launchers (the crontab of the processes) look at the clock. A moment is fired at most this many seconds late.</summary>
     public int LanzadoresSegundos { get; set; } = 30;
 
+    /// <summary>How often the reprocessor looks for reprocessings whose moment has come. One «right away» runs at most this many seconds late.</summary>
+    public int ReprocesamientosSegundos { get; set; } = 10;
+
     public TimeSpan VentanaConexion => TimeSpan.FromSeconds(Math.Max(1, VentanaConexionSegundos));
 }

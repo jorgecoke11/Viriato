@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Viariato.Infrastructure;
@@ -31,6 +32,12 @@ public static class DependencyInjection
         // Launchers: creators that fire by themselves on a crontab (their configuration is in Flujos, firing them needs the orchestrator).
         services.AddScoped<Lanzadores.AbridorDeCasos>();
         services.AddHostedService<Lanzadores.VigilanteDeLanzadores>();
+
+        // Reprocessing rules: decided as a case's end is saved (an interceptor, registered before the notifications' so a final state it
+        // sets also notifies), run by the reprocessor when their moment comes.
+        services.AddScoped<ISaveChangesInterceptor, Reprocesamientos.DisparadorDeReprocesamientos>();
+        services.AddScoped<Reprocesamientos.ReprocesadorDeCasos>();
+        services.AddHostedService<Reprocesamientos.VigilanteDeReprocesamientos>();
 
         services.AddKeyedScoped<IPasoEjecutor, RpaPasoEjecutor>(TipoPaso.Rpa);
         services.AddKeyedScoped<IPasoEjecutor, AgentePasoEjecutor>(TipoPaso.Agente);

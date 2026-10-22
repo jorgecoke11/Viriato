@@ -1007,6 +1007,155 @@ namespace Viariato.Infrastructure.Migrations
                     b.ToTable("evidencias", "casos");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.ReglaDeReprocesamiento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("boolean")
+                        .HasColumnName("activa");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EsperaMinutos")
+                        .HasColumnType("integer")
+                        .HasColumnName("espera_minutos");
+
+                    b.Property<string>("EstadoEjecucion")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("estado_ejecucion");
+
+                    b.Property<Guid?>("EstadoFinalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("estado_final_id");
+
+                    b.Property<Guid?>("EstadoNegocioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("estado_negocio_id");
+
+                    b.Property<Guid>("FlujoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_id");
+
+                    b.Property<int?>("Limite")
+                        .HasColumnType("integer")
+                        .HasColumnName("limite");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden");
+
+                    b.Property<string>("PasoNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("paso_nombre");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reglas_de_reprocesamiento");
+
+                    b.HasIndex("EstadoFinalId")
+                        .HasDatabaseName("ix_reglas_de_reprocesamiento_estado_final_id");
+
+                    b.HasIndex("EstadoNegocioId")
+                        .HasDatabaseName("ix_reglas_de_reprocesamiento_estado_negocio_id");
+
+                    b.HasIndex("FlujoId", "Activa")
+                        .HasDatabaseName("ix_reglas_de_reprocesamiento_flujo_id_activa");
+
+                    b.ToTable("reglas_de_reprocesamiento", "casos");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.ReprocesamientoProgramado", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado");
+
+                    b.Property<Guid>("FlujoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_id");
+
+                    b.Property<DateTimeOffset?>("HechoAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hecho_at");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("integer")
+                        .HasColumnName("numero");
+
+                    b.Property<string>("PasoNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("paso_nombre");
+
+                    b.Property<DateTimeOffset>("ProgramadoPara")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("programado_para");
+
+                    b.Property<Guid?>("ReglaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("regla_id");
+
+                    b.Property<string>("ReglaNombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("regla_nombre");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reprocesamientos");
+
+                    b.HasIndex("ReglaId")
+                        .HasDatabaseName("ix_reprocesamientos_regla_id");
+
+                    b.HasIndex("CasoId", "ReglaId")
+                        .HasDatabaseName("ix_reprocesamientos_caso_id_regla_id");
+
+                    b.HasIndex("Estado", "ProgramadoPara")
+                        .HasDatabaseName("ix_reprocesamientos_estado_programado_para");
+
+                    b.HasIndex("FlujoId", "CreatedAt")
+                        .HasDatabaseName("ix_reprocesamientos_flujo_id_created_at");
+
+                    b.ToTable("reprocesamientos", "casos");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.RevisionHumana", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2986,6 +3135,51 @@ namespace Viariato.Infrastructure.Migrations
                         .HasConstraintName("fk_evidencias_ejecucion_pasos_ejecucion_paso_id");
 
                     b.Navigation("EjecucionPaso");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.ReglaDeReprocesamiento", b =>
+                {
+                    b.HasOne("Viariato.Modules.Flujos.Domain.FlujoEstadoDef", null)
+                        .WithMany()
+                        .HasForeignKey("EstadoFinalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_reglas_de_reprocesamiento_flujo_estado_defs_estado_final_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.FlujoEstadoDef", null)
+                        .WithMany()
+                        .HasForeignKey("EstadoNegocioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_reglas_de_reprocesamiento_flujo_estado_defs_estado_negocio_");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", null)
+                        .WithMany()
+                        .HasForeignKey("FlujoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_reglas_de_reprocesamiento_flujos_flujo_id");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.ReprocesamientoProgramado", b =>
+                {
+                    b.HasOne("Viariato.Modules.Casos.Domain.Caso", null)
+                        .WithMany()
+                        .HasForeignKey("CasoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_reprocesamientos_casos_caso_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", null)
+                        .WithMany()
+                        .HasForeignKey("FlujoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_reprocesamientos_flujos_flujo_id");
+
+                    b.HasOne("Viariato.Modules.Casos.Domain.ReglaDeReprocesamiento", null)
+                        .WithMany()
+                        .HasForeignKey("ReglaId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_reprocesamientos_reglas_de_reprocesamiento_regla_id");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.RevisionHumana", b =>

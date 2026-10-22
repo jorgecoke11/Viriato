@@ -471,11 +471,53 @@ internal static class CasosEndpoints
             })
             .ToList();
 
-        var timeline = cambiosEstado.Concat(documentos).Concat(evidencias).Concat(avisos)
+        // What the process's reprocessing rules decided about this case.
+        var reprocesamientos = (await db.Set<CasoEvento>().AsNoTracking()
+                .Where(e => e.CasoId == id && (e.Accion == CasoEventoAccion.ReprocesamientoProgramado
+                    || e.Accion == CasoEventoAccion.ReprocesamientosAgotados || e.Accion == CasoEventoAccion.ReprocesamientoFallido))
+                .Select(e => new { e.Id, e.OccurredAt, e.Accion, e.DetalleJson })
+                .ToListAsync(ct))
+            .Select(e => new CasoTimelineItemDto(
+                e.Id, CasoTimelineItemTipo.Reprocesamiento, e.OccurredAt, TituloDeReprocesamiento(e.Accion, e.DetalleJson),
+                e.Accion switch
+                {
+                    CasoEventoAccion.ReprocesamientoProgramado => "programado",
+                    CasoEventoAccion.ReprocesamientosAgotados => "agotado",
+                    _ => "fallido",
+                },
+                null, null, null))
+            .ToList();
+
+        var timeline = cambiosEstado.Concat(documentos).Concat(evidencias).Concat(avisos).Concat(reprocesamientos)
             .OrderByDescending(item => item.OccurredAt)
             .ToList();
 
         return Results.Ok(timeline);
+    }
+
+    private static string TituloDeReprocesamiento(CasoEventoAccion accion, string? detalleJson)
+    {
+        string? Leer(JsonElement raiz, string nombre) =>
+            raiz.TryGetProperty(nombre, out var v) ? v.ValueKind switch { JsonValueKind.String => v.GetString(), JsonValueKind.Number => v.GetRawText(), _ => null } : null;
+
+        string? regla = null, paso = null, numero = null, limite = null, error = null;
+        try
+        {
+            using var json = JsonDocument.Parse(detalleJson ?? "{}");
+            var raiz = json.RootElement;
+            (regla, paso, numero, limite, error) = (Leer(raiz, "regla"), Leer(raiz, "paso"), Leer(raiz, "numero"), Leer(raiz, "limite"), Leer(raiz, "error"));
+        }
+        catch (JsonException) { }
+
+        regla ??= "reprocesamiento";
+        var que = paso is null ? "la ejecución en que acabó" : $"«{paso}»";
+        return accion switch
+        {
+            CasoEventoAccion.ReprocesamientoProgramado =>
+                $"Se reprocesa {que} por la regla «{regla}» ({numero ?? "?"}{(limite is null ? string.Empty : $" de {limite}")})",
+            CasoEventoAccion.ReprocesamientosAgotados => $"Agotados los {limite} reprocesamientos de la regla «{regla}»",
+            _ => $"No se pudo reprocesar por la regla «{regla}»: {error}",
+        };
     }
 
     private static async Task<IResult> StartCasoAsync(

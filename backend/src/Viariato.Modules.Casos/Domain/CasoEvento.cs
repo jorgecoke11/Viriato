@@ -26,6 +26,12 @@ public enum CasoEventoAccion
     NotificacionEnviada,
     /// <summary>A notification could not be sent after every attempt (<c>{ regla, destinatarios, error }</c>).</summary>
     NotificacionFallida,
+    /// <summary>A reprocessing rule will run a step again (<c>{ regla, numero, limite, paso, programadoPara }</c>).</summary>
+    ReprocesamientoProgramado,
+    /// <summary>A reprocessing rule ran out of attempts and left the case on its final state (<c>{ regla, limite }</c>).</summary>
+    ReprocesamientosAgotados,
+    /// <summary>A scheduled reprocessing could not run (<c>{ regla, paso, error }</c>).</summary>
+    ReprocesamientoFallido,
 }
 
 /// <summary>Flat, append-only audit trail — same shape and spirit as Users' RoleAuditLog. Every state
