@@ -62,6 +62,45 @@ está abierto al panel, quien trabaja el proceso lo amplía desde *Cambiar pará
 - **Casos antiguos** conservan su valor aunque salga de la lista; solo deja de ofrecerse.
 - Tests de los dos validadores, de la ruta (permisos y asignación) y de la creación con un valor de fuera de la lista; verlo en el formulario de «Nuevo caso».
 
+### 37. Robot «Cierre mensual de finanzas» — pendiente (apuntado, sin empezar)
+Pedido el 17/10. Un proceso con robot que, una vez al mes, lee los extractos de las cuentas personales, los categoriza y deja un resumen con avisos. El usuario
+**exporta los CSV a mano** (2 minutos al mes): el robot **no inicia sesión en ningún banco** (credenciales bancarias guardadas, reautenticación PSD2 cada pocos meses,
+detección de bots y condiciones de uso). Notas para cuando se haga:
+- **Proceso y lanzador:** proceso «Finanzas personales» con un lanzador cron el día 1 de cada mes (zona Europe/Madrid) que abre un caso «Cierre AAAA-MM». Los CSV
+  entran como documentos del caso (subidos desde el detalle) o desde una carpeta que el robot vigila; elegir lo más simple con lo que ya existe.
+- **Entrada:** extractos CSV con las columnas `Tipo, Producto, Fecha de inicio, Fecha de finalización, Descripción, Importe, Comisión, Divisa, State, Saldo`
+  (formato de exportación del banco actual; hay tres cuentas: conjunta, personal y la de cobro). Solo cuentan los movimientos `COMPLETADO`.
+- **Paso 1 — Leer y limpiar:** quitar duplicados entre extractos que se solapan y **descartar los traspasos entre cuentas propias** (recargas desde la cuenta de cobro,
+  transferencias a y desde la conjunta) para no contar el mismo euro dos veces. La cuenta conjunta cuenta al 50 %.
+- **Paso 2 — Categorizar:** reglas «texto de la descripción → categoría» (alquiler, supermercado, combustible, suministros, restaurantes y ocio, ropa y caprichos,
+  viajes, suscripciones, gimnasio…) guardadas como **parámetro del proceso** abierto al panel, para que el usuario las amplíe sin tocar código.
+- **Paso 3 — Revisar lo desconocido:** si quedan movimientos sin categoría, paso de **revisión humana** (como `RevisarPaso`): el usuario asigna la categoría y el robot la
+  guarda como regla nueva para los meses siguientes.
+- **Paso 4 — Resumen:** evidencia del caso con los cuatro números del mes: inversión aportada (700 €), caprichos frente a presupuesto (275 €), saldo de la cuenta
+  conjunta (que no baje de ~300 € de colchón) y ahorros frente al colchón de 6 meses. Más el gasto por categoría y la comparación con la media de los meses anteriores.
+  Los presupuestos van también como **parámetros del proceso**.
+- **Avisos:** si se supera un presupuesto, el caso termina en un estado de negocio de aviso visible en el panel (y, si se añade más adelante, Telegram o correo).
+- **Datos sensibles:** los extractos son datos bancarios reales. No se suben a ningún servicio externo, no van a git (carpeta ignorada) y en las pruebas se usan CSV
+  inventados con el mismo formato, nunca los reales.
+- Tests: lectura del CSV, descarte de traspasos internos, reglas de categorización, cálculo de los cuatro números y un cierre de punta a punta con un CSV de prueba.
+
+### 38. Robot «Vigilante de precios» — pendiente (apuntado, sin empezar)
+Pedido el 18/10. Un robot que mira cada día el precio de los productos que el usuario quiere comprar en varias tiendas y le avisa cuando bajan de un precio límite.
+Primer caso real: **MacBook Air 15" M5, 16 GB / 512 GB, límite 1.500 €** (precio el 18/10: 1.629 € en Amazon y MediaMarkt; oficial 1.729 €; Black Friday el 27/11).
+Notas para cuando se haga:
+- **Proceso y lanzador:** proceso «Vigilante de precios» con un lanzador cron (p. ej. 9:00 y 21:00, Europe/Madrid; más a menudo del 20/11 al 1/12) que abre **un caso por producto vigilado** con
+  la función de lanzador con lista (la lista de productos vive en el lanzador o en un parámetro del proceso abierto al panel, para añadir productos sin tocar código).
+- **Datos de cada producto:** nombre, precio límite y una lista de `{tienda, url}` (Amazon, MediaMarkt, El Corte Inglés, Fnac, PcComponentes).
+- **Paso — Mirar precios:** Playwright abre cada URL y lee el precio, la disponibilidad y si es vendido por la propia tienda. Un lector por tienda (selector o JSON-LD `offers.price`
+  cuando la página lo tenga, que es más estable que el HTML). Si una tienda falla o bloquea, se apunta en el caso y se sigue con las demás; no hace fallar el caso entero.
+- **Ojo con Amazon:** detecta bots y puede pedir captcha. No resolver captchas ni saltarse protecciones: si bloquea, se marca «no disponible» y se sigue. Pocas peticiones
+  (dos al día por producto), con pausas y sin sesión iniciada.
+- **Histórico:** guardar cada lectura (fecha, tienda, precio, disponible) para ver la evolución en el detalle del caso o en una tabla genérica; reutilizable para comparar con el mínimo histórico.
+- **Aviso:** si alguna tienda baja del límite, el caso termina en un estado de negocio final «Precio alcanzado» visible en el panel y se manda un aviso por **Telegram**
+  (bot propio; el token va solo en `.env`, nunca en git) con producto, tienda, precio y enlace. No repetir el aviso si el precio no ha cambiado desde el último.
+- **Fuera de alcance:** comprar. El robot solo avisa; la compra la hace el usuario.
+- Tests: lectores de precio con HTML guardado de cada tienda (sin red), comparación con el límite, no repetir avisos, y una tienda caída no rompe el caso.
+
 ## Hecho
 
 - Despacho por equipo con tiempo máximo por servicio (sin latidos), prioridades por ejecución, estados Pendiente / En ejecución,
