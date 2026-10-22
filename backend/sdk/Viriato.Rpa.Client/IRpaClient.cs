@@ -77,7 +77,8 @@ public interface IRpaClient
     /// Opens a new Caso in the process this Despliegue was authorised to create Cases in (set by an admin in
     /// Viriato's Despliegues screen); the request cannot name any other. A Despliegue without that permission
     /// gets a <see cref="ViriatoApiException"/> with <c>IsForbidden</c>, and one whose target process has no
-    /// published version, case type or business state of that name, a conflict. Calling this twice creates two
+    /// published version, case type, business state or creator of that name, a conflict — as does data that does not fit
+    /// the form of the creator it names (<see cref="CrearCasoRobotRequest.Creador"/>). Calling this twice creates two
     /// Cases: it is not idempotent, so a launcher that can be retried should keep track of what it already made.
     /// </summary>
     Task<CasoCreadoDto> CrearCasoAsync(CrearCasoRobotRequest request, CancellationToken ct = default);

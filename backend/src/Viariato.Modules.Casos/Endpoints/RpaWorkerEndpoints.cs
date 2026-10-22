@@ -12,10 +12,12 @@ using Viariato.Infrastructure;
 using Viariato.Infrastructure.Trabajos;
 using Viariato.Modules.Casos.Contracts;
 using Viariato.Modules.Casos.Domain;
+using Viariato.Modules.Casos.Lanzadores;
 using Viariato.Modules.Casos.Orchestration;
 using Viariato.Modules.Casos.Storage;
 using Viariato.Modules.Casos.Validation;
 using Viariato.Modules.Flujos.Domain;
+using Viariato.Modules.Flujos.Esquemas;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Domain;
 using Viariato.Shared.Http;
@@ -82,7 +84,9 @@ internal static class RpaWorkerEndpoints
     /// <summary>Lets a "launcher" robot open Cases. The process is never taken from the request: it is the
     /// one an admin set as this Despliegue's FlujoDestino, so a leaked key can only ever add Cases to that
     /// one process (and none at all if the Despliegue was not given one). The Case starts on the process's
-    /// active published version, exactly as if a user had created it, and is attributed to no user.</summary>
+    /// active published version, exactly as if a user had created it, and is attributed to no user. Naming one of the process's
+    /// creators gives the Caso what that creator decides — type, form, estado, step and title — for whatever the request leaves out,
+    /// and the data are the creator's defaults with the robot's laid over them, checked against its form.</summary>
     private static async Task<IResult> CrearCasoAsync(
         CrearCasoRobotRequest request,
         CrearCasoRobotRequestValidator validator,
@@ -117,8 +121,26 @@ internal static class RpaWorkerEndpoints
             return ProblemResults.Conflict(http, "La versión activa del proceso no está publicada.");
         }
 
+        CreadorDeCaso? creador = null;
+        if (!string.IsNullOrWhiteSpace(request.Creador))
+        {
+            var nombreCreador = request.Creador.Trim().ToLower();
+            creador = await db.Set<CreadorDeCaso>()
+                .Include(c => c.Flujo).Include(c => c.TipoCaso).Include(c => c.Formulario)
+                .FirstOrDefaultAsync(c => c.FlujoId == flujoDestinoId && c.Activo && c.Nombre.ToLower() == nombreCreador, ct);
+            if (creador is null)
+            {
+                return ProblemResults.Conflict(http, $"El proceso \"{flujo.Nombre}\" no tiene el creador de caso \"{request.Creador}\" (o está inactivo).");
+            }
+        }
+
         FlujoTipoCasoDef? tipo = null;
-        if (!string.IsNullOrWhiteSpace(request.TipoCaso))
+        if (creador?.TipoCasoId is not null && string.IsNullOrWhiteSpace(request.TipoCaso))
+        {
+            tipo = creador.TipoCaso;
+            if (tipo is not { Activo: true }) return ProblemResults.Conflict(http, $"El tipo de caso del creador \"{creador.Nombre}\" ya no está activo.");
+        }
+        else if (!string.IsNullOrWhiteSpace(request.TipoCaso))
         {
             var nombre = request.TipoCaso.Trim().ToLower();
             tipo = await db.Set<FlujoTipoCasoDef>().AsNoTracking()
@@ -129,10 +151,18 @@ internal static class RpaWorkerEndpoints
             }
         }
 
-        if (DatosPorTipo.Rechazar(tipo?.EsquemaDatosJson, request.DatosJson) is { } datosRechazados) return datosRechazados;
+        var datosJson = string.IsNullOrWhiteSpace(request.DatosJson) ? null : request.DatosJson;
+        if (creador is not null) datosJson = MezclaDeDatos.Mezclar(creador.DatosPorDefectoJson, datosJson);
+        if (DatosPorFormulario.Rechazar(creador?.Formulario?.EsquemaJson, datosJson) is { } datosRechazados) return datosRechazados;
 
         FlujoEstadoDef? estado = null;
-        if (!string.IsNullOrWhiteSpace(request.EstadoNegocioCodigo))
+        if (creador?.EstadoNegocioInicialId is { } estadoDelCreador && string.IsNullOrWhiteSpace(request.EstadoNegocioCodigo))
+        {
+            estado = await db.Set<FlujoEstadoDef>().AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == estadoDelCreador && e.FlujoId == flujoDestinoId && e.Activo, ct);
+            if (estado is null) return ProblemResults.Conflict(http, $"El estado de negocio inicial del creador \"{creador.Nombre}\" ya no está activo.");
+        }
+        else if (!string.IsNullOrWhiteSpace(request.EstadoNegocioCodigo))
         {
             var codigo = request.EstadoNegocioCodigo.Trim();
             estado = await db.Set<FlujoEstadoDef>().AsNoTracking()
@@ -146,9 +176,10 @@ internal static class RpaWorkerEndpoints
         var pasos = await db.Set<FlujoPasoDef>().AsNoTracking()
             .Where(p => p.FlujoVersionId == version.Id).OrderBy(p => p.Orden).ToListAsync(ct);
         var pasoInicial = pasos.FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(request.PasoInicial))
+        var pasoPedido = string.IsNullOrWhiteSpace(request.PasoInicial) ? creador?.PasoInicialNombre : request.PasoInicial;
+        if (!string.IsNullOrWhiteSpace(pasoPedido))
         {
-            var nombrePaso = request.PasoInicial.Trim();
+            var nombrePaso = pasoPedido.Trim();
             pasoInicial = pasos.FirstOrDefault(p => p.Nombre.Equals(nombrePaso, StringComparison.OrdinalIgnoreCase));
             if (pasoInicial is null)
             {
@@ -163,14 +194,18 @@ internal static class RpaWorkerEndpoints
                 $"El caso empezaría por el paso \"{pasoInicial.Nombre}\", que es de este mismo servicio. Indica un paso inicial posterior (PasoInicial).");
         }
 
+        var titulo = request.Titulo?.Trim();
+        if (string.IsNullOrEmpty(titulo)) titulo = await TituloDeCreador.SiguienteAsync(db, creador!, DateTimeOffset.Now, datosJson, ct);
+
         var now = DateTimeOffset.UtcNow;
         var caso = new Caso
         {
             FlujoId = flujoDestinoId,
             FlujoVersionId = version.Id,
-            Titulo = request.Titulo.Trim(),
-            DatosJson = string.IsNullOrWhiteSpace(request.DatosJson) ? null : request.DatosJson,
+            Titulo = titulo,
+            DatosJson = datosJson,
             TipoCasoId = tipo?.Id,
+            FormularioId = creador?.FormularioId,
             EstadoNegocioActualId = estado?.Id,
             CreatedAt = now,
             UpdatedAt = now,
@@ -180,7 +215,7 @@ internal static class RpaWorkerEndpoints
         {
             CasoId = caso.Id,
             Accion = CasoEventoAccion.Creado,
-            DetalleJson = JsonSerializer.Serialize(new { creadoPorDespliegueId = despliegue.Id }),
+            DetalleJson = JsonSerializer.Serialize(new { creadoPorDespliegueId = despliegue.Id, creadorId = creador?.Id }),
             OccurredAt = now,
         });
         if (estado is not null)

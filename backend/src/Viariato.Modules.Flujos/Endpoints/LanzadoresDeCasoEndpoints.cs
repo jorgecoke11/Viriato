@@ -117,24 +117,24 @@ internal static class LanzadoresDeCasoEndpoints
         lanzador.Activo = request.Activo;
     }
 
-    /// <summary>The creator has to belong to this Flujo, and the data have to fit its type: otherwise the launcher would only fail later,
-    /// at a time of day when nobody is looking.</summary>
+    /// <summary>The creator has to belong to this Flujo, and each case's data — the creator's defaults with the launcher's laid over them —
+    /// have to fit its form: otherwise the launcher would only fail later, at a time of day when nobody is looking.</summary>
     private static async Task<IResult?> ComprobarCreadorAsync(
         AppDbContext db, HttpContext http, Guid flujoId, GuardarLanzadorDeCasoRequest request, CancellationToken ct)
     {
-        var creador = await db.Set<CreadorDeCaso>().AsNoTracking().Include(c => c.TipoCaso)
+        var creador = await db.Set<CreadorDeCaso>().AsNoTracking().Include(c => c.Formulario)
             .FirstOrDefaultAsync(c => c.Id == request.CreadorDeCasoId && c.FlujoId == flujoId, ct);
         if (creador is null) return ProblemResults.Conflict(http, "El creador indicado no existe en este proceso.");
 
-        if (creador.TipoCaso?.EsquemaDatosJson is { } esquema && !string.IsNullOrWhiteSpace(esquema))
+        if (creador.Formulario is { } formulario)
         {
             DatosDeLanzador.TryElementos(string.IsNullOrWhiteSpace(request.DatosJson) ? null : request.DatosJson, out var elementos, out _);
             for (var i = 0; i < elementos.Count; i++)
             {
-                var errores = EsquemaDatos.ValidarDatos(esquema, elementos[i]);
+                var errores = EsquemaDatos.ValidarDatos(formulario.EsquemaJson, MezclaDeDatos.Mezclar(creador.DatosPorDefectoJson, elementos[i]));
                 if (errores.Count == 0) continue;
                 var cual = elementos.Count > 1 ? $" (elemento {i + 1} de la lista)" : string.Empty;
-                return ProblemResults.Conflict(http, $"Los datos no encajan con el tipo «{creador.TipoCaso.Nombre}»{cual}: {string.Join(" ", errores)}");
+                return ProblemResults.Conflict(http, $"Los datos no encajan con el formulario «{formulario.Nombre}»{cual}: {string.Join(" ", errores)}");
             }
         }
 

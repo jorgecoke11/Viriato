@@ -13,12 +13,13 @@ import { FlujoCreadoresPanel } from '../FlujoCreadoresPanel'
 import { FlujoLanzadoresPanel } from '../FlujoLanzadoresPanel'
 import { FlujoNotificacionesPanel } from '../../notificaciones/FlujoNotificacionesPanel'
 import { FlujoEstadosPanel } from '../FlujoEstadosPanel'
+import { FlujoFormulariosPanel } from '../FlujoFormulariosPanel'
 import { FlujoParametrosPanel } from '../FlujoParametrosPanel'
 import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
 import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
 import { BackLink } from '../../../components/ui/BackLink'
 
-type Tab = 'versiones' | 'estados' | 'tipos' | 'creadores' | 'lanzadores' | 'notificaciones' | 'parametros'
+type Tab = 'versiones' | 'estados' | 'tipos' | 'formularios' | 'creadores' | 'lanzadores' | 'notificaciones' | 'parametros'
 
 export function FlujoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -50,6 +51,7 @@ export function FlujoDetailPage() {
             { value: 'versiones', label: 'Versiones' },
             { value: 'estados', label: 'Estados' },
             { value: 'tipos', label: 'Tipos de caso' },
+            { value: 'formularios', label: 'Formularios' },
             { value: 'creadores', label: 'Creadores' },
             { value: 'lanzadores', label: 'Lanzadores' },
             { value: 'notificaciones', label: 'Notificaciones' },
@@ -96,6 +98,19 @@ export function FlujoDetailPage() {
               <Card className="mt-4">
                 <FlujoTiposCasoPanel flujoId={flujo.id} />
               </Card>
+            </motion.div>
+          )}
+
+          {tab === 'formularios' && (
+            <motion.div
+              key="formularios"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
+              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+            >
+              <div className="mt-4">
+                <FlujoFormulariosPanel flujoId={flujo.id} />
+              </div>
             </motion.div>
           )}
 

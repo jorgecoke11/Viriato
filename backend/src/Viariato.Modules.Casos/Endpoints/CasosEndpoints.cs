@@ -544,7 +544,13 @@ internal static class CasosEndpoints
             }
         }
 
-        if (await DatosPorTipo.RechazarSiNoCumpleAsync(db, request.TipoCasoId, request.DatosJson, ct) is { } datosRechazados)
+        if (request.FormularioId is not null &&
+            !await db.Set<Formulario>().AnyAsync(f => f.Id == request.FormularioId && f.FlujoId == version.FlujoId, ct))
+        {
+            return ProblemResults.Conflict(http, "El formulario indicado no pertenece a este flujo.");
+        }
+
+        if (await DatosPorFormulario.RechazarSiNoCumpleAsync(db, request.FormularioId, request.DatosJson, ct) is { } datosRechazados)
         {
             return datosRechazados;
         }
@@ -567,6 +573,7 @@ internal static class CasosEndpoints
             Titulo = request.Titulo,
             DatosJson = request.DatosJson,
             TipoCasoId = request.TipoCasoId,
+            FormularioId = request.FormularioId,
             EstadoNegocioActualId = estadoNegocioInicial?.Id,
             CreatedAt = now,
             UpdatedAt = now,
@@ -767,7 +774,7 @@ internal static class CasosEndpoints
         var caso = await db.Set<Caso>().FirstOrDefaultAsync(c => c.Id == id, ct);
         if (caso is null) return ProblemResults.NotFound(http, "Caso no encontrado.");
         if (await RequireAccesoAsync(db, http, caso.FlujoId, ct) is { } denied) return denied;
-        if (await DatosPorTipo.RechazarSiNoCumpleAsync(db, caso.TipoCasoId, request.DatosJson, ct) is { } datosRechazados) return datosRechazados;
+        if (await DatosPorFormulario.RechazarSiNoCumpleAsync(db, caso.FormularioId, request.DatosJson, ct) is { } datosRechazados) return datosRechazados;
 
         caso.DatosJson = request.DatosJson;
         caso.UpdatedAt = DateTimeOffset.UtcNow;

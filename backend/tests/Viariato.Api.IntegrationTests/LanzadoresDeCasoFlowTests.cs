@@ -86,11 +86,12 @@ public sealed class LanzadoresDeCasoFlowTests(ViariatoApiFactory factory) : ICla
         })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/publicar", null)).StatusCode);
 
-        var tipoId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/tipos-caso", new { nombre = "Valor", orden = 1, esquemaDatosJson = EsquemaLote }));
+        var tipoId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/tipos-caso", new { nombre = "Valor", orden = 1 }));
+        var formularioId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/formularios", new { nombre = "Valor", esquemaJson = EsquemaLote }));
         var estadoId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/estados", new { codigo = "PENDIENTE", display = "Pendiente", orden = 1, esFinal = false }));
         var creadorId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/creadores", new
         {
-            nombre = "Analizar un valor", descripcion = (string?)null, tipoCasoId = tipoId, pasoInicialNombre = "Analizar",
+            nombre = "Analizar un valor", descripcion = (string?)null, tipoCasoId = tipoId, formularioId, pasoInicialNombre = "Analizar",
             estadoNegocioInicialId = estadoId, plantillaTitulo = "{datos.ticker} {fecha} {hora}", orden = 1,
         }));
 
@@ -154,7 +155,7 @@ public sealed class LanzadoresDeCasoFlowTests(ViariatoApiFactory factory) : ICla
     }
 
     [Fact]
-    public async Task LosDatos_TienenQueEncajarConElTipoDelCreador()
+    public async Task LosDatos_TienenQueEncajarConElFormularioDelCreador()
     {
         var e = await CrearEntornoAsync();
 
@@ -346,7 +347,7 @@ public sealed class LanzadoresDeCasoFlowTests(ViariatoApiFactory factory) : ICla
     }
 
     [Fact]
-    public async Task UnElementoDeLaListaQueNoEncajaConElTipo_SeRechazaDiciendoCual()
+    public async Task UnElementoDeLaListaQueNoEncajaConElFormulario_SeRechazaDiciendoCual()
     {
         var e = await CrearEntornoAsync();
 
@@ -354,5 +355,31 @@ public sealed class LanzadoresDeCasoFlowTests(ViariatoApiFactory factory) : ICla
 
         Assert.Equal(HttpStatusCode.Conflict, respuesta.StatusCode);
         Assert.Contains("elemento 2", await respuesta.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task LosValoresPorDefectoDelCreador_SonLaBase_YElLanzadorPisaCampoACampo()
+    {
+        var e = await CrearEntornoAsync();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var creador = await db.Set<CreadorDeCaso>().SingleAsync(c => c.Id == e.CreadorId);
+            creador.DatosPorDefectoJson = """{"ticker":"AAPL","nota":"del creador"}""";
+            await db.SaveChangesAsync();
+        }
+
+        // The first element brings nothing of its own (the required ticker comes from the creator); the second changes only the ticker.
+        var id = await IdAsync(await e.Admin.PostAsJsonAsync(
+            $"/api/v1/flujos/{e.FlujoId}/lanzadores", Cuerpo(e.CreadorId, cron: "30 14 * * *", datos: """[{},{"ticker":"MSFT"}]""")));
+        var momento = new DateTimeOffset(2030, 1, 15, 14, 30, 0, TimeSpan.Zero);
+        await PonerUltimoDisparoAsync(id, momento.AddDays(-1));
+
+        Assert.Equal(2, await Vigilante().UnaVueltaAsync(momento.AddMinutes(1), default));
+
+        var casos = (await CasosDelFlujoAsync(e.FlujoId)).OrderBy(c => c.Titulo).ToList();
+        Assert.Equal(["AAPL 2030-01-15 14:30", "MSFT 2030-01-15 14:30"], casos.Select(c => c.Titulo).ToList());
+        Assert.All(casos, c => Assert.Contains("del creador", c.DatosJson));
+        Assert.All(casos, c => Assert.NotNull(c.FormularioId));
     }
 }

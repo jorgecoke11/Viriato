@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudField, CrudFormConfig } from '../../components/crud/types'
+import { erroresDeDatos } from '../../components/schema-form/comprobar'
+import { DatosConFormulario } from '../../components/schema-form/DatosConFormulario'
 import { Badge } from '../../components/ui/Badge'
 import * as casosApi from '../casos/api'
 import * as flujosApi from './api'
@@ -12,6 +14,8 @@ interface CreadorFormValues {
   nombre: string
   descripcion: string
   tipoCasoId: string
+  formularioId: string
+  datosPorDefectoJson: string
   pasoInicialNombre: string
   estadoNegocioInicialId: string
   plantillaTitulo: string
@@ -34,17 +38,20 @@ function aSolicitud(values: CreadorFormValues): flujosApi.GuardarCreadorDeCasoRe
     plantillaTitulo: values.plantillaTitulo.trim() || null,
     orden: Number(values.orden) || 1,
     activo: values.activo,
+    formularioId: values.formularioId || null,
+    datosPorDefectoJson: values.datosPorDefectoJson.trim() || null,
   }
 }
 
 /**
  * The creators of a process: ready-made ways of starting a case. Whoever manages the process decides here what each one
- * starts — the type (and with it the form of the data), the service it begins at, the business estado it is born in and how
- * its title is written — so that the person creating a case only picks one and fills in its data.
+ * starts — the type, the form of the data and the values it starts with, the service it begins at, the business estado it is
+ * born in and how its title is written — so that the person creating a case only picks one and fills in its data.
  */
 export function FlujoCreadoresPanel({ flujoId, versionActivaId }: { flujoId: string; versionActivaId: string | null }) {
   const tiposQuery = useQuery({ queryKey: ['flujo-tipos-caso', flujoId], queryFn: () => flujosApi.listFlujoTiposCaso(flujoId) })
   const estadosQuery = useQuery({ queryKey: ['flujo-estados', flujoId], queryFn: () => flujosApi.listFlujoEstados(flujoId) })
+  const formulariosQuery = useQuery({ queryKey: ['flujo-formularios', flujoId], queryFn: () => flujosApi.listFormularios(flujoId) })
   const versionQuery = useQuery({
     queryKey: ['flujo-version-activa', versionActivaId],
     queryFn: () => casosApi.getFlujoVersion(flujoId, versionActivaId!),
@@ -53,6 +60,7 @@ export function FlujoCreadoresPanel({ flujoId, versionActivaId }: { flujoId: str
 
   const tipos = useMemo(() => (tiposQuery.data ?? []).filter((t) => t.activo).sort((a, b) => a.orden - b.orden), [tiposQuery.data])
   const estados = useMemo(() => (estadosQuery.data ?? []).filter((e) => e.activo).sort((a, b) => a.orden - b.orden), [estadosQuery.data])
+  const formularios = useMemo(() => formulariosQuery.data ?? [], [formulariosQuery.data])
   // Any step can be where a case starts, but only the ones a service runs are a real choice for a person; the rest is plumbing.
   const pasos = useMemo(
     () => (versionQuery.data?.pasos ?? []).filter((p) => p.tipoPaso === 'Rpa').sort((a, b) => a.orden - b.orden),
@@ -67,8 +75,34 @@ export function FlujoCreadoresPanel({ flujoId, versionActivaId }: { flujoId: str
         name: 'tipoCasoId',
         label: 'Tipo de caso',
         type: 'select',
-        options: [{ value: '', label: 'Sin tipo (datos en JSON libre)' }, ...tipos.map((t) => ({ value: t.id, label: t.nombre }))],
-        helpText: 'El tipo marca el formulario de datos que verá el usuario.',
+        options: [{ value: '', label: 'Sin tipo' }, ...tipos.map((t) => ({ value: t.id, label: t.nombre }))],
+      },
+      {
+        name: 'formularioId',
+        label: 'Formulario de datos',
+        type: 'select',
+        options: [{ value: '', label: 'Sin formulario (datos en JSON libre)' }, ...formularios.map((f) => ({ value: f.id, label: f.nombre }))],
+        helpText: 'Lo que rellena quien crea el caso. Los formularios se definen en la pestaña «Formularios» y varios creadores pueden compartir uno.',
+      },
+      {
+        name: 'datosPorDefectoJson',
+        label: 'Valores por defecto',
+        type: 'custom',
+        helpText:
+          'Con lo que empieza el formulario al crear un caso a mano, y la base sobre la que los lanzadores ponen sus datos. Puede dejar campos obligatorios vacíos para que los rellene quien crea el caso.',
+        validate: (valor, values) =>
+          erroresDeDatos(formularios.find((f) => f.id === values.formularioId)?.esquemaJson, valor, { parcial: true })[0] ?? null,
+        render: ({ value, onChange, values, mostrarErrores }) => (
+          <DatosConFormulario
+            key={values.formularioId}
+            etiqueta="Valores por defecto"
+            esquemaJson={formularios.find((f) => f.id === values.formularioId)?.esquemaJson}
+            value={value}
+            onChange={(json) => onChange(json)}
+            mostrarErrores={mostrarErrores}
+            parcial
+          />
+        ),
       },
       {
         name: 'pasoInicialNombre',
@@ -90,7 +124,7 @@ export function FlujoCreadoresPanel({ flujoId, versionActivaId }: { flujoId: str
       { name: 'orden', label: 'Orden', type: 'number', required: true },
       { name: 'activo', label: 'Activo (se ofrece al crear casos)', type: 'checkbox' },
     ],
-    [tipos, estados, pasos],
+    [tipos, estados, pasos, formularios],
   )
 
   const columns: CrudColumn<CreadorDeCasoDto>[] = [
@@ -105,6 +139,7 @@ export function FlujoCreadoresPanel({ flujoId, versionActivaId }: { flujoId: str
       ),
     },
     { key: 'tipo', label: 'Tipo de caso', render: (c) => c.tipoCasoNombre ?? <span className="text-gray-400">Sin tipo</span> },
+    { key: 'formulario', label: 'Formulario', render: (c) => c.formularioNombre ?? <span className="text-gray-400">JSON libre</span> },
     { key: 'paso', label: 'Empieza en', render: (c) => c.pasoInicialNombre ?? <span className="text-gray-400">Primer paso</span> },
     { key: 'estado', label: 'Estado inicial', render: (c) => c.estadoNegocioInicialDisplay ?? <span className="text-gray-400">—</span> },
     { key: 'titulo', label: 'Título', render: (c) => <span className="font-mono text-xs text-gray-600">{c.plantillaTitulo}</span> },
@@ -115,12 +150,15 @@ export function FlujoCreadoresPanel({ flujoId, versionActivaId }: { flujoId: str
     createFields: campos.filter((c) => c.name !== 'activo'),
     editFields: campos,
     emptyValues: {
-      nombre: '', descripcion: '', tipoCasoId: '', pasoInicialNombre: '', estadoNegocioInicialId: '', plantillaTitulo: '', orden: '1', activo: true,
+      nombre: '', descripcion: '', tipoCasoId: '', formularioId: '', datosPorDefectoJson: '', pasoInicialNombre: '', estadoNegocioInicialId: '',
+      plantillaTitulo: '', orden: '1', activo: true,
     },
     toEditValues: (c) => ({
       nombre: c.nombre,
       descripcion: c.descripcion ?? '',
       tipoCasoId: c.tipoCasoId ?? '',
+      formularioId: c.formularioId ?? '',
+      datosPorDefectoJson: c.datosPorDefectoJson ?? '',
       pasoInicialNombre: c.pasoInicialNombre ?? '',
       estadoNegocioInicialId: c.estadoNegocioInicialId ?? '',
       plantillaTitulo: c.plantillaTitulo,
@@ -129,10 +167,11 @@ export function FlujoCreadoresPanel({ flujoId, versionActivaId }: { flujoId: str
     }),
     toCreateInput: aSolicitud,
     toUpdateInput: aSolicitud,
+    modalSize: 'lg',
   }
 
   // The selects are built from what these queries return, so the form waits for them rather than offering empty lists.
-  if (tiposQuery.isLoading || estadosQuery.isLoading || versionQuery.isLoading) return <p className="text-gray-500">Cargando…</p>
+  if (tiposQuery.isLoading || estadosQuery.isLoading || formulariosQuery.isLoading || versionQuery.isLoading) return <p className="text-gray-500">Cargando…</p>
 
   return (
     <div className="flex flex-col gap-3">

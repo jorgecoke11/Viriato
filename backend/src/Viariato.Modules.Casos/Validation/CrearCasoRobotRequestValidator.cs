@@ -8,7 +8,10 @@ public sealed class CrearCasoRobotRequestValidator : AbstractValidator<CrearCaso
 {
     public CrearCasoRobotRequestValidator()
     {
-        RuleFor(x => x.Titulo).NotEmpty().MaximumLength(300);
+        RuleFor(x => x.Titulo).NotEmpty().When(x => string.IsNullOrWhiteSpace(x.Creador))
+            .WithMessage("Indica el título del caso, o un creador (Creador) que lo escriba.");
+        RuleFor(x => x.Titulo).MaximumLength(300);
+        RuleFor(x => x.Creador).MaximumLength(100);
         RuleFor(x => x.TipoCaso).MaximumLength(200);
         RuleFor(x => x.EstadoNegocioCodigo).MaximumLength(100);
         RuleFor(x => x.PasoInicial).MaximumLength(200);

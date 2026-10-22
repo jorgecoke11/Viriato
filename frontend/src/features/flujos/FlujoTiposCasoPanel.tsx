@@ -1,13 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
 import { CrudPage } from '../../components/crud/CrudPage'
-import { contarCampos, leerEsquema } from '../../components/schema-form/esquema'
 import type { CrudColumn, CrudFormConfig } from '../../components/crud/types'
 import { ApiError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as flujosApi from './api'
 import type { FlujoTipoCasoDefDto } from './api'
-import { EsquemaEditorModal } from './EsquemaEditorModal'
 
 interface TipoFormValues {
   [key: string]: string | boolean
@@ -26,7 +23,8 @@ const fields: CrudFormConfig<
 ]
 
 // Categories the user defines per process to classify its Casos (e.g. "Alta simple" vs "Alta
-// compleja") — chosen once when a Caso is created, orthogonal to its business estado.
+// compleja") — chosen once when a Caso is created, orthogonal to its business estado. The form of
+// the data is not the type's: it is the creator's (see the Formularios tab).
 export function FlujoTiposCasoPanel({ flujoId }: { flujoId: string }) {
   const queryClient = useQueryClient()
   const { showToast } = useToast()
@@ -40,53 +38,9 @@ export function FlujoTiposCasoPanel({ flujoId }: { flujoId: string }) {
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo actualizar el tipo de caso.'),
   })
 
-  const [editandoEsquema, setEditandoEsquema] = useState<FlujoTipoCasoDefDto | null>(null)
-  const [errorEsquema, setErrorEsquema] = useState<string | null>(null)
-
-  const guardarEsquema = useMutation({
-    mutationFn: ({ tipo, esquema }: { tipo: FlujoTipoCasoDefDto; esquema: string | null }) =>
-      flujosApi.updateFlujoTipoCaso(flujoId, tipo.id, esquema === null ? { quitarEsquema: true } : { esquemaDatosJson: esquema }),
-    onSuccess: (_, { esquema }) => {
-      // The new-case forms read the same list under their own key.
-      queryClient.invalidateQueries({ queryKey: [`flujo-${flujoId}-tipos-caso`] })
-      queryClient.invalidateQueries({ queryKey: ['flujo-tipos-caso', flujoId] })
-      setEditandoEsquema(null)
-      showToast('success', esquema === null ? 'Formulario quitado.' : 'Formulario guardado.')
-    },
-    onError: (err) => setErrorEsquema(err instanceof ApiError ? err.message : 'No se pudo guardar el formulario.'),
-  })
-
   const columns: CrudColumn<FlujoTipoCasoDefDto>[] = [
     { key: 'orden', label: 'Orden', render: (t) => t.orden },
     { key: 'nombre', label: 'Nombre', render: (t) => t.nombre },
-    {
-      key: 'formulario',
-      label: 'Formulario de datos',
-      render: (t) => {
-        const esquema = t.esquemaDatosJson ? leerEsquema(t.esquemaDatosJson) : null
-        return (
-          <span className="flex items-center gap-2">
-            {esquema === null ? (
-              <span className="text-gray-400">JSON libre</span>
-            ) : esquema.ok ? (
-              <span className="text-gray-600">{contarCampos(esquema.esquema)} campos</span>
-            ) : (
-              <span className="text-red-600">Esquema no válido</span>
-            )}
-            <button
-              type="button"
-              className="text-indigo-600 hover:text-indigo-800"
-              onClick={() => {
-                setErrorEsquema(null)
-                setEditandoEsquema(t)
-              }}
-            >
-              {t.esquemaDatosJson ? 'Editar' : 'Definir'}
-            </button>
-          </span>
-        )
-      },
-    },
     {
       key: 'activo',
       label: 'Activo',
@@ -116,7 +70,6 @@ export function FlujoTiposCasoPanel({ flujoId }: { flujoId: string }) {
   }
 
   return (
-    <>
     <CrudPage<FlujoTipoCasoDefDto, TipoFormValues, flujosApi.CreateFlujoTipoCasoRequest, flujosApi.UpdateFlujoTipoCasoRequest>
       title="Tipos de caso"
       resourceKey={`flujo-${flujoId}-tipos-caso`}
@@ -136,15 +89,5 @@ export function FlujoTiposCasoPanel({ flujoId }: { flujoId: string }) {
         update: (id, input) => flujosApi.updateFlujoTipoCaso(flujoId, id, input),
       }}
     />
-    <EsquemaEditorModal
-      open={editandoEsquema !== null}
-      tipoNombre={editandoEsquema?.nombre ?? ''}
-      esquemaInicial={editandoEsquema?.esquemaDatosJson ?? null}
-      guardando={guardarEsquema.isPending}
-      error={errorEsquema}
-      onClose={() => setEditandoEsquema(null)}
-      onGuardar={(esquema) => editandoEsquema && guardarEsquema.mutate({ tipo: editandoEsquema, esquema })}
-    />
-    </>
   )
 }

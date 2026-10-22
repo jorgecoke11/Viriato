@@ -593,6 +593,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("flujo_version_id");
 
+                    b.Property<Guid?>("FormularioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("formulario_id");
+
                     b.Property<Guid?>("TipoCasoId")
                         .HasColumnType("uuid")
                         .HasColumnName("tipo_caso_id");
@@ -629,6 +633,9 @@ namespace Viariato.Infrastructure.Migrations
 
                     b.HasIndex("FlujoVersionId")
                         .HasDatabaseName("ix_casos_flujo_version_id");
+
+                    b.HasIndex("FormularioId")
+                        .HasDatabaseName("ix_casos_formulario_id");
 
                     b.HasIndex("TipoCasoId")
                         .HasDatabaseName("ix_casos_tipo_caso_id");
@@ -1318,6 +1325,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("DatosPorDefectoJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("datos_por_defecto_json");
+
                     b.Property<string>("Descripcion")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
@@ -1330,6 +1341,10 @@ namespace Viariato.Infrastructure.Migrations
                     b.Property<Guid>("FlujoId")
                         .HasColumnType("uuid")
                         .HasColumnName("flujo_id");
+
+                    b.Property<Guid?>("FormularioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("formulario_id");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -1369,6 +1384,9 @@ namespace Viariato.Infrastructure.Migrations
 
                     b.HasIndex("EstadoNegocioInicialId")
                         .HasDatabaseName("ix_creadores_de_caso_estado_negocio_inicial_id");
+
+                    b.HasIndex("FormularioId")
+                        .HasDatabaseName("ix_creadores_de_caso_formulario_id");
 
                     b.HasIndex("TipoCasoId")
                         .HasDatabaseName("ix_creadores_de_caso_tipo_caso_id");
@@ -1625,10 +1643,6 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("EsquemaDatosJson")
-                        .HasColumnType("text")
-                        .HasColumnName("esquema_datos_json");
-
                     b.Property<Guid>("FlujoId")
                         .HasColumnType("uuid")
                         .HasColumnName("flujo_id");
@@ -1709,6 +1723,51 @@ namespace Viariato.Infrastructure.Migrations
                         .HasDatabaseName("ix_flujo_versiones_flujo_id_numero_version");
 
                     b.ToTable("flujo_versiones", "flujos");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.Formulario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("EsquemaJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("esquema_json");
+
+                    b.Property<Guid>("FlujoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_id");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_formularios");
+
+                    b.HasIndex("FlujoId", "Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("ix_formularios_flujo_id_nombre");
+
+                    b.ToTable("formularios", "flujos");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.LanzadorDeCaso", b =>
@@ -2763,6 +2822,12 @@ namespace Viariato.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_casos_flujo_versiones_flujo_version_id");
 
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Formulario", null)
+                        .WithMany()
+                        .HasForeignKey("FormularioId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_casos_formularios_formulario_id");
+
                     b.HasOne("Viariato.Modules.Flujos.Domain.FlujoTipoCasoDef", "TipoCaso")
                         .WithMany()
                         .HasForeignKey("TipoCasoId")
@@ -2974,6 +3039,12 @@ namespace Viariato.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_creadores_de_caso_flujo_flujo_id");
 
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Formulario", "Formulario")
+                        .WithMany()
+                        .HasForeignKey("FormularioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_creadores_de_caso_formulario_formulario_id");
+
                     b.HasOne("Viariato.Modules.Flujos.Domain.FlujoTipoCasoDef", "TipoCaso")
                         .WithMany()
                         .HasForeignKey("TipoCasoId")
@@ -2983,6 +3054,8 @@ namespace Viariato.Infrastructure.Migrations
                     b.Navigation("EstadoNegocioInicial");
 
                     b.Navigation("Flujo");
+
+                    b.Navigation("Formulario");
 
                     b.Navigation("TipoCaso");
                 });
@@ -3078,6 +3151,18 @@ namespace Viariato.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_flujo_versiones_flujos_flujo_id");
+
+                    b.Navigation("Flujo");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.Formulario", b =>
+                {
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", "Flujo")
+                        .WithMany()
+                        .HasForeignKey("FlujoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_formularios_flujos_flujo_id");
 
                     b.Navigation("Flujo");
                 });

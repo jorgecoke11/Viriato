@@ -34,7 +34,7 @@ internal static class CreadoresDeCasoEndpoints
         if (!await db.Set<Flujo>().AnyAsync(f => f.Id == flujoId, ct)) return ProblemResults.NotFound(http, "Flujo no encontrado.");
 
         var creadores = await db.Set<CreadorDeCaso>().AsNoTracking()
-            .Include(c => c.TipoCaso).Include(c => c.EstadoNegocioInicial)
+            .Include(c => c.TipoCaso).Include(c => c.Formulario).Include(c => c.EstadoNegocioInicial)
             .Where(c => c.FlujoId == flujoId)
             .OrderBy(c => c.Orden).ThenBy(c => c.Nombre)
             .ToListAsync(ct);
@@ -108,6 +108,8 @@ internal static class CreadoresDeCasoEndpoints
         creador.Nombre = request.Nombre;
         creador.Descripcion = string.IsNullOrWhiteSpace(request.Descripcion) ? null : request.Descripcion.Trim();
         creador.TipoCasoId = request.TipoCasoId;
+        creador.FormularioId = request.FormularioId;
+        creador.DatosPorDefectoJson = string.IsNullOrWhiteSpace(request.DatosPorDefectoJson) ? null : request.DatosPorDefectoJson.Trim();
         creador.PasoInicialNombre = string.IsNullOrWhiteSpace(request.PasoInicialNombre) ? null : request.PasoInicialNombre.Trim();
         creador.EstadoNegocioInicialId = request.EstadoNegocioInicialId;
         creador.PlantillaTitulo = string.IsNullOrWhiteSpace(request.PlantillaTitulo) ? PlantillaDeTitulo.Predeterminada : request.PlantillaTitulo.Trim();
@@ -115,8 +117,8 @@ internal static class CreadoresDeCasoEndpoints
         creador.Activo = request.Activo;
     }
 
-    /// <summary>The type, the estado and the step have to belong to this Flujo — otherwise the creator would only fail later,
-    /// in front of a user who cannot fix it.</summary>
+    /// <summary>The type, the form, the estado and the step have to belong to this Flujo, and the defaults have to fit the form —
+    /// otherwise the creator would only fail later, in front of a user who cannot fix it.</summary>
     private static async Task<IResult?> ComprobarReferenciasAsync(
         AppDbContext db, HttpContext http, Flujo flujo, GuardarCreadorDeCasoRequest request, CancellationToken ct)
     {
@@ -124,6 +126,20 @@ internal static class CreadoresDeCasoEndpoints
             !await db.Set<FlujoTipoCasoDef>().AnyAsync(t => t.Id == tipoId && t.FlujoId == flujo.Id && t.Activo, ct))
         {
             return ProblemResults.Conflict(http, "El tipo de caso indicado no existe en este proceso o está desactivado.");
+        }
+
+        string? esquema = null;
+        if (request.FormularioId is { } formularioId)
+        {
+            esquema = await db.Set<Formulario>().Where(f => f.Id == formularioId && f.FlujoId == flujo.Id).Select(f => f.EsquemaJson).FirstOrDefaultAsync(ct);
+            if (esquema is null) return ProblemResults.Conflict(http, "El formulario indicado no existe en este proceso.");
+        }
+
+        // Partial: a default may leave a required field for the person to fill in. Without a form, any JSON object will do.
+        if (esquema is not null && !string.IsNullOrWhiteSpace(request.DatosPorDefectoJson))
+        {
+            var errores = EsquemaDatos.ValidarDatos(esquema, request.DatosPorDefectoJson, parcial: true);
+            if (errores.Count > 0) return ProblemResults.Conflict(http, $"Los valores por defecto no encajan con el formulario: {string.Join(" ", errores)}");
         }
 
         if (request.EstadoNegocioInicialId is { } estadoId &&
@@ -147,6 +163,6 @@ internal static class CreadoresDeCasoEndpoints
 
     private static async Task<CreadorDeCasoDto> CargarAsync(AppDbContext db, Guid id, CancellationToken ct) =>
         (await db.Set<CreadorDeCaso>().AsNoTracking()
-            .Include(c => c.TipoCaso).Include(c => c.EstadoNegocioInicial)
+            .Include(c => c.TipoCaso).Include(c => c.Formulario).Include(c => c.EstadoNegocioInicial)
             .FirstAsync(c => c.Id == id, ct)).ToDto();
 }

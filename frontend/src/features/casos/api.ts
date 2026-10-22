@@ -246,6 +246,8 @@ export interface StartCasoRequest {
   estadoNegocioInicialId?: string | null
   tipoCasoId?: string | null
   pasoInicialId?: string | null
+  /** The form the data are written with: checked against it now and whenever they are edited. */
+  formularioId?: string | null
 }
 
 export interface ListCasosFilters {
@@ -344,6 +346,7 @@ export const startCaso = (request: StartCasoRequest) =>
       estadoNegocioInicialId: request.estadoNegocioInicialId ?? null,
       tipoCasoId: request.tipoCasoId ?? null,
       pasoInicialId: request.pasoInicialId ?? null,
+      formularioId: request.formularioId ?? null,
     }),
   })
 
@@ -413,8 +416,10 @@ export interface CreadorDisponibleDto {
   flujoNombre: string
   tipoCasoId: string | null
   tipoCasoNombre: string | null
-  /** The form of the data of the creator's case type, or null when the data is free-form JSON. */
+  /** The schema of the creator's form, or null when the data is free-form JSON. */
   esquemaDatosJson: string | null
+  /** What the form starts with (a JSON object), or null. */
+  datosPorDefectoJson: string | null
   /** What the title would be if the case were created now: the placeholder of the title field. */
   tituloEjemplo: string
 }

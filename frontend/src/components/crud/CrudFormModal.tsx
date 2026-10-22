@@ -13,6 +13,7 @@ interface CrudFormModalProps<TValues extends Record<string, string | boolean>> {
   onClose: () => void
   submitting: boolean
   error: string | null
+  size?: 'md' | 'lg' | 'xl'
 }
 
 export function CrudFormModal<TValues extends Record<string, string | boolean>>({
@@ -24,14 +25,19 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
   onClose,
   submitting,
   error,
+  size = 'md',
 }: CrudFormModalProps<TValues>) {
   const formId = useId()
   const [values, setValues] = useState<TValues>(initialValues)
+  const [intentado, setIntentado] = useState(false)
   // Re-seeds the form each time it opens (create vs. edit, or a different row) — the component now
   // stays mounted permanently so it can animate its own exit, so this replaces the fresh state a
   // remount used to give us for free.
   useEffect(() => {
-    if (open) setValues(initialValues)
+    if (open) {
+      setValues(initialValues)
+      setIntentado(false)
+    }
   }, [open, initialValues])
 
   // Frozen so the panel keeps showing the right title/fields/error while it animates out, even
@@ -47,11 +53,13 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
 
   function mensajeDeValidacion(field: CrudField<TValues>): string | null {
     const value = values[field.name]
-    return field.validate && typeof value === 'string' && value !== '' ? field.validate(value) : null
+    if (!field.validate || typeof value !== 'string') return null
+    return value !== '' || field.type === 'custom' ? field.validate(value, values) : null
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    setIntentado(true)
     const hayErrores = fields
       .filter((field) => !field.visibleWhen || field.visibleWhen(values))
       .some((field) => mensajeDeValidacion(field) !== null)
@@ -63,6 +71,7 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
     <Modal
       open={open}
       title={frozen.title}
+      size={size}
       onClose={onClose}
       footer={
         <div className="flex justify-end gap-2">
@@ -83,6 +92,17 @@ export function CrudFormModal<TValues extends Record<string, string | boolean>>(
           .map((field) => {
           const value = values[field.name]
           const required = typeof field.required === 'function' ? field.required(values) : field.required
+
+          if (field.type === 'custom' && field.render) {
+            const mensaje = intentado ? mensajeDeValidacion(field) : null
+            return (
+              <div key={field.name} className="flex flex-col gap-1.5">
+                {field.render({ value: String(value ?? ''), onChange: (v) => handleChange(field.name, v), values, mostrarErrores: intentado })}
+                {mensaje && <p className="text-xs text-red-600">{mensaje}</p>}
+                {field.helpText && <p className="text-xs text-gray-500">{field.helpText}</p>}
+              </div>
+            )
+          }
 
           if (field.type === 'checkbox') {
             return (

@@ -9,19 +9,18 @@ using Viariato.Shared.Http;
 namespace Viariato.Modules.Casos.Endpoints;
 
 /// <summary>
-/// A case type can describe its business data as a form (see <see cref="EsquemaDatos"/>); whoever writes the data —
-/// a person, a launcher robot, an API client — gets the same answer the form would have given. A type without a
-/// schema, and a Caso without a type, accept any JSON object as before.
+/// A Caso's business data can be described by a form (see <see cref="Formulario"/>); whoever writes the data — a person, a launcher,
+/// a robot, an API client — gets the same answer the form would have given. A Caso without a form accepts any JSON object.
 /// </summary>
-internal static class DatosPorTipo
+internal static class DatosPorFormulario
 {
-    public static async Task<IResult?> RechazarSiNoCumpleAsync(AppDbContext db, Guid? tipoCasoId, string? datosJson, CancellationToken ct)
+    public static async Task<IResult?> RechazarSiNoCumpleAsync(AppDbContext db, Guid? formularioId, string? datosJson, CancellationToken ct)
     {
-        if (tipoCasoId is null) return null;
+        if (formularioId is null) return null;
 
-        var esquema = await db.Set<FlujoTipoCasoDef>().AsNoTracking()
-            .Where(t => t.Id == tipoCasoId)
-            .Select(t => t.EsquemaDatosJson)
+        var esquema = await db.Set<Formulario>().AsNoTracking()
+            .Where(f => f.Id == formularioId)
+            .Select(f => f.EsquemaJson)
             .FirstOrDefaultAsync(ct);
 
         return Rechazar(esquema, datosJson);

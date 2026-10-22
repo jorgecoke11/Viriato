@@ -3,8 +3,10 @@ namespace Viariato.ApiContracts;
 /// <summary>A robot asking Viriato to open a new Caso. Only a Despliegue an admin has authorised to create
 /// Casos in one particular process can do this, and the Caso always lands in that process — there is no field
 /// to pick another one.</summary>
-/// <param name="Titulo">The Caso's title, as shown in the lists.</param>
-/// <param name="DatosJson">The Caso's business data (a JSON object). It is what the robots of the process will read.</param>
+/// <param name="Titulo">The Caso's title, as shown in the lists. May be empty when <paramref name="Creador"/> is given: the creator
+/// writes it from its template.</param>
+/// <param name="DatosJson">The Caso's business data (a JSON object). It is what the robots of the process will read. With a
+/// <paramref name="Creador"/>, it is laid over the creator's defaults field by field and checked against the creator's form.</param>
 /// <param name="TipoCaso">Name of one of the process's case types (e.g. a brand), or null for none.</param>
 /// <param name="EstadoNegocioCodigo">Code of the business state the Caso starts in, or null for none.</param>
 /// <param name="PasoInicial">Name of the step of the process the Caso starts at (the steps before it are recorded as
@@ -15,10 +17,14 @@ namespace Viariato.ApiContracts;
 /// number, the sooner a robot takes it, among the executions waiting for the same service. 0 is the ordinary one and the
 /// default; negative values wait behind it. Between -1000 and 1000. The executions the Caso creates later (its next
 /// steps) start at 0 like any other, and a person can change an execution's priority while it waits.</param>
+/// <param name="Creador">Name of one of the process's creators of cases, or null for none. It decides what the request leaves out
+/// (type, business state, starting step, title) and gives the Caso its form, against which the data are checked. Without a creator
+/// the data are free-form JSON.</param>
 public sealed record CrearCasoRobotRequest(
-    string Titulo,
+    string? Titulo,
     string? DatosJson,
     string? TipoCaso = null,
     string? EstadoNegocioCodigo = null,
     string? PasoInicial = null,
-    int Prioridad = 0);
+    int Prioridad = 0,
+    string? Creador = null);

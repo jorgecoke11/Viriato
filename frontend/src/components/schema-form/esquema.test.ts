@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { aDatos, aEstado, contarCampos, estadoInicial, inferirEsquema, leerEsquema, validarDatos } from './esquema'
+import { erroresDeListaDeDatos, leerElementos } from './comprobar'
+import { aDatos, aEstado, contarCampos, diferencia, estadoInicial, inferirEsquema, leerEsquema, mezclarDatos, validarDatos } from './esquema'
 import type { Esquema } from './esquema'
 
 // The same cases as the server's EsquemaDatosTests (backend/tests/Viariato.Modules.Flujos.Tests): the form and the
@@ -318,5 +319,54 @@ describe('contarCampos', () => {
   it('counts fields at any depth, an array as one field', () => {
     expect(contarCampos(esquemaDe(CREADOR))).toBe(2)
     expect(contarCampos(esquemaDe('{"type":"object","properties":{"a":{"type":"string"},"d":{"type":"object","properties":{"x":{"type":"string"},"y":{"type":"string"}}},"l":{"type":"array","items":{"type":"string"}}}}'))).toBe(4)
+  })
+})
+
+describe('partial data (a creator defaults)', () => {
+  // Same table as the server's PartialData_DoNotNeedTheRequiredFields_AtAnyDepth_ButWhatIsThereMustFit.
+  const esquema = esquemaDe(`{"type":"object","required":["beneficio","direccion"],"properties":{
+    "beneficio":{"type":"number","title":"Beneficio","maximum":100},
+    "direccion":{"type":"object","title":"Dirección","required":["calle"],"properties":{"calle":{"type":"string","title":"Calle"},"cp":{"type":"string","title":"CP"}}}}}`)
+
+  it('does not ask for the required fields, at any depth, but checks what is there', () => {
+    expect(validarDatos(esquema, {}, { parcial: true })).toEqual([])
+    expect(validarDatos(esquema, { direccion: { cp: '31001' } }, { parcial: true })).toEqual([])
+    expect(validarDatos(esquema, { beneficio: 500 }, { parcial: true }).map((e) => e.completo)).toEqual(['Beneficio: debe ser como máximo 100.'])
+    expect(validarDatos(esquema, {})).toHaveLength(2)
+  })
+})
+
+describe('base + changes', () => {
+  // Same table as the server's MezclaDeDatosTests.
+  it('lays the top over the base field by field, objects all the way down, lists whole', () => {
+    expect(mezclarDatos({ ticker: 'AAPL', mercado: 'NYSE' }, { ticker: 'MSFT' })).toEqual({ ticker: 'MSFT', mercado: 'NYSE' })
+    expect(mezclarDatos({ dir: { calle: 'Mayor', cp: '31001' }, tags: ['a', 'b', 'c'] }, { dir: { cp: '28001' }, tags: ['z'] })).toEqual({
+      dir: { calle: 'Mayor', cp: '28001' },
+      tags: ['z'],
+    })
+    expect(mezclarDatos({ nota: 'x' }, { nota: null })).toEqual({ nota: null })
+  })
+
+  it('keeps only what changes, so merging it back gives the data again', () => {
+    const base = { ticker: 'AAPL', nota: 'del creador', dir: { calle: 'Mayor', cp: '31001' } }
+    const datos = { ticker: 'MSFT', dir: { calle: 'Mayor', cp: '28001' } }
+
+    const cambios = diferencia(base, datos)
+
+    expect(cambios).toEqual({ ticker: 'MSFT', nota: null, dir: { cp: '28001' } })
+    expect(mezclarDatos(base, cambios)).toEqual({ ...datos, nota: null })
+    expect(diferencia(base, base)).toEqual({})
+  })
+
+  it('reads one document or a list of them, and checks each laid over the base, saying which', () => {
+    expect(leerElementos('')).toEqual({ lista: false, elementos: [{}] })
+    expect(leerElementos('[{"a":1},{"a":2}]')?.lista).toBe(true)
+    expect(leerElementos('[]')).toBeNull()
+    expect(leerElementos('[{"a":1}, 3]')).toBeNull()
+
+    const esquema = '{"type":"object","required":["ticker"],"properties":{"ticker":{"type":"string","title":"Valor"}}}'
+    expect(erroresDeListaDeDatos(esquema, '{"ticker":"AAPL"}', '[{},{"ticker":"MSFT"}]')).toEqual([])
+    expect(erroresDeListaDeDatos(esquema, null, '[{"ticker":"AAPL"},{}]')).toEqual(['Caso 2: Valor: es obligatorio.'])
+    expect(erroresDeListaDeDatos(null, null, '[{"lo":"que sea"}]')).toEqual([])
   })
 })

@@ -50,6 +50,8 @@ Pedido el 10/10 con `/design`: cambiar el enfoque de todo el componente de proce
 anteriores del panel no gustaron y se deshicieron (ver «Rediseños del panel — probados y DESHECHOS»). Ya está hecho el cambio de estilo global (claro, cálido, azul petróleo), que el panel hereda.
 
 ### 36. Opciones de un desplegable que salen de un parámetro del proceso — pendiente (apuntado, sin empezar)
+**Ojo (22/10):** los esquemas ya no están en el tipo de caso sino en los **formularios** del proceso ([docs/formularios.md](docs/formularios.md),
+apartado «Ampliar»): la comprobación «al guardar el esquema» es al guardar el **formulario**, y los valores por defecto de los creadores también pasan por ella.
 Pedido el 16/10. Hoy las opciones de un `enum` se escriben fijas en el esquema del **tipo de caso** (p. ej. `"proveedor": {"enum": ["Balay"]}`); se quiere que puedan salir de
 un **parámetro del proceso** que guarde la lista (`proveedores` = `["Balay", "Bosch", "Siemens"]`), para que añadir un proveedor no obligue a tocar el esquema. Si ese parámetro
 está abierto al panel, quien trabaja el proceso lo amplía desde *Cambiar parámetros*. Notas para cuando se haga:
@@ -74,6 +76,11 @@ Del 16/10. (1) Si Edge no arranca, el fallo es de la máquina, no del caso: el r
 «Ver en directo»). Ambas cosas van en el repo `bsh_p01_prices_extractor` y necesitan reconstruir su imagen (token).
 
 ## Hecho
+
+- Formularios fuera de los tipos de caso, asociados a los creadores (22/10): biblioteca de formularios por proceso (compartibles), valores por defecto en el creador
+  (modo parcial) y en el lanzador (solo lo que cambia, mezclado campo a campo), el caso recuerda su formulario, robots con `Creador` opcional, migración sin pérdida.
+  Componentes genéricos `DatosConFormulario`, `ListaDeDatosConFormulario`, `EditorDeEsquema`, `ControlSegmentado` y campos `custom` en el kit CRUD. Diseño en
+  `docs/formularios.md`. Verificado: backend completo (254 de integración + unitarias), front (tsc, eslint, 293 vitest) y en el navegador sobre una copia de la base.
 
 - Despacho por equipo con tiempo máximo por servicio (sin latidos), prioridades por ejecución, estados Pendiente / En ejecución,
   cancelar una ejecución y acciones masivas con registro extensible.
@@ -277,6 +284,10 @@ Del 16/10. (1) Si Edge no arranca, el fallo es de la máquina, no del caso: el r
 - **Rótulo «Estado de negocio» (tarea 27):** quitado de dentro de cada tipo de caso en las tarjetas de proceso (interpretado así: era el único sitio donde aparecía dentro del tipo).
 
 ## Bloqueado / necesita al usuario
+
+- **Formularios de creador (22/10):** al desplegar, la migración `FormulariosDeCreador` pasa los 14 esquemas de los tipos a formularios (probada sobre una copia de la
+  base de desarrollo: 14 formularios, 11 creadores y 320 casos enlazados). Los robots que crean casos **por tipo** dejan de tener sus datos comprobados contra ese
+  esquema hasta que nombren un creador (`Creador`, `Viriato.Rpa.Client` 0.10 / `Viariato.ApiContracts` 1.5, **sin publicar**: necesita tu token).
 
 - **Abrir el PR:** hay que commitear todo lo hecho desde el último commit. Lo hace Claude cuando se lo pidas.
 - **Publicar los paquetes** `Viriato.Rpa.Client` 0.7.0 y `Viariato.ApiContracts` 1.4.0 con tu token

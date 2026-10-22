@@ -271,6 +271,7 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
           onClose={() => setModalState(null)}
           submitting={createMutation.isPending || updateMutation.isPending}
           error={formError}
+          size={form.modalSize}
         />
       )}
 

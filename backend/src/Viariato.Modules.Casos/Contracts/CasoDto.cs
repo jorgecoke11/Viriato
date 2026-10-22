@@ -34,14 +34,18 @@ public sealed record CasoDetailDto(
     EjecucionDto? EjecucionActual,
     IReadOnlyList<CasoEventoDto> EventosRecientes);
 
+/// <param name="FormularioId">The form the data are written with (one of the process's): they are checked against it now and whenever
+/// they are edited. Null: free-form JSON.</param>
 public sealed record StartCasoRequest(
-    Guid? FlujoId, Guid? FlujoVersionId, string Titulo, string? DatosJson, Guid? EstadoNegocioInicialId, Guid? TipoCasoId, Guid? PasoInicialId);
+    Guid? FlujoId, Guid? FlujoVersionId, string Titulo, string? DatosJson, Guid? EstadoNegocioInicialId, Guid? TipoCasoId, Guid? PasoInicialId,
+    Guid? FormularioId = null);
 
 /// <param name="Titulo">The title the user chose, or empty to let the creator write it.</param>
 public sealed record CrearCasoDesdeCreadorRequest(string? Titulo, string? DatosJson);
 
-/// <summary>A creator as a user sees it when picking one. <paramref name="TituloEjemplo"/> is what the title would be if they
-/// created a case right now, to show as the placeholder of the title field.</summary>
+/// <summary>A creator as a user sees it when picking one. <paramref name="EsquemaDatosJson"/> is the schema of its form (null: free-form
+/// JSON) and <paramref name="DatosPorDefectoJson"/> what the form starts with. <paramref name="TituloEjemplo"/> is what the title would be
+/// if they created a case right now, to show as the placeholder of the title field.</summary>
 public sealed record CreadorDisponibleDto(
     Guid Id,
     string Nombre,
@@ -51,6 +55,7 @@ public sealed record CreadorDisponibleDto(
     Guid? TipoCasoId,
     string? TipoCasoNombre,
     string? EsquemaDatosJson,
+    string? DatosPorDefectoJson,
     string TituloEjemplo);
 
 public sealed record UpdateCasoDatosRequest(string DatosJson);

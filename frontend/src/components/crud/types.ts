@@ -9,7 +9,8 @@ export interface CrudColumn<T> {
   render: (item: T) => ReactNode
 }
 
-export type CrudFieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'password'
+/** `custom`: the field draws itself with `render` (a form editor, a picker…); its value is still a string. */
+export type CrudFieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'password' | 'custom'
 
 export interface CrudFieldOption {
   value: string
@@ -26,14 +27,25 @@ export interface CrudField<TValues> {
   options?: CrudFieldOption[]
   helpText?: string
   /** Returns a message while the (text) value is not acceptable, or null. Shown under the field as the user
-   * types, and the form cannot be submitted until it returns null for every visible field. */
-  validate?: (value: string) => string | null
+   * types, and the form cannot be submitted until it returns null for every visible field. It gets the other fields too,
+   * for a value whose rules depend on them. A custom field is checked even when empty. */
+  validate?: (value: string, values: TValues) => string | null
   /** Textarea only: monospaced text, for code-like values such as JSON. */
   mono?: boolean
   /** Textarea only: visible lines (default 3). */
   rows?: number
   /** When set, the field is only rendered while this returns true for the form's current values. */
   visibleWhen?: (values: TValues) => boolean
+  /** Custom only: draws the field. `mostrarErrores` turns on once the user has tried to save, so an editor can hold its
+   *  complaints until then. */
+  render?: (props: CampoCrudPersonalizado<TValues>) => ReactNode
+}
+
+export interface CampoCrudPersonalizado<TValues> {
+  value: string
+  onChange: (value: string) => void
+  values: TValues
+  mostrarErrores: boolean
 }
 
 export interface CrudFormConfig<T, TFormValues extends Record<string, string | boolean>, TCreate, TUpdate> {
@@ -46,6 +58,8 @@ export interface CrudFormConfig<T, TFormValues extends Record<string, string | b
   toEditValues: (item: T) => TFormValues
   toCreateInput: (values: TFormValues) => TCreate
   toUpdateInput: (values: TFormValues) => TUpdate
+  /** Width of the create/edit modal (default `md`): wider for a form that holds an editor. */
+  modalSize?: 'md' | 'lg' | 'xl'
 }
 
 /** One filter control rendered above the table; its value is sent to `CrudApi.list` under `key`. */
