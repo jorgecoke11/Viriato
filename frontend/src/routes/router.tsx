@@ -20,6 +20,7 @@ import { TrabajosPage } from '../features/ops/pages/TrabajosPage'
 import { CarteraPage } from '../features/cartera/CarteraPage'
 import { ProfilePage } from '../features/profile/pages/ProfilePage'
 import { CredencialesPage } from '../features/rpa/pages/CredencialesPage'
+import { ConexionesPage } from '../features/conexiones/ConexionesPage'
 import { DespliguesPage } from '../features/rpa/pages/DespliguesPage'
 import { EquiposPage } from '../features/rpa/pages/EquiposPage'
 import { ServiciosPage } from '../features/rpa/pages/ServiciosPage'
@@ -160,6 +161,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <CredencialesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/conexiones',
+        element: (
+          <ProtectedRoute>
+            <ConexionesPage />
           </ProtectedRoute>
         ),
       },

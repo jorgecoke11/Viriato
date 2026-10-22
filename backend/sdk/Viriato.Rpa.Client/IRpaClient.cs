@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Viariato.ApiContracts;
 
 namespace Viriato.Rpa.Client;
@@ -93,4 +94,23 @@ public interface IRpaClient
         Stream? archivo = null,
         string? nombreArchivo = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Says something happened that may deserve a notice — e.g. <c>precio_bajado</c> with <c>{ producto, antes, ahora }</c>. It goes into
+    /// the case's history, and the process's notification rules that listen for <paramref name="evento"/> send their notices (by mail…),
+    /// written with <c>{evento.campo}</c> from <paramref name="datos"/>. With no rule listening nothing is sent, and it is not an error.
+    /// (A default body so test doubles written before 0.9 keep compiling.)
+    /// </summary>
+    Task NotificarAsync(Guid ejecucionPasoId, string evento, object? datos = null, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este cliente no sabe notificar (Viriato.Rpa.Client 0.9+).");
+
+    /// <summary>What the process's robots kept under <paramref name="clave"/> (letters, digits, <c>. _ : -</c>), or null if nothing.
+    /// Memory between cases, shared by every robot of the process: the last price seen, the last page read…</summary>
+    Task<JsonElement?> ObtenerDatoAsync(string clave, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este cliente no tiene almacén (Viriato.Rpa.Client 0.9+).");
+
+    /// <summary>Keeps <paramref name="valor"/> (any JSON, up to 64 KB) under <paramref name="clave"/> for the process's robots, replacing
+    /// what was there.</summary>
+    Task GuardarDatoAsync(string clave, object valor, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este cliente no tiene almacén (Viriato.Rpa.Client 0.9+).");
 }

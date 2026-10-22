@@ -446,7 +446,32 @@ internal static class CasosEndpoints
                 db.Set<Documento>().Where(d => d.Id == e.DocumentoId).Select(d => (long?)d.TamanoBytes).FirstOrDefault()))
             .ToListAsync(ct);
 
-        var timeline = cambiosEstado.Concat(documentos).Concat(evidencias)
+        // What the process's notification rules told whom about this case (the Notificaciones module writes these lines).
+        var avisos = (await db.Set<CasoEvento>().AsNoTracking()
+                .Where(e => e.CasoId == id && (e.Accion == CasoEventoAccion.NotificacionEnviada || e.Accion == CasoEventoAccion.NotificacionFallida))
+                .Select(e => new { e.Id, e.OccurredAt, e.Accion, e.DetalleJson })
+                .ToListAsync(ct))
+            .Select(e =>
+            {
+                var enviado = e.Accion == CasoEventoAccion.NotificacionEnviada;
+                var regla = "aviso";
+                var destinatarios = string.Empty;
+                try
+                {
+                    using var json = JsonDocument.Parse(e.DetalleJson ?? "{}");
+                    if (json.RootElement.TryGetProperty("regla", out var r)) regla = r.GetString() ?? regla;
+                    if (json.RootElement.TryGetProperty("destinatarios", out var d) && d.ValueKind == JsonValueKind.Array)
+                    {
+                        destinatarios = string.Join(", ", d.EnumerateArray().Select(x => x.GetString()));
+                    }
+                }
+                catch (JsonException) { }
+                var titulo = enviado ? $"Aviso «{regla}» enviado a {destinatarios}" : $"No se pudo enviar el aviso «{regla}»";
+                return new CasoTimelineItemDto(e.Id, CasoTimelineItemTipo.Aviso, e.OccurredAt, titulo, enviado ? "enviado" : "fallido", null, null, e.DetalleJson);
+            })
+            .ToList();
+
+        var timeline = cambiosEstado.Concat(documentos).Concat(evidencias).Concat(avisos)
             .OrderByDescending(item => item.OccurredAt)
             .ToList();
 

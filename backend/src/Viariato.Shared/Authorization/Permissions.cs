@@ -54,6 +54,10 @@ public static class Permissions
     /// <summary>Create and edit the credentials the robots ask for (secrets: kept apart from the rest of the robot fleet).</summary>
     public const string RpaCredenciales = "rpa.credenciales";
 
+    // ---- accounts with the outside world (mailboxes…), shared by notifications and processes
+    /// <summary>Create and edit the platform's accounts with the outside world, secrets included.</summary>
+    public const string ConexionesManage = "conexiones.manage";
+
     public static IReadOnlyList<string> All { get; } =
     [
         UsersRead, UsersManage, RolesManage,
@@ -62,6 +66,7 @@ public static class Permissions
         CasosRead, CasosManage, CasosReview, CasosCrear, CasosCancelar, CasosPrioridad, CasosMasivas, CasosDescargar,
         CarteraRead, CarteraGestionar,
         RpaManage, RpaDespacho, RpaCredenciales,
+        ConexionesManage,
     ];
 
     /// <summary>What the <c>User</c> role starts with: everything to work the cases of the processes one is assigned to — see them,

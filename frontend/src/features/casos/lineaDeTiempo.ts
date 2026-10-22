@@ -5,12 +5,14 @@ import type { CasoTimelineItemDto } from './api'
  * data or a note — A file is a file
  * whether a person uploaded it or a step produced it.
  */
-export type TipoDeEntrada = 'estado' | 'captura' | 'video' | 'archivo' | 'datos' | 'nota'
+export type TipoDeEntrada = 'estado' | 'captura' | 'video' | 'archivo' | 'datos' | 'nota' | 'aviso'
 
 export type FiltroDeLinea = 'todo' | TipoDeEntrada
 
 export function tipoDeEntrada(item: CasoTimelineItemDto): TipoDeEntrada {
   if (item.tipo === 'EstadoCambiado') return 'estado'
+  // A notice a notification rule sent (or could not send) about the case.
+  if (item.tipo === 'Aviso') return 'aviso'
   // A document someone uploaded is a file to download, however it looks; only a step's evidence is looked at.
   if (item.tipo === 'Documento') return 'archivo'
   if (item.documentoId !== null) {
@@ -36,7 +38,7 @@ export interface DiaDeLinea {
 }
 
 export function contarPorTipo(items: readonly CasoTimelineItemDto[]): Record<FiltroDeLinea, number> {
-  const cuenta: Record<FiltroDeLinea, number> = { todo: items.length, estado: 0, captura: 0, video: 0, archivo: 0, datos: 0, nota: 0 }
+  const cuenta: Record<FiltroDeLinea, number> = { todo: items.length, estado: 0, captura: 0, video: 0, archivo: 0, datos: 0, nota: 0, aviso: 0 }
   for (const item of items) cuenta[tipoDeEntrada(item)] += 1
   return cuenta
 }

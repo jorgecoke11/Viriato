@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Viariato.ApiContracts;
 using Viariato.Infrastructure;
 using Viariato.Infrastructure.Trabajos;
+using Viariato.Modules.Casos.Contracts;
 using Viariato.Modules.Casos.Domain;
 using Viariato.Modules.Casos.Orchestration;
 using Viariato.Modules.Casos.Storage;
@@ -47,6 +48,7 @@ internal static class RpaWorkerEndpoints
         group.MapPost("/pasos/{id:guid}/estado-negocio", CambiarEstadoNegocioAsync);
         group.MapPost("/pasos/{id:guid}/datos", ActualizarDatosAsync);
         group.MapPost("/pasos/{id:guid}/en-vivo", ReportarEnVivoAsync);
+        group.MapPost("/pasos/{id:guid}/notificar", NotificarAsync);
     }
 
     private static async Task<IResult> GetDespliegueAsync(ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
@@ -546,6 +548,45 @@ internal static class RpaWorkerEndpoints
             EjecucionId = paso.EjecucionId,
             Accion = CasoEventoAccion.DatosActualizados,
             DetalleJson = JsonSerializer.Serialize(new { porRobot = true, propiedades = actuales.Select(p => p.Key) }),
+            OccurredAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync(ct);
+
+        return Results.NoContent();
+    }
+
+    /// <summary>The robot says something happened ("precio_bajado", with whatever data it wants in the notice). It is written in the
+    /// case's history like everything else; the process's notification rules that listen for that event pick it up from there
+    /// (Notificaciones module). With no rule listening it is still recorded, and it is not an error.</summary>
+    private static async Task<IResult> NotificarAsync(
+        Guid id, NotificarRequest request, ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Evento) || !System.Text.RegularExpressions.Regex.IsMatch(request.Evento.Trim(), "^[a-z0-9_]{1,60}$"))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["evento"] = ["El evento es un código de 1 a 60 letras minúsculas, números o _ (p. ej. precio_bajado)."],
+            });
+        }
+        if (request.Datos is { } datos && datos.ValueKind is not (JsonValueKind.Object or JsonValueKind.Null or JsonValueKind.Undefined))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["datos"] = ["Los datos del aviso tienen que ser un objeto JSON."] });
+        }
+
+        var detalle = await RpaWorkerAuthorization.RequireClaimedStepAsync(db, principal.GetDespliegueId(), id, ct);
+        if (detalle is null) return ProblemResults.NotFound(http, "Paso no encontrado.");
+
+        var paso = await db.Set<EjecucionPaso>().AsNoTracking().FirstAsync(p => p.Id == id, ct);
+        db.Add(new CasoEvento
+        {
+            CasoId = paso.CasoId,
+            EjecucionId = paso.EjecucionId,
+            Accion = CasoEventoAccion.AvisoDelRobot,
+            DetalleJson = JsonSerializer.Serialize(new
+            {
+                evento = request.Evento.Trim(),
+                datos = request.Datos is { ValueKind: JsonValueKind.Object } objeto ? objeto : (JsonElement?)null,
+            }),
             OccurredAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync(ct);

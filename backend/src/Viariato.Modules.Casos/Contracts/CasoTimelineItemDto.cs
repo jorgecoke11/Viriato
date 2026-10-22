@@ -24,4 +24,7 @@ public static class CasoTimelineItemTipo
     public const string EstadoCambiado = "EstadoCambiado";
     public const string Documento = "Documento";
     public const string Evidencia = "Evidencia";
+    /// <summary>A notification that went out (EstadoCodigo "enviado") or could not (EstadoCodigo "fallido"); ContenidoJson has the subject,
+    /// the recipients and, if it failed, why.</summary>
+    public const string Aviso = "Aviso";
 }

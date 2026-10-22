@@ -141,7 +141,7 @@ export interface EjecucionResumenDto {
   finishedAt: string | null
 }
 
-export type CasoTimelineItemTipo = 'EstadoCambiado' | 'Documento' | 'Evidencia'
+export type CasoTimelineItemTipo = 'EstadoCambiado' | 'Documento' | 'Evidencia' | 'Aviso'
 
 export interface CasoTimelineItemDto {
   /** Step this item came from (evidencias, and documents produced by a step); null otherwise. */

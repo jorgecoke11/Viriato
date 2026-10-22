@@ -128,6 +128,24 @@ public sealed class RpaClient : IRpaClient, IDisposable
         await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
     }
 
+    public Task NotificarAsync(Guid ejecucionPasoId, string evento, object? datos = null, CancellationToken ct = default) =>
+        PostJsonAsync($"{RpaRoute}/pasos/{ejecucionPasoId}/notificar", new { evento, datos }, ct);
+
+    public async Task<JsonElement?> ObtenerDatoAsync(string clave, CancellationToken ct = default)
+    {
+        using var response = await _http.GetAsync($"{RpaRoute}/almacen/{Uri.EscapeDataString(clave)}", ct).ConfigureAwait(false);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+        var dato = await response.Content.ReadFromJsonAsync<JsonElement>(ct).ConfigureAwait(false);
+        return dato.TryGetProperty("valor", out var valor) ? valor.Clone() : null;
+    }
+
+    public async Task GuardarDatoAsync(string clave, object valor, CancellationToken ct = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"{RpaRoute}/almacen/{Uri.EscapeDataString(clave)}", valor, ct).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+    }
+
     public void Dispose()
     {
         if (_ownsHttpClient)

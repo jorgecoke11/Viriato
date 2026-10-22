@@ -85,4 +85,31 @@ public sealed class RpaStepContext
             return false;
         }
     }
+
+    /// <inheritdoc cref="IRpaClient.NotificarAsync"/>
+    public Task NotificarAsync(string evento, object? datos = null, CancellationToken ct = default) =>
+        _client.NotificarAsync(Ejecucion.EjecucionPasoId, evento, datos, ct);
+
+    /// <summary>
+    /// Like <see cref="NotificarAsync"/>, but a notice that cannot be asked for is only a false: telling people about a step must
+    /// never be the reason it fails.
+    /// </summary>
+    public async Task<bool> IntentarNotificarAsync(string evento, object? datos = null, CancellationToken ct = default)
+    {
+        try
+        {
+            await _client.NotificarAsync(Ejecucion.EjecucionPasoId, evento, datos, ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex) when (ex is ViriatoApiException or HttpRequestException or TaskCanceledException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc cref="IRpaClient.ObtenerDatoAsync"/>
+    public Task<System.Text.Json.JsonElement?> ObtenerDatoAsync(string clave, CancellationToken ct = default) => _client.ObtenerDatoAsync(clave, ct);
+
+    /// <inheritdoc cref="IRpaClient.GuardarDatoAsync"/>
+    public Task GuardarDatoAsync(string clave, object valor, CancellationToken ct = default) => _client.GuardarDatoAsync(clave, valor, ct);
 }

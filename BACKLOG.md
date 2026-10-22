@@ -62,6 +62,17 @@ está abierto al panel, quien trabaja el proceso lo amplía desde *Cambiar pará
 - **Casos antiguos** conservan su valor aunque salga de la lista; solo deja de ofrecerse.
 - Tests de los dos validadores, de la ruta (permisos y asignación) y de la creación con un valor de fuera de la lista; verlo en el formulario de «Nuevo caso».
 
+### 37. Vigilante de precios: leer Amazon con navegador — pendiente (apuntado, sin empezar)
+Pedido el 22/10 con el robot `vigilante_precios`. Amazon contesta a quien no es un navegador con una comprobación anti-robots (HTTP 202 y una página que se resuelve
+con JavaScript), así que sus casos acaban en ERROR («ha pedido una comprobación anti-robots») y su lanzador viene en pausa. Para leerlo: un lector de Amazon con
+navegador (Selenium/Edge como el robot de BSH, con su imagen pesada) detrás de la misma interfaz `ILectorDePrecio`, solo para esa tienda. Ojo con lo aprendido con el
+extractor de BSH en el servidor: CPU suficiente (`EXTRACTOR_CPUS`) y `/tmp` en memoria.
+
+### 38. Robot de BSH: no fallar el caso cuando no se puede abrir Edge, y aligerar la cámara — pendiente (apuntado, sin empezar)
+Del 16/10. (1) Si Edge no arranca, el fallo es de la máquina, no del caso: el robot debería devolver el caso a la cola (o no cogerlo) y reiniciarse, en vez de quemar la cola.
+(2) La cámara en directo pesa: pantalla 1366×768, x11vnc con menos lecturas por segundo y prioridad baja, y que la página del caso no la conecte sola (solo al pulsar
+«Ver en directo»). Ambas cosas van en el repo `bsh_p01_prices_extractor` y necesitan reconstruir su imagen (token).
+
 ## Hecho
 
 - Despacho por equipo con tiempo máximo por servicio (sin latidos), prioridades por ejecución, estados Pendiente / En ejecución,

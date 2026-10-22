@@ -11,13 +11,14 @@ import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../api'
 import { FlujoCreadoresPanel } from '../FlujoCreadoresPanel'
 import { FlujoLanzadoresPanel } from '../FlujoLanzadoresPanel'
+import { FlujoNotificacionesPanel } from '../../notificaciones/FlujoNotificacionesPanel'
 import { FlujoEstadosPanel } from '../FlujoEstadosPanel'
 import { FlujoParametrosPanel } from '../FlujoParametrosPanel'
 import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
 import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
 import { BackLink } from '../../../components/ui/BackLink'
 
-type Tab = 'versiones' | 'estados' | 'tipos' | 'creadores' | 'lanzadores' | 'parametros'
+type Tab = 'versiones' | 'estados' | 'tipos' | 'creadores' | 'lanzadores' | 'notificaciones' | 'parametros'
 
 export function FlujoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -51,6 +52,7 @@ export function FlujoDetailPage() {
             { value: 'tipos', label: 'Tipos de caso' },
             { value: 'creadores', label: 'Creadores' },
             { value: 'lanzadores', label: 'Lanzadores' },
+            { value: 'notificaciones', label: 'Notificaciones' },
             { value: 'parametros', label: 'Parámetros' },
           ]}
           active={tab}
@@ -119,6 +121,19 @@ export function FlujoDetailPage() {
             >
               <Card className="mt-4">
                 <FlujoLanzadoresPanel flujoId={flujo.id} />
+              </Card>
+            </motion.div>
+          )}
+
+          {tab === 'notificaciones' && (
+            <motion.div
+              key="notificaciones"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
+              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+            >
+              <Card className="mt-4">
+                <FlujoNotificacionesPanel flujoId={flujo.id} />
               </Card>
             </motion.div>
           )}
