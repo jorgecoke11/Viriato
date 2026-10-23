@@ -15,6 +15,9 @@ internal sealed class ConexionDeCorreo : ITipoQueEnviaMensajes
 {
     public string Codigo => "correo";
 
+    /// <summary>How long to wait for the server at each step; shorter only in tests.</summary>
+    internal int MilisegundosDeEspera { get; init; } = 30_000;
+
     public string Nombre => "Correo (SMTP)";
 
     public string? EtiquetaSecreto => "Contraseña (en Gmail, una contraseña de aplicación)";
@@ -54,7 +57,7 @@ internal sealed class ConexionDeCorreo : ITipoQueEnviaMensajes
         correo.Subject = mensaje.Asunto;
         correo.Body = new TextPart("plain") { Text = mensaje.Cuerpo };
 
-        using var cliente = new SmtpClient { Timeout = 30_000 };
+        using var cliente = new SmtpClient { Timeout = MilisegundosDeEspera };
         try
         {
             await cliente.ConnectAsync(servidor, puerto, puerto == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTlsWhenAvailable, ct);
@@ -65,6 +68,18 @@ internal sealed class ConexionDeCorreo : ITipoQueEnviaMensajes
         catch (AuthenticationException ex)
         {
             throw new ConexionException("El servidor de correo no acepta el usuario o la contraseña (en Gmail hace falta una contraseña de aplicación).", ex);
+        }
+        catch (SslHandshakeException ex)
+        {
+            throw new ConexionException(
+                $"No se pudo abrir una conexión segura con {servidor}:{puerto}: el cifrado no encaja con el puerto (465 es SSL, 587 STARTTLS), " +
+                "o algo en medio (un antivirus, un cortafuegos) cambia el certificado.", ex);
+        }
+        // The client's own Timeout surfaces as either, depending on where it runs out; a cancellation asked by the caller is not a timeout.
+        catch (Exception ex) when ((ex is TimeoutException or OperationCanceledException) && !ct.IsCancellationRequested)
+        {
+            throw new ConexionException(
+                $"{servidor}:{puerto} no contesta: ¿es el servidor y el puerto correctos, y este equipo puede salir por ese puerto?", ex);
         }
         catch (Exception ex) when (ex is SmtpCommandException or SmtpProtocolException or ServiceNotConnectedException or IOException or System.Net.Sockets.SocketException)
         {
