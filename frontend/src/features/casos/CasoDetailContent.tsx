@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Tabs } from '../../components/ui/Tabs'
 import { ApiError } from '../../lib/apiClient'
+import { usePulso } from '../../lib/usePulso'
 import { duration, ease } from '../../lib/motion/tokens'
 import { useToast } from '../../lib/toast/useToast'
 import { useAuth } from '../auth/useAuth'
@@ -91,7 +92,18 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
   const query = useQuery({
     queryKey: ['caso', casoId],
     queryFn: () => casosApi.getCaso(casoId),
-    refetchInterval: (q) => (q.state.data?.estado === 'EnProgreso' || q.state.data?.estado === 'Pendiente' ? 2000 : false),
+  })
+
+  // A live screen: its signature is asked for every few seconds (more often while a robot runs it or it waits for one, rarely once
+  // it is over, since a reprocessing rule may still bring it back) and the case, its history, runs and documents are only reloaded
+  // when it changes.
+  const estado = query.data?.estado
+  usePulso({
+    clave: ['caso', casoId],
+    leer: () => casosApi.getPulsoDelCaso(casoId),
+    cadaMs: estado === 'EnProgreso' || estado === 'Pendiente' ? 2500 : estado && ESTADOS_ACTIVOS.includes(estado) ? 10000 : 30000,
+    refrescar: [['caso', casoId], ['caso-timeline', casoId], ['caso-documentos', casoId], ['caso-ejecuciones', casoId], ['caso-ejecucion', casoId]],
+    habilitado: query.isSuccess,
   })
 
   const flujosQuery = useQuery({ queryKey: ['flujos-asignados'], queryFn: casosApi.listFlujosAsignados })

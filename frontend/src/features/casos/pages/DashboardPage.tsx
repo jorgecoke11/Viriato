@@ -12,6 +12,7 @@ import { SelectorDeRango } from '../../../components/ui/SelectorDeRango'
 import { StatCard } from '../../../components/ui/StatCard'
 import { collapseVariants } from '../../../lib/motion/variants'
 import { esRangoElegido } from '../../../lib/rangoDeFechas'
+import { usePulso } from '../../../lib/usePulso'
 import { usePreferencia } from '../../auth/usePreferencia'
 import * as casosApi from '../api'
 import type { EstadoConteoDto } from '../api'
@@ -47,6 +48,17 @@ export function DashboardPage() {
   })
 
   const cajitas = query.data ?? []
+
+  // The panel follows what the robots do: a tiny signature is asked for often (more often while something runs or waits) and the
+  // cards, their own windows and an open list are only reloaded when it changes.
+  const enMovimiento = cajitas.some((c) => c.porTipo.some((t) => t.enEjecucion + t.pendientes > 0))
+  usePulso({
+    clave: ['panel'],
+    leer: casosApi.getPulsoDelPanel,
+    cadaMs: enMovimiento ? 5000 : 20000,
+    refrescar: [['casos-resumen'], ['casos-resumen-override'], ['casos', 'modal']],
+    habilitado: query.isSuccess,
+  })
 
   // The picker works with what is shown; what is stored is what is not. Ids of processes no longer assigned are kept as they were.
   const idsDeCajitas = new Set(cajitas.map((c) => c.flujoId))

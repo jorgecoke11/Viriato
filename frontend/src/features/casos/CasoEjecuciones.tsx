@@ -231,8 +231,7 @@ function EjecucionPasos({
   const query = useQuery({
     queryKey: ['caso-ejecucion', casoId, ejecucionId],
     queryFn: () => casosApi.getEjecucion(casoId, ejecucionId),
-    // A step that waits or runs changes under our feet: keep what is shown close to what is happening.
-    refetchInterval: (q) => (q.state.data?.pasos.some((p) => p.estado === 'EnProgreso') ? 4000 : false),
+    // No polling of its own: the case's pulse (CasoDetailContent) reloads it whenever a step or the robot's progress moves.
   })
 
   // The names of the steps live in the version of the process the Caso runs on; without them a step is only its type.
