@@ -6,11 +6,11 @@ import { ApiError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as casosApi from './api'
 import type { CasoListItemDto, CreadorDisponibleDto } from './api'
-import { DatosCasoInput } from './DatosCasoInput'
+import { DatosConFormulario } from '../../components/schema-form/DatosConFormulario'
 
 /**
- * What a person fills in to create a case once they have picked a creator: the data (a form if the creator's type has one, JSON
- * if not) and, if they want, a title of their own. The title is written by the creator when left empty — its example is shown
+ * What a person fills in to create a case once they have picked a creator: the data (the creator's form, starting from its
+ * defaults, or JSON if it has none) and, if they want, a title of their own. The title is written by the creator when left empty — its example is shown
  * as the placeholder so nobody wonders what they would get.
  */
 export function NuevoCasoDesdeCreador({
@@ -25,7 +25,8 @@ export function NuevoCasoDesdeCreador({
   const { showToast } = useToast()
   const queryClient = useQueryClient()
   const [titulo, setTitulo] = useState('')
-  const [datosJson, setDatosJson] = useState('')
+  // The creator's defaults are where the form starts; what the person then changes or empties is what is sent.
+  const [datosJson, setDatosJson] = useState(creador.datosPorDefectoJson ?? '')
   const [datosErrores, setDatosErrores] = useState<string[]>([])
   const [intentoEnvio, setIntentoEnvio] = useState(false)
 
@@ -50,7 +51,7 @@ export function NuevoCasoDesdeCreador({
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-4">
-      <DatosCasoInput
+      <DatosConFormulario
         key={creador.id}
         esquemaJson={creador.esquemaDatosJson}
         value={datosJson}

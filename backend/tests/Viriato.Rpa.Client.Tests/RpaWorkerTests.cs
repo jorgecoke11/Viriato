@@ -195,6 +195,117 @@ public sealed class RpaWorkerTests
         Assert.Contains("estado:EN_REVISION", client.Calls);
     }
 
+    private sealed class AjusteQueAnota(List<DespliegueEstadoDto> vistos, bool falla = false) : IAjusteDelDespliegue
+    {
+        public Task AplicarAsync(DespliegueEstadoDto estado, CancellationToken ct)
+        {
+            vistos.Add(estado);
+            return falla ? throw new InvalidOperationException("x11vnc no está") : Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task EveryReadOfTheDespliegue_IsHandedToItsSettings_EvenWhenSwitchedOff()
+    {
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var client = new FakeRpaClient { StopWhenQueueDrains = cts };
+        var apagado = Encendido(false) with { Pantalla = new PantallaDelRobotDto(null, false) };
+        client.Estados.Enqueue(() => Task.FromResult(apagado));
+        var vistos = new List<DespliegueEstadoDto>();
+        var worker = new RpaWorker(client, FastOptions(), ajustes: [new AjusteQueAnota(vistos)]);
+
+        await worker.RunAsync((_, _) => Task.FromResult(RpaStepResult.Completado()), cts.Token);
+
+        Assert.Equal(apagado, vistos[0]);
+        Assert.True(vistos.Count >= 2);
+    }
+
+    [Fact]
+    public async Task ASettingThatFails_DoesNotStopTheRobot()
+    {
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var client = new FakeRpaClient { StopWhenQueueDrains = cts };
+        client.Claims.Enqueue(() => Task.FromResult<EjecucionAsignadaDto?>(NuevaEjecucion()));
+        var worker = new RpaWorker(client, FastOptions(), ajustes: [new AjusteQueAnota([], falla: true)]);
+
+        await worker.RunAsync((_, _) => Task.FromResult(RpaStepResult.Completado()), cts.Token);
+
+        Assert.Contains("completar:", client.Calls);
+    }
+
+    [Fact]
+    public async Task TheStep_KnowsWhatViriatoDecidedAboutTheScreen()
+    {
+        var (worker, client, cts) = Create(NuevaEjecucion());
+        client.Estados.Enqueue(() => Task.FromResult(Encendido(true) with { Pantalla = new PantallaDelRobotDto(null, true) }));
+        bool? vista = null, grabar = null;
+
+        await worker.RunAsync((paso, _) =>
+        {
+            vista = paso.VistaEnDirectoActiva;
+            grabar = paso.GrabarVideo(segunElRobot: false);
+            return Task.FromResult(RpaStepResult.Completado());
+        }, cts.Token);
+
+        Assert.False(vista);
+        Assert.True(grabar);
+    }
+
+    [Fact]
+    public async Task WhileAStepRuns_TheSettingsAreReadAgain_SoAChangeDoesNotWaitForTheEnd()
+    {
+        var (worker, client, cts) = Create(NuevaEjecucion());
+        var vistos = new List<DespliegueEstadoDto>();
+        var opciones = FastOptions();
+        opciones.IntervaloAjustesDuranteUnPaso = TimeSpan.FromMilliseconds(5);
+        worker = new RpaWorker(client, opciones, ajustes: [new AjusteQueAnota(vistos)]);
+        var apagada = Encendido(true) with { Pantalla = new PantallaDelRobotDto(null, null) };
+
+        await worker.RunAsync(async (_, ct) =>
+        {
+            // Viriato switches the view off in the middle of the step.
+            client.Estados.Enqueue(() => Task.FromResult(apagada));
+            var limite = DateTime.UtcNow.AddSeconds(5);
+            while (!vistos.Contains(apagada) && DateTime.UtcNow < limite) await Task.Delay(5, ct);
+            return RpaStepResult.Completado();
+        }, cts.Token);
+
+        Assert.Contains(apagada, vistos);
+        Assert.Contains("completar:", client.Calls);
+    }
+
+    [Fact]
+    public async Task AFailedReadDuringAStep_DoesNotFailTheStep()
+    {
+        var (_, client, cts) = Create(NuevaEjecucion());
+        var opciones = FastOptions();
+        opciones.IntervaloAjustesDuranteUnPaso = TimeSpan.FromMilliseconds(1);
+        var worker = new RpaWorker(client, opciones, ajustes: [new AjusteQueAnota([])]);
+
+        await worker.RunAsync(async (_, ct) =>
+        {
+            for (var i = 0; i < 5; i++) client.Estados.Enqueue(() => throw new ViriatoApiException(HttpStatusCode.Unauthorized, "clave"));
+            // All of them are read during the step (none is left for the main loop, where a bad key does stop the robot).
+            var limite = DateTime.UtcNow.AddSeconds(5);
+            while (client.Estados.Count > 0 && DateTime.UtcNow < limite) await Task.Delay(5, ct);
+            return RpaStepResult.Completado();
+        }, cts.Token);
+
+        Assert.Contains("completar:", client.Calls);
+    }
+
+    [Fact]
+    public void WhenViriatoLeavesItToTheRobot_TheRobotsOwnSettingsHold()
+    {
+        var sinDecir = new RpaStepContext(new FakeRpaClient(), NuevaEjecucion(), Encendido(true));
+        var dejaElVideo = new RpaStepContext(new FakeRpaClient(), NuevaEjecucion(), Encendido(true) with { Pantalla = new(new("Baja", 500, 2, 9), null) });
+
+        Assert.True(sinDecir.VistaEnDirectoActiva);
+        Assert.True(sinDecir.GrabarVideo(segunElRobot: true));
+        Assert.True(dejaElVideo.VistaEnDirectoActiva);
+        Assert.False(dejaElVideo.GrabarVideo(segunElRobot: false));
+    }
+
     [Fact]
     public async Task WhenTheDespliegueIsSwitchedOff_NothingIsClaimed()
     {

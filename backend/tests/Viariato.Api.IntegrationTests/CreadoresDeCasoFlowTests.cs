@@ -75,7 +75,8 @@ public sealed class CreadoresDeCasoFlowTests(ViariatoApiFactory factory) : IClas
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/publicar", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/asignaciones", new { userId })).StatusCode);
 
-        var tipoId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/tipos-caso", new { nombre = "Alta", orden = 1, esquemaDatosJson = EsquemaAlta }));
+        var tipoId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/tipos-caso", new { nombre = "Alta", orden = 1 }));
+        var formularioId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/formularios", new { nombre = "Alta", esquemaJson = EsquemaAlta }));
         var estadoId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/estados", new { codigo = "NUEVO", display = "Nuevo", orden = 1, esFinal = false }));
 
         var creadorId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/creadores", new
@@ -83,6 +84,7 @@ public sealed class CreadoresDeCasoFlowTests(ViariatoApiFactory factory) : IClas
             nombre = "Alta de cliente",
             descripcion = "Un cliente nuevo",
             tipoCasoId = tipoId,
+            formularioId,
             pasoInicialNombre = "Dar de alta",
             estadoNegocioInicialId = estadoId,
             plantillaTitulo = plantilla,

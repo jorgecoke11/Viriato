@@ -24,6 +24,15 @@ describe('direccionParaElMarco', () => {
     expect(direccion.searchParams.get('autoconnect')).toBe('true')
     expect(direccion.searchParams.get('resize')).toBe('scale')
     expect(direccion.searchParams.get('view_only')).toBe('true')
+    expect(direccion.searchParams.get('reconnect')).toBe('true')
+  })
+
+  it('respeta la calidad que puso Viriato y la ruta del websocket', () => {
+    const direccion = new URL(direccionParaElMarco('https://app.viriato.org/vista/vnc.html?path=vista%2Fwebsockify&quality=2&compression=9'))
+
+    expect(direccion.searchParams.get('path')).toBe('vista/websockify')
+    expect(direccion.searchParams.get('quality')).toBe('2')
+    expect(direccion.searchParams.get('compression')).toBe('9')
   })
 
   it('otra dirección se deja como está', () => {

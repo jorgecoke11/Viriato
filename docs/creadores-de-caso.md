@@ -10,7 +10,9 @@ Una entidad del **proceso** (`flujos.creadores_de_caso`), con tantos como haga f
 | Campo | Para qué |
 |---|---|
 | Nombre, descripción | Lo que ve el usuario al elegir. |
-| Tipo de caso | El tipo que recibe el caso **y**, con él, el formulario de datos (el esquema del tipo). Sin tipo: JSON libre. |
+| Tipo de caso | El tipo que recibe el caso. |
+| Formulario | El formulario de los datos, de la biblioteca del proceso ([formularios.md](formularios.md)); varios creadores pueden compartir uno. Sin formulario: JSON libre. |
+| Valores por defecto | Con lo que empieza el formulario al crear un caso a mano, y la base de los datos de sus lanzadores (y de los robots que lo nombran). Pueden dejar obligatorios vacíos. |
 | Servicio por el que empieza | Un paso del proceso, **por nombre** (así sigue valiendo al publicar versiones nuevas). Los anteriores quedan como omitidos. Vacío: el primer paso. |
 | Estado de negocio inicial | El estado con el que nace el caso. |
 | Título automático | Plantilla del título cuando el usuario no escribe uno. |
@@ -42,12 +44,13 @@ El usuario **puede escribir su propio título** (el id de negocio): entonces se 
 |---|---|
 | `GET /api/v1/flujos/{flujoId}/creadores` (`flujos.read`) | Los creadores del proceso. |
 | `POST` / `PUT /…/creadores[/{id}]`, `DELETE /…/creadores/{id}` (`flujos.manage`) | Crear, **reemplazar entero** (así se puede vaciar una referencia) y borrar. Se comprueba que tipo, estado y paso existen en el proceso. |
-| `GET /api/v1/creadores-de-caso` (`casos.crear`) | Los que **puedo usar**: activos, de procesos que tengo asignados y con versión publicada; con el esquema del tipo y un título de ejemplo. |
-| `POST /api/v1/creadores-de-caso/{id}/casos` (`casos.crear`) | `{ titulo?, datosJson? }`. Pasa por **las mismas comprobaciones** que crear un caso a mano (asignación al proceso, esquema de datos…): solo pregunta menos. |
+| `GET /api/v1/creadores-de-caso` (`casos.crear`) | Los que **puedo usar**: activos, de procesos que tengo asignados y con versión publicada; con el esquema de su formulario, sus valores por defecto y un título de ejemplo. |
+| `POST /api/v1/creadores-de-caso/{id}/casos` (`casos.crear`) | `{ titulo?, datosJson? }`. Pasa por **las mismas comprobaciones** que crear un caso a mano (asignación al proceso, formulario…): solo pregunta menos. Los datos van tal cual: los valores por defecto ya venían en el formulario. |
 
 Un creador de otro usuario, retirado o de un proceso sin asignar responde igual que uno que no existe (404): nadie descubre cuáles hay.
 
 ## Ampliar
 
-Lo que el creador decide es un conjunto cerrado de campos de `StartCasoRequest`. Para que un creador decida algo más (datos por defecto,
-prioridad…) se añade una columna a `CreadorDeCaso` y se vuelca en `CreadoresDeCasoUsoEndpoints.CrearCasoAsync`; el resto no cambia.
+Lo que el creador decide es un conjunto cerrado de campos de `StartCasoRequest`. Para que un creador decida algo más (prioridad…) se
+añade una columna a `CreadorDeCaso` y se vuelca en `CreadoresDeCasoUsoEndpoints.CrearCasoAsync`, en `AbridorDeCasos` (lanzadores) y en el
+`CrearCasoAsync` de los robots; el título lo escribe siempre `TituloDeCreador`.

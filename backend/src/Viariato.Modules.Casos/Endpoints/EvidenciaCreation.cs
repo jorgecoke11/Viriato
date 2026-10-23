@@ -51,7 +51,7 @@ internal static class EvidenciaCreation
                 CasoId = casoId,
                 EjecucionPasoId = ejecucionPasoId,
                 Nombre = file.FileName,
-                ContentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
+                ContentType = TipoDeContenido.De(file.ContentType, file.FileName),
                 TamanoBytes = file.Length,
                 StorageKey = storageKey,
                 UploadedByUserId = uploadedByUserId,

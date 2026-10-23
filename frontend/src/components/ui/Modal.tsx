@@ -22,11 +22,13 @@ export function Modal({ open, title, onClose, children, footer, size = 'md' }: M
 
   // The caller typically clears its underlying data the instant it sets `open` to false, but the
   // panel needs something valid to keep showing while its exit animation plays — so the last real
-  // content is frozen here and only refreshed while the modal is actually open.
-  const [frozen, setFrozen] = useState({ title, children, footer, size })
+  // content is frozen here and only refreshed while the modal is actually open. While open it shows the live props, never
+  // the frozen copy: that copy is a render behind, and a field drawn from it loses its cursor to the end on every keystroke.
+  const [ultimo, setUltimo] = useState({ title, children, footer, size })
   useEffect(() => {
-    if (open) setFrozen({ title, children, footer, size })
+    if (open) setUltimo({ title, children, footer, size })
   }, [open, title, children, footer, size])
+  const frozen = open ? { title, children, footer, size } : ultimo
 
   // Escape closes it, as people expect of any dialog.
   useEffect(() => {

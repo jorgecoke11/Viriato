@@ -3,6 +3,8 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudField, CrudFormConfig } from '../../components/crud/types'
+import { erroresDeListaDeDatos } from '../../components/schema-form/comprobar'
+import { ListaDeDatosConFormulario } from '../../components/schema-form/ListaDeDatosConFormulario'
 import { Badge } from '../../components/ui/Badge'
 import * as flujosApi from './api'
 import type { LanzadorDeCasoDto } from './api'
@@ -43,12 +45,25 @@ function aSolicitud(values: LanzadorFormValues): flujosApi.GuardarLanzadorDeCaso
 
 /**
  * The launchers of a process: the crontab of the platform. A launcher is a creator that fires by itself — when its cron says, Viriato opens a case
- * with what the creator describes and the data written here, with nobody pressing anything. It is how work that has to happen every day
+ * with what the creator describes and the data written here (laid over the creator's defaults), with nobody pressing anything. It is how work that has to happen every day
  * (analyse the list at 10:00) starts, without a robot whose only job is to look at the clock.
  */
 export function FlujoLanzadoresPanel({ flujoId }: { flujoId: string }) {
   const creadoresQuery = useQuery({ queryKey: ['flujo-creadores', flujoId], queryFn: () => flujosApi.listCreadoresDeCaso(flujoId) })
   const creadores = useMemo(() => (creadoresQuery.data ?? []).filter((c) => c.activo).sort((a, b) => a.orden - b.orden), [creadoresQuery.data])
+  const formulariosQuery = useQuery({ queryKey: ['flujo-formularios', flujoId], queryFn: () => flujosApi.listFormularios(flujoId) })
+
+  // What a launcher's data are written against: the form of the creator it fires, starting from that creator's defaults.
+  const delCreador = useMemo(() => {
+    const formularios = formulariosQuery.data ?? []
+    return (creadorId: string) => {
+      const creador = creadores.find((c) => c.id === creadorId)
+      return {
+        esquemaJson: formularios.find((f) => f.id === creador?.formularioId)?.esquemaJson ?? null,
+        baseJson: creador?.datosPorDefectoJson ?? null,
+      }
+    }
+  }, [creadores, formulariosQuery.data])
 
   const campos = useMemo<CrudField<LanzadorFormValues>[]>(
     () => [
@@ -72,12 +87,27 @@ export function FlujoLanzadoresPanel({ flujoId }: { flujoId: string }) {
       },
       {
         name: 'datosJson',
-        label: 'Datos del caso (JSON)',
-        type: 'textarea',
-        mono: true,
-        rows: 6,
+        label: 'Datos del caso',
+        type: 'custom',
         helpText:
-          'Lo que recibe el caso que se abra, según el tipo del creador. Un objeto, p. ej. {"ticker": "AAPL"}, abre un caso; una lista de objetos, p. ej. [{"ticker": "AAPL"}, {"ticker": "MSFT"}], abre un caso por cada elemento. Déjalo en {} si el tipo no pide nada.',
+          'Se rellenan con el formulario del creador y empiezan con sus valores por defecto: se guarda solo lo que cambies, así que un cambio en los valores del creador llega a todo lo que no hayas tocado. «Un caso por fila» abre un caso por cada fila en cada momento del cron.',
+        validate: (valor, values) => {
+          const { esquemaJson, baseJson } = delCreador(values.creadorDeCasoId)
+          return erroresDeListaDeDatos(esquemaJson, baseJson, valor)[0] ?? null
+        },
+        render: ({ value, onChange, values, mostrarErrores }) => {
+          const { esquemaJson, baseJson } = delCreador(values.creadorDeCasoId)
+          return (
+            <ListaDeDatosConFormulario
+              key={values.creadorDeCasoId}
+              esquemaJson={esquemaJson}
+              baseJson={baseJson}
+              value={value}
+              onChange={onChange}
+              mostrarErrores={mostrarErrores}
+            />
+          )
+        },
       },
       {
         name: 'toleranciaMinutos',
@@ -88,7 +118,7 @@ export function FlujoLanzadoresPanel({ flujoId }: { flujoId: string }) {
       },
       { name: 'activo', label: 'Activo (si no, está en pausa)', type: 'checkbox' },
     ],
-    [creadores],
+    [creadores, delCreador],
   )
 
   const columns: CrudColumn<LanzadorDeCasoDto>[] = [
@@ -154,12 +184,12 @@ export function FlujoLanzadoresPanel({ flujoId }: { flujoId: string }) {
   const form: Config = {
     createFields: campos.filter((c) => c.name !== 'activo'),
     editFields: campos,
-    emptyValues: { nombre: '', descripcion: '', creadorDeCasoId: '', datosJson: '{}', cron: '', zonaHoraria: 'Europe/Madrid', toleranciaMinutos: '120', activo: true },
+    emptyValues: { nombre: '', descripcion: '', creadorDeCasoId: '', datosJson: '', cron: '', zonaHoraria: 'Europe/Madrid', toleranciaMinutos: '120', activo: true },
     toEditValues: (l) => ({
       nombre: l.nombre,
       descripcion: l.descripcion ?? '',
       creadorDeCasoId: l.creadorDeCasoId,
-      datosJson: l.datosJson ?? '{}',
+      datosJson: l.datosJson ?? '',
       cron: l.cron,
       zonaHoraria: l.zonaHoraria,
       toleranciaMinutos: String(l.toleranciaMinutos),
@@ -167,9 +197,10 @@ export function FlujoLanzadoresPanel({ flujoId }: { flujoId: string }) {
     }),
     toCreateInput: aSolicitud,
     toUpdateInput: aSolicitud,
+    modalSize: 'lg',
   }
 
-  if (creadoresQuery.isLoading) return <p className="text-gray-500">Cargando…</p>
+  if (creadoresQuery.isLoading || formulariosQuery.isLoading) return <p className="text-gray-500">Cargando…</p>
 
   return (
     <div className="flex flex-col gap-3">

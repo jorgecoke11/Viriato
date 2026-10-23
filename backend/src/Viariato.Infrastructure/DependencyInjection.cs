@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Viariato.Infrastructure.BackgroundQueue;
@@ -13,12 +14,16 @@ public static class DependencyInjection
         // Reads the connection string lazily, when the DbContext is first resolved rather than
         // at registration time, so hosts that mutate configuration after this call (as
         // WebApplicationFactory-based tests do, right before Build()) are picked up correctly.
-        services.AddDbContext<AppDbContext>(options =>
+        services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
             var connectionString = configuration.GetConnectionString("Postgres")
                 ?? throw new InvalidOperationException("Missing configuration: ConnectionStrings:Postgres.");
 
             options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention();
+
+            // A module that has to react to what is saved, in the same transaction (notifications to what happens to a case), registers
+            // an ISaveChangesInterceptor; this is where they all join the context.
+            options.AddInterceptors(serviceProvider.GetServices<ISaveChangesInterceptor>());
         });
 
         services.AddScoped<ITrabajoTracker, TrabajoTracker>();

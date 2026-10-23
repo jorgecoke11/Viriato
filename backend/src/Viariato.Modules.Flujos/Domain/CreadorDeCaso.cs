@@ -20,10 +20,20 @@ public sealed class CreadorDeCaso
     /// <summary>One line under the name to tell it apart from its siblings.</summary>
     public string? Descripcion { get; set; }
 
-    /// <summary>The type the Caso gets, and with it the form of its data (the type's schema). Null: no type, free-form JSON.</summary>
+    /// <summary>The type the Caso gets. Null: no type.</summary>
     public Guid? TipoCasoId { get; set; }
 
     public FlujoTipoCasoDef? TipoCaso { get; set; }
+
+    /// <summary>The form of the Caso's data. Null: free-form JSON.</summary>
+    public Guid? FormularioId { get; set; }
+
+    public Formulario? Formulario { get; set; }
+
+    /// <summary>The values the form starts with when a person creates a Caso, and the base a launcher (or a robot naming this creator)
+    /// lays its own data over, field by field. A JSON object, checked against the form without its required fields: a default
+    /// may leave something for the person to fill in. Null: none.</summary>
+    public string? DatosPorDefectoJson { get; set; }
 
     /// <summary>The step the Caso starts at, by name rather than by id: versions of a Flujo each have their own step rows, and a
     /// creator must keep working when a new version is published. Null: the first step of the flow.</summary>

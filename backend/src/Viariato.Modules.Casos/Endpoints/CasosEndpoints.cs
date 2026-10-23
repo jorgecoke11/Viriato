@@ -184,7 +184,10 @@ internal static class CasosEndpoints
         var enMarcha = (await db.Set<EjecucionPaso>().AsNoTracking()
                 .Where(p => idsDeLaPagina.Contains(p.CasoId) && p.Estado == EjecucionPasoEstado.EnProgreso)
                 .Join(db.Set<RpaEjecucionDetalle>().Where(d => d.DespliegueId != null), p => p.Id, d => d.EjecucionPasoId,
-                    (p, d) => new { p.CasoId, d.ProgresoPorcentaje, d.VistaEnDirectoUrl })
+                    (p, d) => new { p.CasoId, d.ProgresoPorcentaje, d.VistaEnDirectoUrl, d.DespliegueId })
+                // The platform decides whether a Despliegue's screen may be watched, whatever its robot reported.
+                .Join(db.Set<Despliegue>(), x => x.DespliegueId, d => d.Id,
+                    (x, d) => new { x.CasoId, x.ProgresoPorcentaje, VistaEnDirectoUrl = d.VistaEnDirecto == CalidadVistaEnDirecto.Apagada ? null : x.VistaEnDirectoUrl })
                 .ToListAsync(ct))
             .GroupBy(x => x.CasoId)
             .ToDictionary(g => g.Key, g => g.First());
@@ -446,11 +449,78 @@ internal static class CasosEndpoints
                 db.Set<Documento>().Where(d => d.Id == e.DocumentoId).Select(d => (long?)d.TamanoBytes).FirstOrDefault()))
             .ToListAsync(ct);
 
-        var timeline = cambiosEstado.Concat(documentos).Concat(evidencias)
+        // What the process's notification rules told whom about this case (the Notificaciones module writes these lines).
+        var avisos = (await db.Set<CasoEvento>().AsNoTracking()
+                .Where(e => e.CasoId == id && (e.Accion == CasoEventoAccion.NotificacionEnviada || e.Accion == CasoEventoAccion.NotificacionFallida))
+                .Select(e => new { e.Id, e.OccurredAt, e.Accion, e.DetalleJson })
+                .ToListAsync(ct))
+            .Select(e =>
+            {
+                var enviado = e.Accion == CasoEventoAccion.NotificacionEnviada;
+                var regla = "aviso";
+                var destinatarios = string.Empty;
+                try
+                {
+                    using var json = JsonDocument.Parse(e.DetalleJson ?? "{}");
+                    if (json.RootElement.TryGetProperty("regla", out var r)) regla = r.GetString() ?? regla;
+                    if (json.RootElement.TryGetProperty("destinatarios", out var d) && d.ValueKind == JsonValueKind.Array)
+                    {
+                        destinatarios = string.Join(", ", d.EnumerateArray().Select(x => x.GetString()));
+                    }
+                }
+                catch (JsonException) { }
+                var titulo = enviado ? $"Aviso «{regla}» enviado a {destinatarios}" : $"No se pudo enviar el aviso «{regla}»";
+                return new CasoTimelineItemDto(e.Id, CasoTimelineItemTipo.Aviso, e.OccurredAt, titulo, enviado ? "enviado" : "fallido", null, null, e.DetalleJson);
+            })
+            .ToList();
+
+        // What the process's reprocessing rules decided about this case.
+        var reprocesamientos = (await db.Set<CasoEvento>().AsNoTracking()
+                .Where(e => e.CasoId == id && (e.Accion == CasoEventoAccion.ReprocesamientoProgramado
+                    || e.Accion == CasoEventoAccion.ReprocesamientosAgotados || e.Accion == CasoEventoAccion.ReprocesamientoFallido))
+                .Select(e => new { e.Id, e.OccurredAt, e.Accion, e.DetalleJson })
+                .ToListAsync(ct))
+            .Select(e => new CasoTimelineItemDto(
+                e.Id, CasoTimelineItemTipo.Reprocesamiento, e.OccurredAt, TituloDeReprocesamiento(e.Accion, e.DetalleJson),
+                e.Accion switch
+                {
+                    CasoEventoAccion.ReprocesamientoProgramado => "programado",
+                    CasoEventoAccion.ReprocesamientosAgotados => "agotado",
+                    _ => "fallido",
+                },
+                null, null, null))
+            .ToList();
+
+        var timeline = cambiosEstado.Concat(documentos).Concat(evidencias).Concat(avisos).Concat(reprocesamientos)
             .OrderByDescending(item => item.OccurredAt)
             .ToList();
 
         return Results.Ok(timeline);
+    }
+
+    private static string TituloDeReprocesamiento(CasoEventoAccion accion, string? detalleJson)
+    {
+        string? Leer(JsonElement raiz, string nombre) =>
+            raiz.TryGetProperty(nombre, out var v) ? v.ValueKind switch { JsonValueKind.String => v.GetString(), JsonValueKind.Number => v.GetRawText(), _ => null } : null;
+
+        string? regla = null, paso = null, numero = null, limite = null, error = null;
+        try
+        {
+            using var json = JsonDocument.Parse(detalleJson ?? "{}");
+            var raiz = json.RootElement;
+            (regla, paso, numero, limite, error) = (Leer(raiz, "regla"), Leer(raiz, "paso"), Leer(raiz, "numero"), Leer(raiz, "limite"), Leer(raiz, "error"));
+        }
+        catch (JsonException) { }
+
+        regla ??= "reprocesamiento";
+        var que = paso is null ? "la ejecución en que acabó" : $"«{paso}»";
+        return accion switch
+        {
+            CasoEventoAccion.ReprocesamientoProgramado =>
+                $"Se reprocesa {que} por la regla «{regla}» ({numero ?? "?"}{(limite is null ? string.Empty : $" de {limite}")})",
+            CasoEventoAccion.ReprocesamientosAgotados => $"Agotados los {limite} reprocesamientos de la regla «{regla}»",
+            _ => $"No se pudo reprocesar por la regla «{regla}»: {error}",
+        };
     }
 
     private static async Task<IResult> StartCasoAsync(
@@ -519,7 +589,13 @@ internal static class CasosEndpoints
             }
         }
 
-        if (await DatosPorTipo.RechazarSiNoCumpleAsync(db, request.TipoCasoId, request.DatosJson, ct) is { } datosRechazados)
+        if (request.FormularioId is not null &&
+            !await db.Set<Formulario>().AnyAsync(f => f.Id == request.FormularioId && f.FlujoId == version.FlujoId, ct))
+        {
+            return ProblemResults.Conflict(http, "El formulario indicado no pertenece a este flujo.");
+        }
+
+        if (await DatosPorFormulario.RechazarSiNoCumpleAsync(db, request.FormularioId, request.DatosJson, ct) is { } datosRechazados)
         {
             return datosRechazados;
         }
@@ -542,6 +618,7 @@ internal static class CasosEndpoints
             Titulo = request.Titulo,
             DatosJson = request.DatosJson,
             TipoCasoId = request.TipoCasoId,
+            FormularioId = request.FormularioId,
             EstadoNegocioActualId = estadoNegocioInicial?.Id,
             CreatedAt = now,
             UpdatedAt = now,
@@ -710,21 +787,23 @@ internal static class CasosEndpoints
             select new { definicion.Id, servicio.Nombre }).ToDictionaryAsync(x => x.Id, x => x.Nombre, ct);
 
         var despliegueIds = detalles.Values.Where(d => d.DespliegueId != null).Select(d => d.DespliegueId!.Value).Distinct().ToList();
-        var equiposPorDespliegue = despliegueIds.Count == 0
-            ? new Dictionary<Guid, string>()
+        var despliegues = despliegueIds.Count == 0
+            ? []
             : await (
                 from despliegue in db.Set<Despliegue>().AsNoTracking()
                 join equipo in db.Set<Equipo>().AsNoTracking() on despliegue.EquipoId equals equipo.Id
                 where despliegueIds.Contains(despliegue.Id)
-                select new { despliegue.Id, equipo.Nombre }).ToDictionaryAsync(x => x.Id, x => x.Nombre, ct);
+                select new { despliegue.Id, EquipoNombre = equipo.Nombre, despliegue.VistaEnDirecto }).ToDictionaryAsync(x => x.Id, ct);
 
         return pasos.Select(p =>
         {
             var detalle = detalles.GetValueOrDefault(p.Id);
+            var despliegue = detalle?.DespliegueId is { } despliegueId ? despliegues.GetValueOrDefault(despliegueId) : null;
             return p.ToDto(
                 detalle,
                 serviciosDeLaDefinicion.GetValueOrDefault(p.FlujoPasoDefId),
-                detalle?.DespliegueId is { } despliegueId ? equiposPorDespliegue.GetValueOrDefault(despliegueId) : null);
+                despliegue?.EquipoNombre,
+                despliegue?.VistaEnDirecto ?? CalidadVistaEnDirecto.Apagada);
         }).ToList();
     }
 
@@ -742,7 +821,7 @@ internal static class CasosEndpoints
         var caso = await db.Set<Caso>().FirstOrDefaultAsync(c => c.Id == id, ct);
         if (caso is null) return ProblemResults.NotFound(http, "Caso no encontrado.");
         if (await RequireAccesoAsync(db, http, caso.FlujoId, ct) is { } denied) return denied;
-        if (await DatosPorTipo.RechazarSiNoCumpleAsync(db, caso.TipoCasoId, request.DatosJson, ct) is { } datosRechazados) return datosRechazados;
+        if (await DatosPorFormulario.RechazarSiNoCumpleAsync(db, caso.FormularioId, request.DatosJson, ct) is { } datosRechazados) return datosRechazados;
 
         caso.DatosJson = request.DatosJson;
         caso.UpdatedAt = DateTimeOffset.UtcNow;

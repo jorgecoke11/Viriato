@@ -14,8 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
-  Wallet,
-} from 'lucide-react'
+  Wallet, Plug } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 export interface NavLinkNode {
@@ -94,6 +93,7 @@ export const navTree: NavNode[] = [
       { type: 'link', to: '/admin/usuarios', label: 'Usuarios', icon: <Users size={18} />, permission: 'users.manage' },
       { type: 'link', to: '/admin/roles', label: 'Roles', icon: <ShieldCheck size={18} />, permission: 'roles.manage' },
       { type: 'link', to: '/admin/permisos', label: 'Permisos', icon: <KeyRound size={18} />, permission: 'roles.manage' },
+      { type: 'link', to: '/admin/conexiones', label: 'Conexiones', icon: <Plug size={18} />, permission: 'conexiones.manage' },
     ],
   },
 ]

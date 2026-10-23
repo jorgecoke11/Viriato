@@ -288,4 +288,21 @@ public sealed class EsquemaDatosTests
             System.Globalization.CultureInfo.CurrentCulture = antes;
         }
     }
+
+    // ---------------------------------------------------------------- partial data (a creator's defaults)
+
+    [Fact]
+    public void PartialData_DoNotNeedTheRequiredFields_AtAnyDepth_ButWhatIsThereMustFit()
+    {
+        const string esquema = """
+            {"type":"object","required":["beneficio","direccion"],"properties":{
+              "beneficio":{"type":"number","title":"Beneficio","maximum":100},
+              "direccion":{"type":"object","title":"Dirección","required":["calle"],"properties":{"calle":{"type":"string","title":"Calle"},"cp":{"type":"string","title":"CP"}}}}}
+            """;
+
+        Assert.Empty(EsquemaDatos.ValidarDatos(esquema, "{}", parcial: true));
+        Assert.Empty(EsquemaDatos.ValidarDatos(esquema, """{"direccion":{"cp":"31001"}}""", parcial: true));
+        Assert.Equal(["Beneficio: debe ser como máximo 100."], EsquemaDatos.ValidarDatos(esquema, """{"beneficio":500}""", parcial: true));
+        Assert.Equal(2, EsquemaDatos.ValidarDatos(esquema, "{}").Count);
+    }
 }

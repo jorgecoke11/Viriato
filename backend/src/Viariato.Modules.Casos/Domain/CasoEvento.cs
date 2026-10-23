@@ -20,6 +20,18 @@ public enum CasoEventoAccion
     PrioridadCambiada,
     /// <summary>No longer written (how far a robot is lives on the step, not in the history); kept so rows already saved still read.</summary>
     ProgresoActualizado,
+    /// <summary>A robot said something happened that may deserve a notice (<c>{ evento, datos }</c>), e.g. "precio_bajado".</summary>
+    AvisoDelRobot,
+    /// <summary>A notification went out (<c>{ regla, destinatarios }</c>).</summary>
+    NotificacionEnviada,
+    /// <summary>A notification could not be sent after every attempt (<c>{ regla, destinatarios, error }</c>).</summary>
+    NotificacionFallida,
+    /// <summary>A reprocessing rule will run a step again (<c>{ regla, numero, limite, paso, programadoPara }</c>).</summary>
+    ReprocesamientoProgramado,
+    /// <summary>A reprocessing rule ran out of attempts and left the case on its final state (<c>{ regla, limite }</c>).</summary>
+    ReprocesamientosAgotados,
+    /// <summary>A scheduled reprocessing could not run (<c>{ regla, paso, error }</c>).</summary>
+    ReprocesamientoFallido,
 }
 
 /// <summary>Flat, append-only audit trail — same shape and spirit as Users' RoleAuditLog. Every state

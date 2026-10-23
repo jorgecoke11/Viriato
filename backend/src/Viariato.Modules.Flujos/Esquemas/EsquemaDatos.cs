@@ -73,8 +73,9 @@ public static class EsquemaDatos
 
     /// <summary>Checks <paramref name="datosJson"/> against a schema already accepted by <see cref="Validar"/>. Missing
     /// or empty data is an empty object, so a schema with required fields rejects it. Properties the schema does not
-    /// mention are allowed (a robot may add its own).</summary>
-    public static IReadOnlyList<string> ValidarDatos(string esquemaJson, string? datosJson)
+    /// mention are allowed (a robot may add its own). <paramref name="parcial"/> checks values that are there but does not ask for the
+    /// required ones: what a creator's defaults are held to, since they may leave a field for the person to fill in.</summary>
+    public static IReadOnlyList<string> ValidarDatos(string esquemaJson, string? datosJson, bool parcial = false)
     {
         using var esquema = JsonDocument.Parse(esquemaJson);
         var errores = new List<string>();
@@ -103,7 +104,7 @@ public static class EsquemaDatos
                 return ["Los datos deben ser un objeto JSON."];
             }
 
-            ValidarObjeto(esquema.RootElement, datos.RootElement, "", errores);
+            ValidarObjeto(esquema.RootElement, datos.RootElement, "", parcial, errores);
             return errores;
         }
         finally
@@ -225,7 +226,7 @@ public static class EsquemaDatos
         if (campo.TryGetProperty("default", out var porDefecto) && errores.Count == erroresAntes)
         {
             var erroresDefecto = new List<string>();
-            ValidarValor(campo, porDefecto, ruta, obligatorio: false, erroresDefecto);
+            ValidarValor(campo, porDefecto, ruta, obligatorio: false, parcial: false, erroresDefecto);
             foreach (var error in erroresDefecto)
             {
                 errores.Add($"{ruta}: el valor por defecto no es válido. {error}");
@@ -364,9 +365,9 @@ public static class EsquemaDatos
 
     // ---------------------------------------------------------------- the data
 
-    private static void ValidarObjeto(JsonElement esquema, JsonElement datos, string ruta, List<string> errores)
+    private static void ValidarObjeto(JsonElement esquema, JsonElement datos, string ruta, bool parcial, List<string> errores)
     {
-        var requeridos = esquema.TryGetProperty("required", out var lista) && lista.ValueKind == JsonValueKind.Array
+        var requeridos = !parcial && esquema.TryGetProperty("required", out var lista) && lista.ValueKind == JsonValueKind.Array
             ? lista.EnumerateArray().Select(r => r.GetString()).ToHashSet()
             : [];
 
@@ -375,11 +376,11 @@ public static class EsquemaDatos
             var presente = datos.TryGetProperty(propiedad.Name, out var valor);
             ValidarValor(
                 propiedad.Value, presente ? valor : null, Unir(ruta, Etiqueta(propiedad.Value, propiedad.Name), " › "),
-                requeridos.Contains(propiedad.Name), errores);
+                requeridos.Contains(propiedad.Name), parcial, errores);
         }
     }
 
-    private static void ValidarValor(JsonElement esquema, JsonElement? valor, string etiqueta, bool obligatorio, List<string> errores)
+    private static void ValidarValor(JsonElement esquema, JsonElement? valor, string etiqueta, bool obligatorio, bool parcial, List<string> errores)
     {
         var tipo = esquema.GetProperty("type").GetString()!;
 
@@ -416,12 +417,12 @@ public static class EsquemaDatos
 
             case "array":
                 if (v.ValueKind != JsonValueKind.Array) { errores.Add($"{etiqueta}: debe ser una lista."); return; }
-                ValidarListaValor(esquema, v, etiqueta, obligatorio, errores);
+                ValidarListaValor(esquema, v, etiqueta, obligatorio, parcial, errores);
                 break;
 
             case "object":
                 if (v.ValueKind != JsonValueKind.Object) { errores.Add($"{etiqueta}: debe ser un objeto."); return; }
-                ValidarObjeto(esquema, v, etiqueta, errores);
+                ValidarObjeto(esquema, v, etiqueta, parcial, errores);
                 break;
         }
     }
@@ -493,7 +494,7 @@ public static class EsquemaDatos
         }
     }
 
-    private static void ValidarListaValor(JsonElement esquema, JsonElement lista, string etiqueta, bool obligatorio, List<string> errores)
+    private static void ValidarListaValor(JsonElement esquema, JsonElement lista, string etiqueta, bool obligatorio, bool parcial, List<string> errores)
     {
         var cuantos = lista.GetArrayLength();
 
@@ -519,7 +520,7 @@ public static class EsquemaDatos
         {
             indice++;
             // An element has to be there: a null or empty entry in a list is a hole, not "not filled in".
-            ValidarValor(elementos, elemento, $"{etiqueta} #{indice}", obligatorio: true, errores);
+            ValidarValor(elementos, elemento, $"{etiqueta} #{indice}", obligatorio: true, parcial, errores);
         }
     }
 

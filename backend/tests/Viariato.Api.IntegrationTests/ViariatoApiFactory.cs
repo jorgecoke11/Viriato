@@ -42,6 +42,11 @@ public sealed class ViariatoApiFactory : WebApplicationFactory<Program>, IAsyncL
                 ["Despacho:BarridoSegundos"] = "3600",
                 // Same for the launchers: the tests that need one turn of the clock run it by hand with a clock of their own.
                 ["Despacho:LanzadoresSegundos"] = "3600",
+                // And the reprocessor: the tests run its turns by hand.
+                ["Despacho:ReprocesamientosSegundos"] = "3600",
+                // And the postman of the notifications: the tests send one turn by hand.
+                ["Notificaciones:SegundosEntreRondas"] = "3600",
+                ["Notificaciones:UrlPublica"] = "https://viriato.example",
             });
         });
     }

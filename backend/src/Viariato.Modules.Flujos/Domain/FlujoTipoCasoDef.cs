@@ -4,7 +4,8 @@ namespace Viariato.Modules.Flujos.Domain;
 /// A category the user defines per Flujo to classify its Casos (e.g. "Alta simple" vs "Alta
 /// compleja") — orthogonal to <see cref="FlujoEstadoDef"/>: a Tipo groups many Casos regardless of
 /// where each one currently stands, while an Estado describes one Caso's current position. Chosen
-/// once, when a Caso is created; never reassigned by the engine.
+/// once, when a Caso is created; never reassigned by the engine. The form of a Caso's data is not the type's: it is the
+/// <see cref="Formulario"/> of the creator that started it.
 /// </summary>
 public sealed class FlujoTipoCasoDef
 {
@@ -19,11 +20,6 @@ public sealed class FlujoTipoCasoDef
     public int Orden { get; set; }
 
     public bool Activo { get; set; } = true;
-
-    /// <summary>The form of this type's business data, as a schema (see <c>EsquemaDatos</c>), or null when the data is
-    /// free-form JSON. Kept as text rather than jsonb on purpose: jsonb reorders keys, and the order of
-    /// <c>properties</c> is the order of the fields in the form.</summary>
-    public string? EsquemaDatosJson { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 

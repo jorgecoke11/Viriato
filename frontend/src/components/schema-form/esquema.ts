@@ -258,21 +258,27 @@ export interface ErrorDeDato {
   completo: string
 }
 
+export interface OpcionesDeValidacion {
+  /** Check the values that are there without asking for the required ones: what a creator's defaults are held to, since they may
+   *  leave a field for the person to fill in. */
+  parcial?: boolean
+}
+
 /** Checks data (parsed JSON) against a schema the way the server does. */
-export function validarDatos(esquema: Esquema, datos: unknown): ErrorDeDato[] {
+export function validarDatos(esquema: Esquema, datos: unknown, opciones: OpcionesDeValidacion = {}): ErrorDeDato[] {
   const errores: ErrorDeDato[] = []
   if (!esObjeto(datos)) {
     return [{ ruta: '', mensaje: 'Los datos deben ser un objeto JSON.', completo: 'Los datos deben ser un objeto JSON.' }]
   }
 
-  validarObjeto(esquema, datos, '', '', errores)
+  validarObjeto(esquema, datos, '', '', opciones.parcial === true, errores)
   return errores
 }
 
-function validarObjeto(esquema: CampoEsquema, datos: Record<string, unknown>, ruta: string, etiqueta: string, errores: ErrorDeDato[]) {
-  const requeridos = new Set(esquema.required ?? [])
+function validarObjeto(esquema: CampoEsquema, datos: Record<string, unknown>, ruta: string, etiqueta: string, parcial: boolean, errores: ErrorDeDato[]) {
+  const requeridos = new Set(parcial ? [] : (esquema.required ?? []))
   for (const [nombre, campo] of Object.entries(esquema.properties ?? {})) {
-    validarValorEnRuta(campo, datos[nombre], unir(ruta, nombre), unir(etiqueta, campo.title?.trim() || nombre, ' › '), requeridos.has(nombre), errores)
+    validarValorEnRuta(campo, datos[nombre], unir(ruta, nombre), unir(etiqueta, campo.title?.trim() || nombre, ' › '), requeridos.has(nombre), parcial, errores)
   }
 }
 
@@ -282,11 +288,19 @@ function numeroTexto(n: number) {
 
 function validarValor(campo: CampoEsquema, valor: unknown, etiqueta: string, obligatorio: boolean, mensajes: string[]) {
   const errores: ErrorDeDato[] = []
-  validarValorEnRuta(campo, valor, '', etiqueta, obligatorio, errores)
+  validarValorEnRuta(campo, valor, '', etiqueta, obligatorio, false, errores)
   for (const e of errores) mensajes.push(e.completo)
 }
 
-function validarValorEnRuta(campo: CampoEsquema, valor: unknown, ruta: string, etiqueta: string, obligatorio: boolean, errores: ErrorDeDato[]) {
+function validarValorEnRuta(
+  campo: CampoEsquema,
+  valor: unknown,
+  ruta: string,
+  etiqueta: string,
+  obligatorio: boolean,
+  parcial: boolean,
+  errores: ErrorDeDato[],
+) {
   const anotar = (mensaje: string): void => {
     errores.push({ ruta, mensaje, completo: `${etiqueta}: ${mensaje}` })
   }
@@ -324,14 +338,14 @@ function validarValorEnRuta(campo: CampoEsquema, valor: unknown, ruta: string, e
       if (campo.maxItems !== undefined && valor.length > campo.maxItems) anotar(`admite como máximo ${campo.maxItems} elementos.`)
       valor.forEach((elemento, i) => {
         // An element has to be there: a null or empty entry in a list is a hole, not "not filled in".
-        validarValorEnRuta(campo.items!, elemento, unir(ruta, String(i)), `${etiqueta} #${i + 1}`, true, errores)
+        validarValorEnRuta(campo.items!, elemento, unir(ruta, String(i)), `${etiqueta} #${i + 1}`, true, parcial, errores)
       })
       break
     }
 
     case 'object':
       if (!esObjeto(valor)) return anotar('debe ser un objeto.')
-      validarObjeto(campo, valor, ruta, etiqueta, errores)
+      validarObjeto(campo, valor, ruta, etiqueta, parcial, errores)
       break
   }
 }
@@ -447,6 +461,55 @@ function campoADato(campo: CampoEsquema, estado: EstadoCampo | undefined): unkno
       const hijo = aDatos(campo, estado as EstadoFormulario)
       return Object.keys(hijo).length > 0 ? hijo : undefined
     }
+  }
+}
+
+// ------------------------------------------------------------------------------------------------ base + changes
+
+/**
+ * Lays `encima` over `base` field by field, as the server's MezclaDeDatos does: what a creator's defaults and a launcher's data make
+ * together. A field `encima` has wins (an explicit null empties it); one it lacks keeps the base's value. Objects merge all the way
+ * down; anything else — a list included — is replaced whole.
+ */
+export function mezclarDatos(base: Record<string, unknown>, encima: Record<string, unknown>): Record<string, unknown> {
+  const resultado: Record<string, unknown> = { ...base }
+  for (const [clave, valor] of Object.entries(encima)) {
+    const previo = resultado[clave]
+    resultado[clave] = esObjeto(valor) && esObjeto(previo) ? mezclarDatos(previo, valor) : valor
+  }
+  return resultado
+}
+
+/**
+ * The opposite of `mezclarDatos`: only what `datos` changes from `base`, so that `mezclarDatos(base, diferencia(base, datos))` gives
+ * `datos` back. A field of the base that `datos` no longer has travels as null (emptied). Keeping only the changes is what lets a later
+ * change to the base still reach every field that was not touched.
+ */
+export function diferencia(base: Record<string, unknown>, datos: Record<string, unknown>): Record<string, unknown> {
+  const cambios: Record<string, unknown> = {}
+  for (const [clave, valor] of Object.entries(datos)) {
+    const previo = base[clave]
+    if (esObjeto(valor) && esObjeto(previo)) {
+      const hijo = diferencia(previo, valor)
+      if (Object.keys(hijo).length > 0) cambios[clave] = hijo
+    } else if (JSON.stringify(valor) !== JSON.stringify(previo)) {
+      cambios[clave] = valor
+    }
+  }
+  for (const clave of Object.keys(base)) {
+    if (!(clave in datos) && base[clave] !== null) cambios[clave] = null
+  }
+  return cambios
+}
+
+/** Parses the text of one document of data: `{}` when blank, null when it is not a JSON object. */
+export function leerObjeto(texto: string | null | undefined): Record<string, unknown> | null {
+  if (!texto || texto.trim() === '') return {}
+  try {
+    const valor: unknown = JSON.parse(texto)
+    return esObjeto(valor) ? valor : null
+  } catch {
+    return null
   }
 }
 

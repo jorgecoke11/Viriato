@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Viariato.Infrastructure;
 using Viariato.Modules.Casos.Contracts;
+using Viariato.Modules.Casos.Lanzadores;
 using Viariato.Modules.Casos.Orchestration;
 using Viariato.Modules.Casos.Validation;
 using Viariato.Modules.Flujos.Domain;
-using Viariato.Modules.Flujos.Esquemas;
 using Viariato.Shared.Authorization;
 using Viariato.Shared.Http;
 
@@ -33,7 +33,7 @@ internal static class CreadoresDeCasoUsoEndpoints
         var asignados = await FlujoAccessAuthorization.FlujosAsignadosAsync(db, http.User.GetUserId(), ct);
 
         var creadores = await db.Set<CreadorDeCaso>().AsNoTracking()
-            .Include(c => c.Flujo).Include(c => c.TipoCaso)
+            .Include(c => c.Flujo).Include(c => c.TipoCaso).Include(c => c.Formulario)
             .Where(c => c.Activo && asignados.Contains(c.FlujoId) && c.Flujo!.Activo && c.Flujo.VersionActivaId != null)
             .OrderBy(c => c.Flujo!.Nombre).ThenBy(c => c.Orden).ThenBy(c => c.Nombre)
             .ToListAsync(ct);
@@ -41,8 +41,9 @@ internal static class CreadoresDeCasoUsoEndpoints
         var ahora = DateTimeOffset.Now;
         return Results.Ok(creadores
             .Select(c => new CreadorDisponibleDto(
-                c.Id, c.Nombre, c.Descripcion, c.FlujoId, c.Flujo!.Nombre, c.TipoCasoId, c.TipoCaso?.Nombre, c.TipoCaso?.EsquemaDatosJson,
-                TituloAutogenerado(c, c.Secuencia + 1, ahora, datosJson: null)))
+                c.Id, c.Nombre, c.Descripcion, c.FlujoId, c.Flujo!.Nombre, c.TipoCasoId, c.TipoCaso?.Nombre,
+                c.Formulario?.EsquemaJson, c.DatosPorDefectoJson,
+                TituloDeCreador.Escribir(c, c.Secuencia + 1, ahora, datosJson: null)))
             .ToList());
     }
 
@@ -80,39 +81,18 @@ internal static class CreadoresDeCasoUsoEndpoints
             }
         }
 
-        // The number is taken from the database in one statement, so two people creating at the same moment never share one.
-        // A case that is then rejected leaves a gap in the numbering, which is better than a repeated number.
+        // The creator's defaults are not laid over what the person sends: they were already in the form, and a field the person emptied
+        // has to stay empty.
         var titulo = request.Titulo?.Trim();
-        if (string.IsNullOrEmpty(titulo))
-        {
-            // `update … returning` cannot be composed over, so the row is read back as a list.
-            var n = (await db.Database
-                .SqlQuery<long>($"update flujos.creadores_de_caso set secuencia = secuencia + 1 where id = {creador.Id} returning secuencia as \"Value\"")
-                .ToListAsync(ct)).Single();
-            titulo = TituloAutogenerado(creador, n, DateTimeOffset.Now, request.DatosJson);
-        }
+        if (string.IsNullOrEmpty(titulo)) titulo = await TituloDeCreador.SiguienteAsync(db, creador, DateTimeOffset.Now, request.DatosJson, ct);
 
         var inicio = new StartCasoRequest(
             creador.FlujoId, null, titulo, string.IsNullOrWhiteSpace(request.DatosJson) ? null : request.DatosJson,
-            creador.EstadoNegocioInicialId, creador.TipoCasoId, pasoInicialId);
+            creador.EstadoNegocioInicialId, creador.TipoCasoId, pasoInicialId, creador.FormularioId);
 
         var validation = validator.Validate(inicio);
         if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
 
         return await CasosEndpoints.IniciarCasoAsync(inicio, db, orchestrator, http, ct);
     }
-
-    private static string TituloAutogenerado(CreadorDeCaso creador, long n, DateTimeOffset ahora, string? datosJson) =>
-        PlantillaDeTitulo.Renderizar(
-            creador.PlantillaTitulo,
-            new Dictionary<string, string>
-            {
-                ["creador"] = creador.Nombre,
-                ["proceso"] = creador.Flujo?.Nombre ?? string.Empty,
-                ["tipo"] = creador.TipoCaso?.Nombre ?? string.Empty,
-                ["fecha"] = ahora.ToString("yyyy-MM-dd"),
-                ["hora"] = ahora.ToString("HH:mm"),
-                ["n"] = n.ToString(),
-            },
-            datosJson);
 }

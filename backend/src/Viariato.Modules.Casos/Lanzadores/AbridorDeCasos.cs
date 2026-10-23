@@ -12,16 +12,18 @@ namespace Viariato.Modules.Casos.Lanzadores;
 public sealed record AperturaDeCaso(Guid? CasoId, string? Error);
 
 /// <summary>
-/// Opens a Caso from a creator with nobody asking: no user, no HTTP. It makes the same checks a person's request goes through
-/// (the process is active and published, the data fit the type, the estado and the step exist) and the Caso is born the same way,
+/// Opens a Caso from a creator with nobody asking: no user, no HTTP. The data are the creator's defaults with the launcher's laid
+/// over them, field by field. It makes the same checks a person's request goes through (the process is active and published, the
+/// data fit the creator's form, the estado and the step exist) and the Caso is born the same way,
 /// attributed to no user. Something that is wrong is answered, not thrown: a launcher that cannot open its Caso says why and tries
 /// again at its next moment.
 /// </summary>
 public sealed class AbridorDeCasos(AppDbContext db, IEjecucionOrchestrator orquestador)
 {
-    public async Task<AperturaDeCaso> AbrirAsync(Guid creadorId, string? datosJson, Guid lanzadorId, DateTimeOffset cuando, CancellationToken ct)
+    public async Task<AperturaDeCaso> AbrirAsync(Guid creadorId, string? datosDelLanzador, Guid lanzadorId, DateTimeOffset cuando, CancellationToken ct)
     {
-        var creador = await db.Set<CreadorDeCaso>().Include(c => c.Flujo).Include(c => c.TipoCaso).FirstOrDefaultAsync(c => c.Id == creadorId, ct);
+        var creador = await db.Set<CreadorDeCaso>().Include(c => c.Flujo).Include(c => c.TipoCaso).Include(c => c.Formulario)
+            .FirstOrDefaultAsync(c => c.Id == creadorId, ct);
         if (creador is null) return Error("El creador ya no existe.");
         if (!creador.Activo) return Error($"El creador «{creador.Nombre}» está inactivo.");
 
@@ -34,10 +36,11 @@ public sealed class AbridorDeCasos(AppDbContext db, IEjecucionOrchestrator orque
 
         var tipo = creador.TipoCaso;
         if (creador.TipoCasoId is not null && (tipo is null || !tipo.Activo)) return Error("El tipo de caso del creador ya no está activo.");
-        if (tipo?.EsquemaDatosJson is { } esquema && !string.IsNullOrWhiteSpace(esquema))
+        var datosJson = MezclaDeDatos.Mezclar(creador.DatosPorDefectoJson, datosDelLanzador);
+        if (creador.Formulario is { } formulario)
         {
-            var errores = EsquemaDatos.ValidarDatos(esquema, datosJson);
-            if (errores.Count > 0) return Error($"Los datos no encajan con el tipo «{tipo.Nombre}»: {string.Join(" ", errores)}");
+            var errores = EsquemaDatos.ValidarDatos(formulario.EsquemaJson, datosJson);
+            if (errores.Count > 0) return Error($"Los datos no encajan con el formulario «{formulario.Nombre}»: {string.Join(" ", errores)}");
         }
 
         FlujoEstadoDef? estado = null;
@@ -58,23 +61,7 @@ public sealed class AbridorDeCasos(AppDbContext db, IEjecucionOrchestrator orque
             if (pasoInicialId is null) return Error($"La versión activa del proceso ya no tiene el paso «{nombrePaso}»: revisa el creador «{creador.Nombre}».");
         }
 
-        // The number is taken from the database in one statement, so a person and a launcher creating at the same moment never share one.
-        var n = (await db.Database
-            .SqlQuery<long>($"update flujos.creadores_de_caso set secuencia = secuencia + 1 where id = {creador.Id} returning secuencia as \"Value\"")
-            .ToListAsync(ct)).Single();
-        var titulo = PlantillaDeTitulo.Renderizar(
-            creador.PlantillaTitulo,
-            new Dictionary<string, string>
-            {
-                ["creador"] = creador.Nombre,
-                ["proceso"] = flujo.Nombre,
-                ["tipo"] = tipo?.Nombre ?? string.Empty,
-                ["fecha"] = cuando.ToString("yyyy-MM-dd"),
-                ["hora"] = cuando.ToString("HH:mm"),
-                ["n"] = n.ToString(),
-            },
-            datosJson);
-        if (string.IsNullOrWhiteSpace(titulo)) titulo = creador.Nombre;
+        var titulo = await TituloDeCreador.SiguienteAsync(db, creador, cuando, datosJson, ct);
 
         var ahora = DateTimeOffset.UtcNow;
         var caso = new Caso
@@ -84,6 +71,7 @@ public sealed class AbridorDeCasos(AppDbContext db, IEjecucionOrchestrator orque
             Titulo = titulo,
             DatosJson = string.IsNullOrWhiteSpace(datosJson) ? null : datosJson,
             TipoCasoId = tipo?.Id,
+            FormularioId = creador.FormularioId,
             EstadoNegocioActualId = estado?.Id,
             CreatedAt = ahora,
             UpdatedAt = ahora,

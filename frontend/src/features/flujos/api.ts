@@ -90,8 +90,6 @@ export interface FlujoTipoCasoDefDto {
   nombre: string
   orden: number
   activo: boolean
-  /** The form of this type's business data (a JSON schema as text), or null when the data is free-form JSON. */
-  esquemaDatosJson: string | null
   createdAt: string
   updatedAt: string
 }
@@ -99,16 +97,12 @@ export interface FlujoTipoCasoDefDto {
 export interface CreateFlujoTipoCasoRequest {
   nombre: string
   orden: number
-  esquemaDatosJson?: string
 }
 
 export interface UpdateFlujoTipoCasoRequest {
   nombre?: string
   orden?: number
   activo?: boolean
-  esquemaDatosJson?: string
-  /** True removes the form: the data goes back to free-form JSON. */
-  quitarEsquema?: boolean
 }
 
 export interface CreateFlujoRequest {
@@ -324,6 +318,36 @@ export const guardarParametrosEditables = (flujoId: string, valores: { id: strin
 export const deleteFlujoParametro = (flujoId: string, id: string) =>
   apiFetch<void>(`/flujos/${flujoId}/parametros/${id}`, { method: 'DELETE' })
 
+/** The form of a case's data, from the process's library: its creators pick one. */
+export interface FormularioDto {
+  id: string
+  flujoId: string
+  nombre: string
+  descripcion: string | null
+  /** The schema (see components/schema-form/esquema.ts), as written: the order of its fields is the order of the form. */
+  esquemaJson: string
+  /** The names of the creators that use it. */
+  creadores: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GuardarFormularioRequest {
+  nombre: string
+  descripcion: string | null
+  esquemaJson: string
+}
+
+export const listFormularios = (flujoId: string) => apiFetch<FormularioDto[]>(`/flujos/${flujoId}/formularios`)
+
+export const createFormulario = (flujoId: string, request: GuardarFormularioRequest) =>
+  apiFetch<FormularioDto>(`/flujos/${flujoId}/formularios`, { method: 'POST', body: JSON.stringify(request) })
+
+export const replaceFormulario = (flujoId: string, id: string, request: GuardarFormularioRequest) =>
+  apiFetch<FormularioDto>(`/flujos/${flujoId}/formularios/${id}`, { method: 'PUT', body: JSON.stringify(request) })
+
+export const deleteFormulario = (flujoId: string, id: string) => apiFetch<void>(`/flujos/${flujoId}/formularios/${id}`, { method: 'DELETE' })
+
 export interface CreadorDeCasoDto {
   id: string
   flujoId: string
@@ -331,6 +355,10 @@ export interface CreadorDeCasoDto {
   descripcion: string | null
   tipoCasoId: string | null
   tipoCasoNombre: string | null
+  formularioId: string | null
+  formularioNombre: string | null
+  /** A JSON object: what the form starts with, and what launchers lay their data over. */
+  datosPorDefectoJson: string | null
   pasoInicialNombre: string | null
   estadoNegocioInicialId: string | null
   estadoNegocioInicialDisplay: string | null
@@ -352,6 +380,8 @@ export interface GuardarCreadorDeCasoRequest {
   plantillaTitulo: string | null
   orden: number
   activo: boolean
+  formularioId: string | null
+  datosPorDefectoJson: string | null
 }
 
 export const listCreadoresDeCaso = (flujoId: string) => apiFetch<CreadorDeCasoDto[]>(`/flujos/${flujoId}/creadores`)
@@ -408,3 +438,22 @@ export const replaceLanzadorDeCaso = (flujoId: string, id: string, request: Guar
 
 export const deleteLanzadorDeCaso = (flujoId: string, id: string) =>
   apiFetch<void>(`/flujos/${flujoId}/lanzadores/${id}`, { method: 'DELETE' })
+
+/** One thing a process's robots keep between cases (the history of a product's price, say), without its value. */
+export interface DatoDeProcesoResumenDto {
+  clave: string
+  /** Size of the stored JSON; a key holds up to 64 KB. */
+  bytes: number
+  actualizadoEn: string
+}
+
+export interface DatoDeProcesoDto {
+  clave: string
+  valorJson: string
+  actualizadoEn: string
+}
+
+export const listAlmacenDelProceso = (flujoId: string) => apiFetch<DatoDeProcesoResumenDto[]>(`/flujos/${flujoId}/almacen`)
+
+export const getDatoDelProceso = (flujoId: string, clave: string) =>
+  apiFetch<DatoDeProcesoDto>(`/flujos/${flujoId}/almacen/dato?clave=${encodeURIComponent(clave)}`)

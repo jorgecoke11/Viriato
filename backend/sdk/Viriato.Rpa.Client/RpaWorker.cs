@@ -24,6 +24,10 @@ public sealed class RpaWorkerOptions
     /// before reporting it failed, so whoever reprocesses it can see what happened without the robot's logs.
     /// A handler that returns <see cref="RpaStepResult.Fallido"/> on purpose already said why.</summary>
     public bool AdjuntarDetalleDeError { get; set; } = true;
+
+    /// <summary>While a step runs, how often the Despliegue's settings (<see cref="IAjusteDelDespliegue"/>) are read again, so a change
+    /// made in Viriato — the live view switched off on a slow robot — does not wait for the step to end. Only with settings registered.</summary>
+    public TimeSpan IntervaloAjustesDuranteUnPaso { get; set; } = TimeSpan.FromSeconds(15);
 }
 
 /// <summary>
@@ -37,12 +41,17 @@ public sealed class RpaWorker
     private readonly IRpaClient _client;
     private readonly RpaWorkerOptions _options;
     private readonly ILogger _logger;
+    private readonly IReadOnlyList<IAjusteDelDespliegue> _ajustes;
+    private DespliegueEstadoDto? _ultimoEstado;
 
-    public RpaWorker(IRpaClient client, RpaWorkerOptions? options = null, ILogger<RpaWorker>? logger = null)
+    /// <param name="ajustes">What follows the Despliegue's settings on this machine (the live view…), given its state on every read.</param>
+    public RpaWorker(
+        IRpaClient client, RpaWorkerOptions? options = null, ILogger<RpaWorker>? logger = null, IEnumerable<IAjusteDelDespliegue>? ajustes = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _options = options ?? new RpaWorkerOptions();
         _logger = logger ?? NullLogger<RpaWorker>.Instance;
+        _ajustes = ajustes?.ToList() ?? [];
     }
 
     public async Task RunAsync(Func<RpaStepContext, CancellationToken, Task<RpaStepResult>> handler, CancellationToken ct = default)
@@ -53,7 +62,10 @@ public sealed class RpaWorker
         {
             try
             {
-                if (!(await _client.ObtenerEstadoAsync(ct).ConfigureAwait(false)).Encendido)
+                var estado = await _client.ObtenerEstadoAsync(ct).ConfigureAwait(false);
+                _ultimoEstado = estado;
+                await AplicarAjustesAsync(estado, ct).ConfigureAwait(false);
+                if (!estado.Encendido)
                 {
                     await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
                     continue;
@@ -95,9 +107,11 @@ public sealed class RpaWorker
         _logger.LogInformation("Paso {Paso} reclamado (caso \"{Caso}\").", ejecucion.EjecucionPasoId, ejecucion.CasoTitulo);
 
         RpaStepResult resultado;
+        using var finDelPaso = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var ajustes = _ajustes.Count > 0 ? SeguirAjustesAsync(finDelPaso.Token) : Task.CompletedTask;
         try
         {
-            resultado = await handler(new RpaStepContext(_client, ejecucion), ct).ConfigureAwait(false);
+            resultado = await handler(new RpaStepContext(_client, ejecucion, _ultimoEstado), ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -114,8 +128,50 @@ public sealed class RpaWorker
 
             resultado = RpaStepResult.Fallido(ex.Message);
         }
+        finally
+        {
+            await finDelPaso.CancelAsync().ConfigureAwait(false);
+            await ajustes.ConfigureAwait(false);
+        }
 
         await ReportarAsync(ejecucion, resultado).ConfigureAwait(false);
+    }
+
+    // Keeps the settings up to date while a step runs. Best effort: a failed read just waits for the next one.
+    private async Task SeguirAjustesAsync(CancellationToken finDelPaso)
+    {
+        while (!finDelPaso.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(_options.IntervaloAjustesDuranteUnPaso, finDelPaso).ConfigureAwait(false);
+                await AplicarAjustesAsync(await _client.ObtenerEstadoAsync(finDelPaso).ConfigureAwait(false), finDelPaso).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (finDelPaso.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Whatever it is, the step must not pay for it; the main loop deals with a bad key or a switched-off Despliegue.
+                _logger.LogDebug(ex, "No se pudieron releer los ajustes del despliegue durante el paso.");
+            }
+        }
+    }
+
+    private async Task AplicarAjustesAsync(DespliegueEstadoDto estado, CancellationToken ct)
+    {
+        foreach (var ajuste in _ajustes)
+        {
+            try
+            {
+                await ajuste.AplicarAsync(estado, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "No se pudo aplicar {Ajuste}; el robot sigue trabajando.", ajuste.GetType().Name);
+            }
+        }
     }
 
     // Best effort: the failure being reported must not be replaced by a failure to attach its detail.

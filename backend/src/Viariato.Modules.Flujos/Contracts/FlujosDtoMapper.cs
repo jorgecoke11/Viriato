@@ -54,11 +54,15 @@ public static class FlujosDtoMapper
         estado.CreatedAt, estado.UpdatedAt);
 
     public static FlujoTipoCasoDefDto ToDto(this FlujoTipoCasoDef tipo) => new(
-        tipo.Id, tipo.FlujoId, tipo.Nombre, tipo.Orden, tipo.Activo, tipo.EsquemaDatosJson, tipo.CreatedAt, tipo.UpdatedAt);
+        tipo.Id, tipo.FlujoId, tipo.Nombre, tipo.Orden, tipo.Activo, tipo.CreatedAt, tipo.UpdatedAt);
+
+    public static FormularioDto ToDto(this Formulario formulario, IReadOnlyList<string> creadores) => new(
+        formulario.Id, formulario.FlujoId, formulario.Nombre, formulario.Descripcion, formulario.EsquemaJson, creadores,
+        formulario.CreatedAt, formulario.UpdatedAt);
 
     public static CreadorDeCasoDto ToDto(this CreadorDeCaso creador) => new(
         creador.Id, creador.FlujoId, creador.Nombre, creador.Descripcion, creador.TipoCasoId, creador.TipoCaso?.Nombre,
-        creador.PasoInicialNombre, creador.EstadoNegocioInicialId, creador.EstadoNegocioInicial?.Display, creador.PlantillaTitulo,
+        creador.FormularioId, creador.Formulario?.Nombre, creador.DatosPorDefectoJson, creador.PasoInicialNombre, creador.EstadoNegocioInicialId, creador.EstadoNegocioInicial?.Display, creador.PlantillaTitulo,
         creador.Orden, creador.Activo, creador.CreatedAt, creador.UpdatedAt);
 
     public static LanzadorDeCasoDto ToDto(this LanzadorDeCaso lanzador, DateTimeOffset ahora)

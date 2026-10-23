@@ -7,7 +7,7 @@ import { useToast } from '../../lib/toast/useToast'
 import * as flujosApi from '../flujos/api'
 import * as rpaApi from '../rpa/api'
 import * as casosApi from './api'
-import { DatosCasoInput } from './DatosCasoInput'
+import { DatosConFormulario } from '../../components/schema-form/DatosConFormulario'
 
 /**
  * The full form, for whoever manages processes and has to start a case without a creator (or before one exists): every choice a
@@ -34,6 +34,7 @@ export function NuevoCasoAvanzadoModal({
 
   const [estadoNegocioInicialId, setEstadoNegocioInicialId] = useState('')
   const [tipoCasoId, setTipoCasoId] = useState('')
+  const [formularioId, setFormularioId] = useState('')
   const [titulo, setTitulo] = useState('')
   const [pasoInicialId, setPasoInicialId] = useState('')
   const [datosJson, setDatosJson] = useState('')
@@ -44,6 +45,7 @@ export function NuevoCasoAvanzadoModal({
     if (open) {
       setEstadoNegocioInicialId('')
       setTipoCasoId('')
+      setFormularioId('')
       setPasoInicialId('')
       setTitulo('')
       setDatosJson('')
@@ -59,7 +61,6 @@ export function NuevoCasoAvanzadoModal({
   })
   const tiposCaso = (tiposCasoQuery.data ?? []).filter((t) => t.activo).sort((a, b) => a.orden - b.orden)
 
-  const tipoSeleccionado = tiposCaso.find((t) => t.id === tipoCasoId)
 
   // The servicio a Caso starts at: only servicio-backed (Rpa) steps of the process's active version are offered —
   // the rest (Api, Decision, Interno…) is plumbing the flow's author wires up.
@@ -75,6 +76,14 @@ export function NuevoCasoAvanzadoModal({
     .filter((p) => p.tipoPaso === 'Rpa' && p.servicioId)
     .sort((a, b) => a.orden - b.orden)
   const nombreServicio = (servicioId: string) => serviciosQuery.data?.items.find((s) => s.id === servicioId)?.nombre ?? '—'
+
+  const formulariosQuery = useQuery({
+    queryKey: ['flujo-formularios', flujoId],
+    queryFn: () => flujosApi.listFormularios(flujoId),
+    enabled: open,
+  })
+  const formularios = formulariosQuery.data ?? []
+  const formularioSeleccionado = formularios.find((f) => f.id === formularioId)
 
   const estadosQuery = useQuery({
     queryKey: ['flujo-estados', flujoId],
@@ -92,6 +101,7 @@ export function NuevoCasoAvanzadoModal({
         estadoNegocioInicialId: estadoNegocioInicialId || null,
         tipoCasoId: tipoCasoId || null,
         pasoInicialId: pasoInicialId || null,
+        formularioId: formularioId || null,
       }),
     onSuccess: (caso) => {
       showToast('success', `Se ha creado el caso «${caso.titulo}» correctamente.`)
@@ -104,6 +114,10 @@ export function NuevoCasoAvanzadoModal({
   // Each type can have its own form, so changing it starts the data over.
   function handleTipoChange(value: string) {
     setTipoCasoId(value)
+  }
+
+  function handleFormularioChange(value: string) {
+    setFormularioId(value)
     setDatosJson('')
     setDatosErrores([])
     setIntentoEnvio(false)
@@ -190,9 +204,21 @@ export function NuevoCasoAvanzadoModal({
           </div>
         )}
 
-        <DatosCasoInput
-          key={tipoCasoId}
-          esquemaJson={tipoSeleccionado?.esquemaDatosJson}
+        {formularios.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor="formulario-modal" className="text-sm font-medium text-gray-700">Formulario de datos</label>
+            <select id="formulario-modal" className="field" value={formularioId} onChange={(e) => handleFormularioChange(e.target.value)}>
+              <option value="">Sin formulario (JSON libre)</option>
+              {formularios.map((f) => (
+                <option key={f.id} value={f.id}>{f.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <DatosConFormulario
+          key={formularioId}
+          esquemaJson={formularioSeleccionado?.esquemaJson}
           value={datosJson}
           onChange={(json, errores) => {
             setDatosJson(json)

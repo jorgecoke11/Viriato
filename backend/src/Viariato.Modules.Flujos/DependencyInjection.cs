@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddSingleton<GuardarParametrosEditablesRequestValidator>();
         services.AddSingleton<CreateFlujoTipoCasoRequestValidator>();
         services.AddSingleton<UpdateFlujoTipoCasoRequestValidator>();
+        services.AddSingleton<GuardarFormularioRequestValidator>();
         services.AddSingleton<GuardarCreadorDeCasoRequestValidator>();
         services.AddSingleton<GuardarLanzadorDeCasoRequestValidator>();
         services.AddSingleton<CreateAgenteDefinicionRequestValidator>();

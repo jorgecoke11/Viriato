@@ -40,6 +40,10 @@ public sealed class Caso
 
     public FlujoTipoCasoDef? TipoCaso { get; set; }
 
+    /// <summary>The form its data were written with (its creator's, see <see cref="Formulario"/>): editing the data later is checked
+    /// against it. Null: free-form JSON. If the form is deleted the Caso keeps its data and goes back to free-form.</summary>
+    public Guid? FormularioId { get; set; }
+
     /// <summary>jsonb, current business data. Evolves per Flujo — no giant fixed schema.</summary>
     public string? DatosJson { get; set; }
 

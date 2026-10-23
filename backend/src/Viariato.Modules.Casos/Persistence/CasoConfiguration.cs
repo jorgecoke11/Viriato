@@ -41,6 +41,11 @@ public sealed class CasoConfiguration : IEntityTypeConfiguration<Caso>
             .HasForeignKey(c => c.TipoCasoId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne<Formulario>()
+            .WithMany()
+            .HasForeignKey(c => c.FormularioId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(c => c.FlujoId);
         builder.HasIndex(c => c.FlujoVersionId);
         builder.HasIndex(c => c.Estado);

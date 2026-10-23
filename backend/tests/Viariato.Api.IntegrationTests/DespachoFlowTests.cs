@@ -7,6 +7,7 @@ using Viariato.Modules.Casos.AccionesMasivas;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Viariato.ApiContracts;
 using Viariato.Infrastructure;
 using Viariato.Modules.Casos.Despacho;
 using Viariato.Modules.Casos.Domain;
@@ -257,7 +258,8 @@ public sealed class DespachoFlowTests(ViariatoApiFactory factory) : IClassFixtur
         var paso = ejecucion.GetProperty("pasos").EnumerateArray().Single(p => p.GetProperty("estado").GetString() == "EnProgreso");
         Assert.Equal(45, paso.GetProperty("progresoPorcentaje").GetInt32());
         Assert.Equal("Añadiendo productos a la cesta", paso.GetProperty("progresoMensaje").GetString());
-        Assert.Equal("http://localhost:6080/vnc.html", paso.GetProperty("vistaEnDirectoUrl").GetString());
+        // A new Despliegue's view is Baja: the platform asks the viewer for a light picture.
+        Assert.Equal("http://localhost:6080/vnc.html?quality=2&compression=9", paso.GetProperty("vistaEnDirectoUrl").GetString());
 
         var lista = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos?search={Uri.EscapeDataString("Caso en directo")}");
         var fila = lista.GetProperty("items").EnumerateArray().Single(c => c.GetProperty("id").GetGuid() == caso);
@@ -267,6 +269,83 @@ public sealed class DespachoFlowTests(ViariatoApiFactory factory) : IClassFixtur
         // How far a robot is lives on the step: the history of the Caso stays as it was.
         var timeline = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{caso}/timeline");
         Assert.DoesNotContain(timeline.EnumerateArray(), i => i.GetProperty("tipo").GetString() == "Hito");
+    }
+
+    private async Task<JsonElement> PasoEnProgresoAsync(Entorno e, Guid caso)
+    {
+        var ejecuciones = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{caso}/ejecuciones");
+        var ejecucion = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{caso}/ejecuciones/{ejecuciones[0].GetProperty("id").GetGuid()}");
+        return ejecucion.GetProperty("pasos").EnumerateArray().Single(p => p.GetProperty("estado").GetString() == "EnProgreso");
+    }
+
+    [Fact]
+    public async Task TheLiveView_IsDecidedPerDespliegue_AndReachesTheRobotTheCasoAndTheList()
+    {
+        var e = await CrearEntornoAsync();
+        var caso = await EncolarAsync(e, paraServicio1: true, "Caso con la vista decidida");
+        await ConectarAsync(e);
+
+        // What the robot is told before anyone changes anything: a light view, and the video left to the robot.
+        var estado = await e.Robot1.ObtenerEstadoAsync();
+        Assert.Equal(new VistaEnDirectoDto("Baja", 500, 2, 9), estado.Pantalla!.Vista);
+        Assert.Null(estado.Pantalla.GrabarVideo);
+
+        var asignada = (await PedirAsync(e.Robot1))!;
+        await EnVivoAsync(e.Key1, asignada.PasoId, new { vistaUrl = "https://app.viriato.org/vista/vnc.html?path=vista/websockify", porcentaje = 10 });
+
+        // Switched off in Viriato: the robot is told, and nobody is offered the screen any more, whatever the robot reported.
+        var apagar = await e.Admin.PatchAsJsonAsync($"/api/v1/despliegues/{e.Despliegue1}", new { vistaEnDirecto = "Apagada", grabacionDeVideo = "Apagada" });
+        Assert.Equal(HttpStatusCode.OK, apagar.StatusCode);
+        var dto = await apagar.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Apagada", dto.GetProperty("vistaEnDirecto").GetString());
+        Assert.Equal("Apagada", dto.GetProperty("grabacionDeVideo").GetString());
+        Assert.Equal(new PantallaDelRobotDto(null, false), (await e.Robot1.ObtenerEstadoAsync()).Pantalla);
+        Assert.Equal(JsonValueKind.Null, (await PasoEnProgresoAsync(e, caso)).GetProperty("vistaEnDirectoUrl").ValueKind);
+        var lista = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos?search={Uri.EscapeDataString("Caso con la vista decidida")}");
+        Assert.False(lista.GetProperty("items").EnumerateArray().Single(c => c.GetProperty("id").GetGuid() == caso).GetProperty("enVivo").GetBoolean());
+
+        // Back on, high: the same report is offered again, with the viewer's quality of that level and the robot's own options kept.
+        await e.Admin.PatchAsJsonAsync($"/api/v1/despliegues/{e.Despliegue1}", new { vistaEnDirecto = "alta", grabacionDeVideo = "Activa" });
+        Assert.Equal(new PantallaDelRobotDto(new VistaEnDirectoDto("Alta", 20, 6, 2), true), (await e.Robot1.ObtenerEstadoAsync()).Pantalla);
+        var url = new Uri((await PasoEnProgresoAsync(e, caso)).GetProperty("vistaEnDirectoUrl").GetString()!);
+        var parametros = System.Web.HttpUtility.ParseQueryString(url.Query);
+        Assert.Equal("/vista/vnc.html", url.AbsolutePath);
+        Assert.Equal("vista/websockify", parametros["path"]);
+        Assert.Equal("6", parametros["quality"]);
+        Assert.Equal("2", parametros["compression"]);
+
+        // Changing something else leaves the screen settings as they are.
+        await e.Admin.PatchAsJsonAsync($"/api/v1/despliegues/{e.Despliegue1}", new { encendido = true });
+        var despliegue = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/despliegues/{e.Despliegue1}");
+        Assert.Equal("Alta", despliegue.GetProperty("vistaEnDirecto").GetString());
+        Assert.Equal("Activa", despliegue.GetProperty("grabacionDeVideo").GetString());
+    }
+
+    [Fact]
+    public async Task AScreenLinkThatIsNotNoVnc_IsOfferedAsTheRobotSaidIt()
+    {
+        var e = await CrearEntornoAsync();
+        var caso = await EncolarAsync(e, paraServicio1: true, "Caso con otro visor");
+        await ConectarAsync(e);
+        var asignada = (await PedirAsync(e.Robot1))!;
+
+        await EnVivoAsync(e.Key1, asignada.PasoId, new { vistaUrl = "https://vista.example.com/pantalla?x=1" });
+
+        Assert.Equal("https://vista.example.com/pantalla?x=1", (await PasoEnProgresoAsync(e, caso)).GetProperty("vistaEnDirectoUrl").GetString());
+    }
+
+    [Fact]
+    public async Task AScreenSettingThatDoesNotExist_IsRefused()
+    {
+        var e = await CrearEntornoAsync();
+
+        var calidad = await e.Admin.PatchAsJsonAsync($"/api/v1/despliegues/{e.Despliegue1}", new { vistaEnDirecto = "Ultra" });
+        var numero = await e.Admin.PatchAsJsonAsync($"/api/v1/despliegues/{e.Despliegue1}", new { vistaEnDirecto = "3" });
+        var video = await e.Admin.PatchAsJsonAsync($"/api/v1/despliegues/{e.Despliegue1}", new { grabacionDeVideo = "Siempre" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, calidad.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, numero.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, video.StatusCode);
     }
 
     [Fact]

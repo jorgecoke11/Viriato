@@ -23,7 +23,8 @@ public sealed class LanzadorDeCaso
 
     public string? Descripcion { get; set; }
 
-    /// <summary>The input of every Caso it opens (a JSON object, checked against the creator's type). Null: no data.</summary>
+    /// <summary>The input of every Caso it opens: a JSON object, or a list of them for one Caso each. Only what differs from the creator's
+    /// defaults, which it is laid over field by field before being checked against the creator's form. Null: the defaults alone.</summary>
     public string? DatosJson { get; set; }
 
     /// <summary>When it fires: crontab expressions of five fields (minute, hour, day of month, month, day of week), one per line;

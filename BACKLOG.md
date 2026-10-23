@@ -50,6 +50,8 @@ Pedido el 10/10 con `/design`: cambiar el enfoque de todo el componente de proce
 anteriores del panel no gustaron y se deshicieron (ver «Rediseños del panel — probados y DESHECHOS»). Ya está hecho el cambio de estilo global (claro, cálido, azul petróleo), que el panel hereda.
 
 ### 36. Opciones de un desplegable que salen de un parámetro del proceso — pendiente (apuntado, sin empezar)
+**Ojo (22/10):** los esquemas ya no están en el tipo de caso sino en los **formularios** del proceso ([docs/formularios.md](docs/formularios.md),
+apartado «Ampliar»): la comprobación «al guardar el esquema» es al guardar el **formulario**, y los valores por defecto de los creadores también pasan por ella.
 Pedido el 16/10. Hoy las opciones de un `enum` se escriben fijas en el esquema del **tipo de caso** (p. ej. `"proveedor": {"enum": ["Balay"]}`); se quiere que puedan salir de
 un **parámetro del proceso** que guarde la lista (`proveedores` = `["Balay", "Bosch", "Siemens"]`), para que añadir un proveedor no obligue a tocar el esquema. Si ese parámetro
 está abierto al panel, quien trabaja el proceso lo amplía desde *Cambiar parámetros*. Notas para cuando se haga:
@@ -62,6 +64,17 @@ está abierto al panel, quien trabaja el proceso lo amplía desde *Cambiar pará
 - **Casos antiguos** conservan su valor aunque salga de la lista; solo deja de ofrecerse.
 - Tests de los dos validadores, de la ruta (permisos y asignación) y de la creación con un valor de fuera de la lista; verlo en el formulario de «Nuevo caso».
 
+### 37.1MERGE Vigilante de precios: leer Amazon con navegador — pendiente (apuntado, sin empezar)
+Pedido el 22/10 con el robot `vigilante_precios`. Amazon contesta a quien no es un navegador con una comprobación anti-robots (HTTP 202 y una página que se resuelve
+con JavaScript), así que sus casos acaban en ERROR («ha pedido una comprobación anti-robots») y su lanzador viene en pausa. Para leerlo: un lector de Amazon con
+navegador (Selenium/Edge como el robot de BSH, con su imagen pesada) detrás de la misma interfaz `ILectorDePrecio`, solo para esa tienda. Ojo con lo aprendido con el
+extractor de BSH en el servidor: CPU suficiente (`EXTRACTOR_CPUS`) y `/tmp` en memoria.
+
+### 38.1MERGE Robot de BSH: no fallar el caso cuando no se puede abrir Edge, y aligerar la cámara — pendiente (apuntado, sin empezar)
+Del 16/10. (1) Si Edge no arranca, el fallo es de la máquina, no del caso: el robot debería devolver el caso a la cola (o no cogerlo) y reiniciarse, en vez de quemar la cola.
+(2) La cámara: la calidad y el vídeo ya los decide la plataforma (ver «Hecho», 22/10); falta pasar el extractor a `Viriato.Rpa.Client` 0.11 (`AddVistaEnDirecto`, sin
+x11vnc en el entrypoint, `paso.GrabarVideo`). Quedan como ideas: pantalla 1366×768 y que la página del caso no la conecte sola. Va en el repo `bsh_p01_prices_extractor`
+y necesita reconstruir su imagen (token).
 ### 37. Robot «Cierre mensual de finanzas» — pendiente (apuntado, sin empezar)
 Pedido el 17/10. Un proceso con robot que, una vez al mes, lee los extractos de las cuentas personales, los categoriza y deja un resumen con avisos. El usuario
 **exporta los CSV a mano** (2 minutos al mes): el robot **no inicia sesión en ningún banco** (credenciales bancarias guardadas, reautenticación PSD2 cada pocos meses,
@@ -102,6 +115,25 @@ Notas para cuando se haga:
 - Tests: lectores de precio con HTML guardado de cada tienda (sin red), comparación con el límite, no repetir avisos, y una tienda caída no rompe el caso.
 
 ## Hecho
+
+- Vista en directo y vídeo decididos por la plataforma (22/10): en Despliegues → «Pantalla del robot», vista Apagada/Baja/Media/Alta (los existentes, Baja) y vídeo
+  «lo decide el robot»/grabar/no grabar. Viriato deja de enseñar la vista apagada y pone la calidad de noVNC en la dirección; el robot lo lee de `GET /rpa/despliegue`
+  (`pantalla`). SDK 0.11.0: `IAjusteDelDespliegue` (primero de una familia, releído cada 15 s durante un paso), `AddVistaEnDirecto` arranca/para x11vnc + websockify
+  con el refresco del nivel, `paso.GrabarVideo(...)`. Medido en la imagen del extractor: mirar en Alta ~26 % de un núcleo, en Baja ~7 %, sin nadie ~0, el vídeo
+  ~17 % siempre. Doc en `docs/ver-la-ejecucion-en-directo.md`. Verificado: backend completo (una intermitente de despacho que pasa sola), front (tsc, eslint, vitest)
+  y en el navegador sobre una copia con un robot de prueba del SDK en la imagen del extractor (Baja → Alta a mitad de caso → Apagada). Falta: pasar el extractor a 0.11 (tarea 38).
+
+- Reprocesamientos (22/10): pestaña propia en cada proceso. Una regla dice cuándo (estado de negocio y/o cómo acabó la última ejecución), qué
+  paso se relanza (o el que terminó), cuánto esperar, el límite opcional por caso y el estado final al agotarlo; gana la primera por orden.
+  Se decide al acabar el caso, en el mismo guardado (interceptor como las notificaciones), y lo ejecuta un reprocesador cada 10 s; los
+  descartes manuales nunca se reprocesan. Historia del caso con filtro «Reprocesos». Arreglado de paso: tras reprocesar un paso anterior, los
+  siguientes se crean como intento nuevo (antes chocaban con el índice único). Doc en `docs/reprocesamientos.md`. Verificado: backend
+  completo, front (tsc, eslint, vitest) y en el navegador sobre una copia de la base (3 reprocesos y el caso a «Error» al cuarto fallo).
+
+- Formularios fuera de los tipos de caso, asociados a los creadores (22/10): biblioteca de formularios por proceso (compartibles), valores por defecto en el creador
+  (modo parcial) y en el lanzador (solo lo que cambia, mezclado campo a campo), el caso recuerda su formulario, robots con `Creador` opcional, migración sin pérdida.
+  Componentes genéricos `DatosConFormulario`, `ListaDeDatosConFormulario`, `EditorDeEsquema`, `ControlSegmentado` y campos `custom` en el kit CRUD. Diseño en
+  `docs/formularios.md`. Verificado: backend completo (254 de integración + unitarias), front (tsc, eslint, 293 vitest) y en el navegador sobre una copia de la base.
 
 - Despacho por equipo con tiempo máximo por servicio (sin latidos), prioridades por ejecución, estados Pendiente / En ejecución,
   cancelar una ejecución y acciones masivas con registro extensible.
@@ -305,6 +337,10 @@ Notas para cuando se haga:
 - **Rótulo «Estado de negocio» (tarea 27):** quitado de dentro de cada tipo de caso en las tarjetas de proceso (interpretado así: era el único sitio donde aparecía dentro del tipo).
 
 ## Bloqueado / necesita al usuario
+
+- **Formularios de creador (22/10):** al desplegar, la migración `FormulariosDeCreador` pasa los 14 esquemas de los tipos a formularios (probada sobre una copia de la
+  base de desarrollo: 14 formularios, 11 creadores y 320 casos enlazados). Los robots que crean casos **por tipo** dejan de tener sus datos comprobados contra ese
+  esquema hasta que nombren un creador (`Creador`, `Viriato.Rpa.Client` 0.10 / `Viariato.ApiContracts` 1.5, **sin publicar**: necesita tu token).
 
 - **Abrir el PR:** hay que commitear todo lo hecho desde el último commit. Lo hace Claude cuando se lo pidas.
 - **Publicar los paquetes** `Viriato.Rpa.Client` 0.7.0 y `Viariato.ApiContracts` 1.4.0 con tu token

@@ -19,6 +19,8 @@ COPY src/Viariato.Modules.RpaFleet/Viariato.Modules.RpaFleet.csproj src/Viariato
 COPY src/Viariato.ApiContracts/Viariato.ApiContracts.csproj src/Viariato.ApiContracts/
 COPY src/Viariato.Modules.Casos/Viariato.Modules.Casos.csproj src/Viariato.Modules.Casos/
 COPY src/Viariato.Modules.Cartera/Viariato.Modules.Cartera.csproj src/Viariato.Modules.Cartera/
+COPY src/Viariato.Modules.Conexiones/Viariato.Modules.Conexiones.csproj src/Viariato.Modules.Conexiones/
+COPY src/Viariato.Modules.Notificaciones/Viariato.Modules.Notificaciones.csproj src/Viariato.Modules.Notificaciones/
 COPY tests/Viariato.Modules.Users.Tests/Viariato.Modules.Users.Tests.csproj tests/Viariato.Modules.Users.Tests/
 COPY tests/Viariato.Modules.Markets.Tests/Viariato.Modules.Markets.Tests.csproj tests/Viariato.Modules.Markets.Tests/
 COPY tests/Viariato.Modules.Flujos.Tests/Viariato.Modules.Flujos.Tests.csproj tests/Viariato.Modules.Flujos.Tests/

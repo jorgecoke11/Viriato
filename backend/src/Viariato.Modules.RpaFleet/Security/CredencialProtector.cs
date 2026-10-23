@@ -5,8 +5,9 @@ using Viariato.Modules.RpaFleet.Options;
 
 namespace Viariato.Modules.RpaFleet.Security;
 
-/// <summary>Encrypts and decrypts the secret part of a credential.</summary>
-internal interface ICredencialProtector
+/// <summary>Encrypts and decrypts the secret part of a credential — and of anything else that keeps a secret bound to its id
+/// (the Conexiones module uses it for the passwords of its accounts).</summary>
+public interface ICredencialProtector
 {
     string Proteger(string texto, Guid credencialId);
 
@@ -20,7 +21,7 @@ internal interface ICredencialProtector
 /// per encryption. The credential's id is bound in as associated data, so a ciphertext copied from one row to
 /// another (by someone with write access to the table) fails authentication instead of decrypting.
 /// </summary>
-internal sealed class AesGcmCredencialProtector(IOptions<CredencialesOptions> opciones) : ICredencialProtector
+public sealed class AesGcmCredencialProtector(IOptions<CredencialesOptions> opciones) : ICredencialProtector
 {
     private const byte Version = 1;
     private const int NonceSize = 12;

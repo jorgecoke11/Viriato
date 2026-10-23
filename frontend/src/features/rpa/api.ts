@@ -1,5 +1,6 @@
 import { apiFetch } from '../../lib/apiClient'
 import type { PagedResult } from '../../lib/types'
+import type { CalidadVistaEnDirecto, GrabacionDeVideo } from './pantallaDelRobot'
 
 export interface EquipoDto {
   id: string
@@ -65,6 +66,10 @@ export interface DespliegueDto {
   createdAt: string
   updatedAt: string
   lastUsedAt: string | null
+  /** Whether its robot's screen can be watched live, and how smoothly: the platform decides, not the robot. */
+  vistaEnDirecto: CalidadVistaEnDirecto
+  /** Whether its robot records each run as a video. */
+  grabacionDeVideo: GrabacionDeVideo
 }
 
 export interface DespliegueConApiKeyDto {
@@ -84,6 +89,8 @@ export interface UpdateDespliegueInput {
   flujoDestinoId?: string
   /** True removes the permission to create Casos. */
   quitarFlujoDestino?: boolean
+  vistaEnDirecto?: CalidadVistaEnDirecto
+  grabacionDeVideo?: GrabacionDeVideo
 }
 
 /** Never carries the password: it is write-only from the web, and only reaches a robot. */

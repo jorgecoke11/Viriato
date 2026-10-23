@@ -22,5 +22,17 @@ public static class RpaFleetDtoMapper
         despliegue.ApiKeyPrefix,
         despliegue.CreatedAt,
         despliegue.UpdatedAt,
-        despliegue.LastUsedAt);
+        despliegue.LastUsedAt,
+        despliegue.VistaEnDirecto.ToString(),
+        despliegue.GrabacionDeVideo.ToString());
+
+    /// <summary>What the robot of this Despliegue is told to do with its screen (GET /rpa/despliegue).</summary>
+    public static Viariato.ApiContracts.PantallaDelRobotDto ToPantallaDto(this Despliegue despliegue) => new(
+        VistaEnDirectoPresets.ParaElRobot(despliegue.VistaEnDirecto),
+        despliegue.GrabacionDeVideo switch
+        {
+            GrabacionDeVideo.Activa => true,
+            GrabacionDeVideo.Apagada => false,
+            _ => null,
+        });
 }

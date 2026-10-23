@@ -28,6 +28,14 @@ public sealed class CreadorDeCasoConfiguration : IEntityTypeConfiguration<Creado
             .HasForeignKey(c => c.TipoCasoId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.Property(c => c.DatosPorDefectoJson).HasColumnType("jsonb");
+
+        // A form in use cannot be deleted (the endpoint says so); Restrict keeps the database honest about it too.
+        builder.HasOne(c => c.Formulario)
+            .WithMany()
+            .HasForeignKey(c => c.FormularioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(c => c.EstadoNegocioInicial)
             .WithMany()
             .HasForeignKey(c => c.EstadoNegocioInicialId)

@@ -80,7 +80,7 @@ internal static class DocumentosEndpoints
         {
             CasoId = casoId,
             Nombre = file.FileName,
-            ContentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
+            ContentType = TipoDeContenido.De(file.ContentType, file.FileName),
             TamanoBytes = file.Length,
             StorageKey = storageKey,
             UploadedByUserId = http.User.GetUserId(),

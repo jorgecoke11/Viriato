@@ -9,7 +9,7 @@ import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../../flujos/api'
 import * as rpaApi from '../../rpa/api'
 import * as casosApi from '../api'
-import { DatosCasoInput } from '../DatosCasoInput'
+import { DatosConFormulario } from '../../../components/schema-form/DatosConFormulario'
 import { BackLink } from '../../../components/ui/BackLink'
 
 export function NuevoCasoAvanzadoPage() {
@@ -22,6 +22,7 @@ export function NuevoCasoAvanzadoPage() {
   const [flujoId, setFlujoId] = useState(() => searchParams.get('flujoId') ?? '')
   const [estadoNegocioInicialId, setEstadoNegocioInicialId] = useState('')
   const [tipoCasoId, setTipoCasoId] = useState('')
+  const [formularioId, setFormularioId] = useState('')
   const [pasoInicialId, setPasoInicialId] = useState('')
   const [titulo, setTitulo] = useState('')
   const [datosJson, setDatosJson] = useState('')
@@ -53,6 +54,14 @@ export function NuevoCasoAvanzadoPage() {
   })
   const tiposCaso = (tiposCasoQuery.data ?? []).filter((t) => t.activo).sort((a, b) => a.orden - b.orden)
 
+  const formulariosQuery = useQuery({
+    queryKey: ['flujo-formularios', flujoId],
+    queryFn: () => flujosApi.listFormularios(flujoId),
+    enabled: Boolean(flujoId),
+  })
+  const formularios = formulariosQuery.data ?? []
+  const formularioSeleccionado = formularios.find((f) => f.id === formularioId)
+
   const estadosQuery = useQuery({
     queryKey: ['flujo-estados', flujoId],
     queryFn: () => flujosApi.listFlujoEstados(flujoId),
@@ -69,6 +78,7 @@ export function NuevoCasoAvanzadoPage() {
         estadoNegocioInicialId: estadoNegocioInicialId || null,
         tipoCasoId: tipoCasoId || null,
         pasoInicialId: pasoInicialId || null,
+        formularioId: formularioId || null,
       }),
     onSuccess: (caso) => {
       showToast('success', `Se ha creado el caso «${caso.titulo}» correctamente.`)
@@ -77,12 +87,12 @@ export function NuevoCasoAvanzadoPage() {
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),
   })
 
-  const tipoSeleccionado = tiposCaso.find((t) => t.id === tipoCasoId)
 
   const handleFlujoChange = (value: string) => {
     setFlujoId(value)
     setEstadoNegocioInicialId('')
     setTipoCasoId('')
+    setFormularioId('')
     setPasoInicialId('')
     setDatosJson('')
     setDatosErrores([])
@@ -90,8 +100,10 @@ export function NuevoCasoAvanzadoPage() {
   }
 
   // Each type can have its own form, so changing it starts the data over.
-  const handleTipoChange = (value: string) => {
-    setTipoCasoId(value)
+  const handleTipoChange = (value: string) => setTipoCasoId(value)
+
+  const handleFormularioChange = (value: string) => {
+    setFormularioId(value)
     setDatosJson('')
     setDatosErrores([])
     setIntentoEnvio(false)
@@ -214,9 +226,21 @@ export function NuevoCasoAvanzadoPage() {
             </div>
           )}
 
-          <DatosCasoInput
-            key={`${flujoId}-${tipoCasoId}`}
-            esquemaJson={tipoSeleccionado?.esquemaDatosJson}
+          {flujoId && formularios.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="formulario" className="text-sm font-medium text-gray-700">Formulario de datos</label>
+              <select id="formulario" className="field" value={formularioId} onChange={(e) => handleFormularioChange(e.target.value)}>
+                <option value="">Sin formulario (JSON libre)</option>
+                {formularios.map((f) => (
+                  <option key={f.id} value={f.id}>{f.nombre}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <DatosConFormulario
+            key={`${flujoId}-${formularioId}`}
+            esquemaJson={formularioSeleccionado?.esquemaJson}
             value={datosJson}
             onChange={(json, errores) => {
               setDatosJson(json)

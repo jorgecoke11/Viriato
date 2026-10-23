@@ -1,4 +1,5 @@
 using Viariato.Modules.Casos.Domain;
+using Viariato.Modules.RpaFleet.Domain;
 
 namespace Viariato.Modules.Casos.Contracts;
 
@@ -25,7 +26,13 @@ public static class CasosDtoMapper
     /// whether a robot has taken it yet.</param>
     /// <param name="servicioNombre">The service whose robots run the step, if it is an RPA one.</param>
     /// <param name="equipoNombre">The machine of the robot that took it, once one has.</param>
-    public static EjecucionPasoDto ToDto(this EjecucionPaso paso, RpaEjecucionDetalle? detalle = null, string? servicioNombre = null, string? equipoNombre = null) => new(
+    /// <param name="vistaEnDirecto">How the Despliegue of that robot may be watched: the platform decides, whatever the robot reported.</param>
+    public static EjecucionPasoDto ToDto(
+        this EjecucionPaso paso,
+        RpaEjecucionDetalle? detalle = null,
+        string? servicioNombre = null,
+        string? equipoNombre = null,
+        CalidadVistaEnDirecto vistaEnDirecto = CalidadVistaEnDirecto.Apagada) => new(
         paso.Id, paso.EjecucionId, paso.FlujoPasoDefId, paso.TipoPaso.ToString(), paso.NumeroIntento, paso.Estado.ToString(),
         paso.TrabajoId, paso.ErrorMensaje, paso.StartedAt, paso.FinishedAt,
         detalle?.Prioridad, EnCola: detalle is { DespliegueId: null } && paso.Estado == EjecucionPasoEstado.EnProgreso,
@@ -33,7 +40,7 @@ public static class CasosDtoMapper
         // What a robot says about a run only means something while the step is running (and a robot has it).
         ProgresoPorcentaje: EnMarcha(paso, detalle) ? detalle!.ProgresoPorcentaje : null,
         ProgresoMensaje: EnMarcha(paso, detalle) ? detalle!.ProgresoMensaje : null,
-        VistaEnDirectoUrl: EnMarcha(paso, detalle) ? detalle!.VistaEnDirectoUrl : null);
+        VistaEnDirectoUrl: EnMarcha(paso, detalle) ? VistaEnDirectoPresets.DireccionParaVer(detalle!.VistaEnDirectoUrl, vistaEnDirecto) : null);
 
     private static bool EnMarcha(EjecucionPaso paso, RpaEjecucionDetalle? detalle) =>
         detalle is { DespliegueId: not null } && paso.Estado == EjecucionPasoEstado.EnProgreso;

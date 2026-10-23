@@ -19,15 +19,18 @@ export function TarjetasDeOpciones({
   valor,
   alCambiar,
   etiqueta,
+  columnas = 3,
 }: {
   opciones: readonly OpcionEnTarjeta[]
   valor: string | null
   alCambiar: (id: string) => void
   /** What a screen reader hears for the group. */
   etiqueta: string
+  /** At most this many cards per row on a wide screen: 2 suits an even number of options (four levels in a 2×2). */
+  columnas?: 2 | 3
 }) {
   return (
-    <div role="radiogroup" aria-label={etiqueta} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div role="radiogroup" aria-label={etiqueta} className={`grid gap-3 sm:grid-cols-2 ${columnas === 3 ? 'xl:grid-cols-3' : ''}`}>
       {opciones.map((opcion) => {
         const elegida = opcion.id === valor
         const Icono = opcion.icono

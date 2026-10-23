@@ -12,7 +12,6 @@ public sealed class FlujoTipoCasoDefConfiguration : IEntityTypeConfiguration<Flu
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.Nombre).IsRequired().HasMaxLength(100);
-        builder.Property(t => t.EsquemaDatosJson).HasColumnType("text");
 
         builder.HasOne(t => t.Flujo)
             .WithMany()

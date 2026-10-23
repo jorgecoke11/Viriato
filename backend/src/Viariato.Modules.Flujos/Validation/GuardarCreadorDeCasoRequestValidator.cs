@@ -12,6 +12,9 @@ public sealed class GuardarCreadorDeCasoRequestValidator : AbstractValidator<Gua
         RuleFor(x => x.Descripcion).MaximumLength(300);
         RuleFor(x => x.PasoInicialNombre).MaximumLength(200);
         RuleFor(x => x.PlantillaTitulo).MaximumLength(PlantillaDeTitulo.LongitudMaxima);
+        RuleFor(x => x.DatosPorDefectoJson)
+            .Must(ObjetoJson.Es).When(x => !string.IsNullOrWhiteSpace(x.DatosPorDefectoJson))
+            .WithMessage("Los valores por defecto deben ser un objeto JSON, p. ej. {\"ticker\": \"AAPL\"}.");
         RuleFor(x => x.PlantillaTitulo).Custom((plantilla, context) =>
         {
             if (string.IsNullOrWhiteSpace(plantilla)) return;

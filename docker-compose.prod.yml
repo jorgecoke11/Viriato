@@ -57,6 +57,8 @@ services:
       # servido por "web" (p.ej. un cliente aparte) — el front normal pasa por
       # el mismo origen vía el reverse proxy de Caddy, así que no depende de esto.
       Cors__AllowedOrigins: ${PUBLIC_URL:-https://${DOMAIN}}
+      # La dirección con la que se abre Viriato, para el enlace al caso ({enlace}) de los correos de las notificaciones.
+      Notificaciones__UrlPublica: ${PUBLIC_URL:-https://${DOMAIN}}
       # Crea o actualiza el esquema de la base de datos al arrancar (en producción no lo hace si no se le dice).
       Database__MigrateOnStartup: "true"
       Bootstrap__AdminEmail: ${Bootstrap__AdminEmail}

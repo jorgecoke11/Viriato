@@ -36,6 +36,12 @@ public sealed class Despliegue
     /// <summary>Master on/off switch a worker checks before pulling from the queue.</summary>
     public bool Encendido { get; set; } = true;
 
+    /// <summary>Whether its robot's screen can be watched live, and how smoothly. Low by default: watching costs the robot CPU.</summary>
+    public CalidadVistaEnDirecto VistaEnDirecto { get; set; } = CalidadVistaEnDirecto.Baja;
+
+    /// <summary>Whether its robot records each run as a video; <see cref="GrabacionDeVideo.SegunRobot"/> leaves it to the robot.</summary>
+    public GrabacionDeVideo GrabacionDeVideo { get; set; } = GrabacionDeVideo.SegunRobot;
+
     public required string ApiKeyHash { get; set; }
 
     public required string ApiKeyPrefix { get; set; }
