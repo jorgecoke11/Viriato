@@ -204,6 +204,28 @@ public sealed class NotificacionesFlowTests(ViariatoApiFactory factory) : IClass
     }
 
     [Fact]
+    public async Task Quien_lee_el_proceso_ve_su_almacen_pero_no_el_de_otro_proceso()
+    {
+        using var host = Host();
+        var e = await CrearEntornoAsync(host);
+        var otro = await CrearEntornoAsync(host);
+        await Robot(e).GuardarDatoAsync("precio:mm:abc", new { puntos = new[] { new { fecha = "2026-10-21", precio = 199.99 } } });
+        await Robot(otro).GuardarDatoAsync("solo:del:otro", new { x = 1 });
+
+        var lista = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/flujos/{e.FlujoId}/almacen");
+        var dato = Assert.Single(lista.EnumerateArray());
+        Assert.Equal("precio:mm:abc", dato.GetProperty("clave").GetString());
+        Assert.True(dato.GetProperty("bytes").GetInt32() > 0);
+
+        var leido = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/flujos/{e.FlujoId}/almacen/dato?clave={Uri.EscapeDataString("precio:mm:abc")}");
+        Assert.Equal(199.99, JsonDocument.Parse(leido.GetProperty("valorJson").GetString()!).RootElement.GetProperty("puntos")[0].GetProperty("precio").GetDouble());
+
+        // Another process's key is not reachable through this process's route.
+        Assert.Equal(HttpStatusCode.NotFound, (await e.Admin.GetAsync($"/api/v1/flujos/{e.FlujoId}/almacen/dato?clave=solo:del:otro")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await host.CreateClient().GetAsync($"/api/v1/flujos/{e.FlujoId}/almacen")).StatusCode);
+    }
+
+    [Fact]
     public async Task Una_imagen_que_el_robot_sube_sin_decir_su_tipo_se_guarda_como_imagen()
     {
         using var host = Host();

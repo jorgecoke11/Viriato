@@ -72,10 +72,18 @@ extractor de BSH en el servidor: CPU suficiente (`EXTRACTOR_CPUS`) y `/tmp` en m
 
 ### 38. Robot de BSH: no fallar el caso cuando no se puede abrir Edge, y aligerar la cámara — pendiente (apuntado, sin empezar)
 Del 16/10. (1) Si Edge no arranca, el fallo es de la máquina, no del caso: el robot debería devolver el caso a la cola (o no cogerlo) y reiniciarse, en vez de quemar la cola.
-(2) La cámara en directo pesa: pantalla 1366×768, x11vnc con menos lecturas por segundo y prioridad baja, y que la página del caso no la conecte sola (solo al pulsar
-«Ver en directo»). Ambas cosas van en el repo `bsh_p01_prices_extractor` y necesitan reconstruir su imagen (token).
+(2) La cámara: la calidad y el vídeo ya los decide la plataforma (ver «Hecho», 22/10); falta pasar el extractor a `Viriato.Rpa.Client` 0.11 (`AddVistaEnDirecto`, sin
+x11vnc en el entrypoint, `paso.GrabarVideo`). Quedan como ideas: pantalla 1366×768 y que la página del caso no la conecte sola. Va en el repo `bsh_p01_prices_extractor`
+y necesita reconstruir su imagen (token).
 
 ## Hecho
+
+- Vista en directo y vídeo decididos por la plataforma (22/10): en Despliegues → «Pantalla del robot», vista Apagada/Baja/Media/Alta (los existentes, Baja) y vídeo
+  «lo decide el robot»/grabar/no grabar. Viriato deja de enseñar la vista apagada y pone la calidad de noVNC en la dirección; el robot lo lee de `GET /rpa/despliegue`
+  (`pantalla`). SDK 0.11.0: `IAjusteDelDespliegue` (primero de una familia, releído cada 15 s durante un paso), `AddVistaEnDirecto` arranca/para x11vnc + websockify
+  con el refresco del nivel, `paso.GrabarVideo(...)`. Medido en la imagen del extractor: mirar en Alta ~26 % de un núcleo, en Baja ~7 %, sin nadie ~0, el vídeo
+  ~17 % siempre. Doc en `docs/ver-la-ejecucion-en-directo.md`. Verificado: backend completo (una intermitente de despacho que pasa sola), front (tsc, eslint, vitest)
+  y en el navegador sobre una copia con un robot de prueba del SDK en la imagen del extractor (Baja → Alta a mitad de caso → Apagada). Falta: pasar el extractor a 0.11 (tarea 38).
 
 - Reprocesamientos (22/10): pestaña propia en cada proceso. Una regla dice cuándo (estado de negocio y/o cómo acabó la última ejecución), qué
   paso se relanza (o el que terminó), cuánto esperar, el límite opcional por caso y el estado final al agotarlo; gana la primera por orden.

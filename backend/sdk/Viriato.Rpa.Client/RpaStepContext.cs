@@ -9,13 +9,25 @@ public sealed class RpaStepContext
     private readonly IRpaClient _client;
 
     /// <summary>Public so a robot can build one in its own unit tests; at runtime <see cref="RpaWorker"/> does.</summary>
-    public RpaStepContext(IRpaClient client, EjecucionAsignadaDto ejecucion)
+    public RpaStepContext(IRpaClient client, EjecucionAsignadaDto ejecucion, DespliegueEstadoDto? despliegue = null)
     {
         _client = client;
         Ejecucion = ejecucion;
+        Despliegue = despliegue;
     }
 
     public EjecucionAsignadaDto Ejecucion { get; }
+
+    /// <summary>The robot's Despliegue as Viriato last described it, just before this step was claimed (null in a hand-built context).</summary>
+    public DespliegueEstadoDto? Despliegue { get; }
+
+    /// <summary>Whether the robot's screen may be watched live: Viriato decides it per Despliegue. A robot that serves the view itself
+    /// should not report its address (<c>vistaUrl</c>) when this is false. True when Viriato said nothing (older Viriato).</summary>
+    public bool VistaEnDirectoActiva => Despliegue?.Pantalla is not { Vista: null };
+
+    /// <summary>Whether to record this step as a video: what Viriato decided for the Despliegue, or <paramref name="segunElRobot"/> — the
+    /// robot's own setting — when it left it to the robot.</summary>
+    public bool GrabarVideo(bool segunElRobot) => Despliegue?.Pantalla?.GrabarVideo ?? segunElRobot;
 
     /// <inheritdoc cref="IRpaClient.ObtenerParametrosAsync"/>
     public Task<ParametrosProceso> ObtenerParametrosAsync(CancellationToken ct = default) =>

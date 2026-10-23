@@ -438,3 +438,22 @@ export const replaceLanzadorDeCaso = (flujoId: string, id: string, request: Guar
 
 export const deleteLanzadorDeCaso = (flujoId: string, id: string) =>
   apiFetch<void>(`/flujos/${flujoId}/lanzadores/${id}`, { method: 'DELETE' })
+
+/** One thing a process's robots keep between cases (the history of a product's price, say), without its value. */
+export interface DatoDeProcesoResumenDto {
+  clave: string
+  /** Size of the stored JSON; a key holds up to 64 KB. */
+  bytes: number
+  actualizadoEn: string
+}
+
+export interface DatoDeProcesoDto {
+  clave: string
+  valorJson: string
+  actualizadoEn: string
+}
+
+export const listAlmacenDelProceso = (flujoId: string) => apiFetch<DatoDeProcesoResumenDto[]>(`/flujos/${flujoId}/almacen`)
+
+export const getDatoDelProceso = (flujoId: string, clave: string) =>
+  apiFetch<DatoDeProcesoDto>(`/flujos/${flujoId}/almacen/dato?clave=${encodeURIComponent(clave)}`)

@@ -2358,6 +2358,14 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("flujo_id");
 
+                    b.Property<string>("GrabacionDeVideo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("SegunRobot")
+                        .HasColumnName("grabacion_de_video");
+
                     b.Property<DateTimeOffset?>("LastUsedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_used_at");
@@ -2369,6 +2377,14 @@ namespace Viariato.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<string>("VistaEnDirecto")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Baja")
+                        .HasColumnName("vista_en_directo");
 
                     b.HasKey("Id")
                         .HasName("pk_despliegues");

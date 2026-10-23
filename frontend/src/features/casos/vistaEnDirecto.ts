@@ -22,7 +22,10 @@ export function necesitaPaseDeViriato(url: string, origen: string = window.locat
   return new URL(url).origin === origen
 }
 
-/** The same screen, in a form made for a small frame: scaled to fit and without the controls that let a person touch it. */
+/**
+ * The same screen, in a form made for a small frame: scaled to fit and without the controls that let a person touch it. The picture
+ * quality (noVNC's quality/compression) already comes in the address: Viriato puts the one of the robot's Despliegue there.
+ */
 export function direccionParaElMarco(url: string): string {
   const direccion = new URL(url)
   // noVNC's own options; another viewer simply ignores them.
@@ -30,6 +33,8 @@ export function direccionParaElMarco(url: string): string {
     direccion.searchParams.set('autoconnect', 'true')
     direccion.searchParams.set('resize', 'scale')
     direccion.searchParams.set('view_only', 'true')
+    // The robot restarts its screen server when the quality is changed in Viriato: come back on its own instead of staying blank.
+    direccion.searchParams.set('reconnect', 'true')
   }
   return direccion.toString()
 }

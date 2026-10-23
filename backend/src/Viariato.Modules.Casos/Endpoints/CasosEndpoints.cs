@@ -184,7 +184,10 @@ internal static class CasosEndpoints
         var enMarcha = (await db.Set<EjecucionPaso>().AsNoTracking()
                 .Where(p => idsDeLaPagina.Contains(p.CasoId) && p.Estado == EjecucionPasoEstado.EnProgreso)
                 .Join(db.Set<RpaEjecucionDetalle>().Where(d => d.DespliegueId != null), p => p.Id, d => d.EjecucionPasoId,
-                    (p, d) => new { p.CasoId, d.ProgresoPorcentaje, d.VistaEnDirectoUrl })
+                    (p, d) => new { p.CasoId, d.ProgresoPorcentaje, d.VistaEnDirectoUrl, d.DespliegueId })
+                // The platform decides whether a Despliegue's screen may be watched, whatever its robot reported.
+                .Join(db.Set<Despliegue>(), x => x.DespliegueId, d => d.Id,
+                    (x, d) => new { x.CasoId, x.ProgresoPorcentaje, VistaEnDirectoUrl = d.VistaEnDirecto == CalidadVistaEnDirecto.Apagada ? null : x.VistaEnDirectoUrl })
                 .ToListAsync(ct))
             .GroupBy(x => x.CasoId)
             .ToDictionary(g => g.Key, g => g.First());
@@ -784,21 +787,23 @@ internal static class CasosEndpoints
             select new { definicion.Id, servicio.Nombre }).ToDictionaryAsync(x => x.Id, x => x.Nombre, ct);
 
         var despliegueIds = detalles.Values.Where(d => d.DespliegueId != null).Select(d => d.DespliegueId!.Value).Distinct().ToList();
-        var equiposPorDespliegue = despliegueIds.Count == 0
-            ? new Dictionary<Guid, string>()
+        var despliegues = despliegueIds.Count == 0
+            ? []
             : await (
                 from despliegue in db.Set<Despliegue>().AsNoTracking()
                 join equipo in db.Set<Equipo>().AsNoTracking() on despliegue.EquipoId equals equipo.Id
                 where despliegueIds.Contains(despliegue.Id)
-                select new { despliegue.Id, equipo.Nombre }).ToDictionaryAsync(x => x.Id, x => x.Nombre, ct);
+                select new { despliegue.Id, EquipoNombre = equipo.Nombre, despliegue.VistaEnDirecto }).ToDictionaryAsync(x => x.Id, ct);
 
         return pasos.Select(p =>
         {
             var detalle = detalles.GetValueOrDefault(p.Id);
+            var despliegue = detalle?.DespliegueId is { } despliegueId ? despliegues.GetValueOrDefault(despliegueId) : null;
             return p.ToDto(
                 detalle,
                 serviciosDeLaDefinicion.GetValueOrDefault(p.FlujoPasoDefId),
-                detalle?.DespliegueId is { } despliegueId ? equiposPorDespliegue.GetValueOrDefault(despliegueId) : null);
+                despliegue?.EquipoNombre,
+                despliegue?.VistaEnDirecto ?? CalidadVistaEnDirecto.Apagada);
         }).ToList();
     }
 

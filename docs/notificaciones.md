@@ -79,6 +79,10 @@ await paso.GuardarDatoAsync("precio:pccomponentes:abc", historial, ct);
 
 API: `GET`, `PUT` y `DELETE /api/v1/rpa/almacen/{clave}`.
 
+**Verlo desde el front:** *Procesos → el proceso → Almacén* lista las claves (tamaño y última actualización) y abre cada una en una vista
+legible; una lista de registros, como el historial de precios, se ve como tabla. Solo lectura: lo escriben los robots. API para personas
+(`flujos.read`): `GET /api/v1/flujos/{flujoId}/almacen` y `GET /api/v1/flujos/{flujoId}/almacen/dato?clave=…`.
+
 **Imágenes.** Un archivo subido como evidencia con extensión de imagen (`grafico.png`, `grafico.svg`) se ve como imagen en la historia
 del caso, aunque el robot no diga su tipo.
 

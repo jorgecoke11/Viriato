@@ -9,6 +9,7 @@ import { ApiError } from '../../../lib/apiClient'
 import { duration, ease } from '../../../lib/motion/tokens'
 import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../api'
+import { FlujoAlmacenPanel } from '../FlujoAlmacenPanel'
 import { FlujoCreadoresPanel } from '../FlujoCreadoresPanel'
 import { FlujoLanzadoresPanel } from '../FlujoLanzadoresPanel'
 import { FlujoNotificacionesPanel } from '../../notificaciones/FlujoNotificacionesPanel'
@@ -20,7 +21,7 @@ import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
 import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
 import { BackLink } from '../../../components/ui/BackLink'
 
-type Tab = 'versiones' | 'estados' | 'tipos' | 'formularios' | 'creadores' | 'lanzadores' | 'notificaciones' | 'reprocesamientos' | 'parametros'
+type Tab = 'versiones' | 'estados' | 'tipos' | 'formularios' | 'creadores' | 'lanzadores' | 'notificaciones' | 'reprocesamientos' | 'parametros' | 'almacen'
 
 export function FlujoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -58,6 +59,7 @@ export function FlujoDetailPage() {
             { value: 'notificaciones', label: 'Notificaciones' },
             { value: 'reprocesamientos', label: 'Reprocesamientos' },
             { value: 'parametros', label: 'Parámetros' },
+            { value: 'almacen', label: 'Almacén' },
           ]}
           active={tab}
           onChange={setTab}
@@ -178,6 +180,19 @@ export function FlujoDetailPage() {
               <Card className="mt-4">
                 <FlujoParametrosPanel flujoId={flujo.id} />
               </Card>
+            </motion.div>
+          )}
+
+          {tab === 'almacen' && (
+            <motion.div
+              key="almacen"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
+              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+            >
+              <div className="mt-4">
+                <FlujoAlmacenPanel flujoId={flujo.id} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

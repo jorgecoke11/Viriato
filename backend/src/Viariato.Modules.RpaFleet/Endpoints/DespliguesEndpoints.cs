@@ -97,14 +97,19 @@ internal static class DespliguesEndpoints
     }
 
     private static async Task<IResult> UpdateAsync(
-        Guid id, UpdateDespliegueRequest request, AppDbContext db, HttpContext http, CancellationToken ct)
+        Guid id, UpdateDespliegueRequest request, UpdateDespliegueRequestValidator validator, AppDbContext db, HttpContext http, CancellationToken ct)
     {
+        var validation = validator.Validate(request);
+        if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
+
         var despliegue = await db.Set<Despliegue>().Include(d => d.Equipo).Include(d => d.Servicio).FirstOrDefaultAsync(d => d.Id == id, ct);
         if (despliegue is null) return ProblemResults.NotFound(http, "Despliegue no encontrado.");
 
         if (request.Encendido is not null) despliegue.Encendido = request.Encendido.Value;
         if (request.QuitarFlujoDestino) despliegue.FlujoDestinoId = null;
         else if (request.FlujoDestinoId is not null) despliegue.FlujoDestinoId = request.FlujoDestinoId;
+        if (request.VistaEnDirecto is not null) despliegue.VistaEnDirecto = Enum.Parse<CalidadVistaEnDirecto>(request.VistaEnDirecto, ignoreCase: true);
+        if (request.GrabacionDeVideo is not null) despliegue.GrabacionDeVideo = Enum.Parse<GrabacionDeVideo>(request.GrabacionDeVideo, ignoreCase: true);
         despliegue.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);

@@ -33,6 +33,14 @@ public static class RpaRobot
         return builder;
     }
 
+    /// <summary>Serves the robot's screen live as Viriato decides (see <see cref="VistaEnDirectoNoVnc"/>); the machine's part comes from the
+    /// <c>VistaEnDirecto</c> configuration section (<see cref="VistaEnDirectoOptions"/>).</summary>
+    public static HostApplicationBuilder AddVistaEnDirecto(this HostApplicationBuilder builder)
+    {
+        builder.Services.AddViriatoVistaEnDirecto(o => builder.Configuration.GetSection("VistaEnDirecto").Bind(o));
+        return builder;
+    }
+
     /// <summary>Registers the robot's implementation and the service that feeds it from the queue.</summary>
     public static HostApplicationBuilder AddRpaHandler<THandler>(this HostApplicationBuilder builder)
         where THandler : class, IRpaStepHandler

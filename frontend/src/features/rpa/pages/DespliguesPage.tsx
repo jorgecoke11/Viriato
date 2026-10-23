@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, RefreshCw, Server, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Monitor, Plus, RefreshCw, Server, Trash2, Video } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { CrudFormModal } from '../../../components/crud/CrudFormModal'
+import type { CrudField } from '../../../components/crud/types'
+import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
+import { TarjetasDeOpciones } from '../../../components/ui/TarjetasDeOpciones'
 import type { ColumnaDeTabla } from '../../../components/ui/DataTable'
 import { IconButton } from '../../../components/ui/IconButton'
 import { ListaDeDatos } from '../../../components/ui/ListaDeDatos'
@@ -15,6 +19,39 @@ import { useListaPaginada } from '../../../lib/useListaPaginada'
 import * as flujosApi from '../../flujos/api'
 import * as rpaApi from '../api'
 import type { DespliegueConApiKeyDto, DespliegueDto } from '../api'
+import {
+  calidadDeVista,
+  calidadesDeVista,
+  etiquetaDeGrabacion,
+  opcionesDeGrabacion,
+  type CalidadVistaEnDirecto,
+  type GrabacionDeVideo,
+} from '../pantallaDelRobot'
+
+type ValoresDePantalla = { vistaEnDirecto: CalidadVistaEnDirecto; grabacionDeVideo: GrabacionDeVideo }
+
+/** The robot's screen, decided here and read by the robot from Viriato: the live view (and how smooth) and the video of each run. */
+const camposDePantalla: CrudField<ValoresDePantalla>[] = [
+  {
+    name: 'vistaEnDirecto',
+    label: 'Vista en directo',
+    type: 'custom',
+    helpText: 'Mirar la pantalla le quita CPU al robot mientras alguien la tiene abierta. Si va lento, bájala o apágala.',
+    render: ({ value, onChange }) => (
+      <>
+        <span className="text-sm font-medium text-gray-700">Vista en directo</span>
+        <TarjetasDeOpciones etiqueta="Vista en directo" columnas={2} opciones={calidadesDeVista} valor={value} alCambiar={onChange} />
+      </>
+    ),
+  },
+  {
+    name: 'grabacionDeVideo',
+    label: 'Vídeo de cada ejecución',
+    type: 'select',
+    options: [...opcionesDeGrabacion],
+    helpText: 'Grabar lee la pantalla durante todo el caso, aunque nadie mire.',
+  },
+]
 
 export function DespliguesPage() {
   const queryClient = useQueryClient()
@@ -26,6 +63,12 @@ export function DespliguesPage() {
   const [flujoDestinoId, setFlujoDestinoId] = useState('')
   const [revelado, setRevelado] = useState<DespliegueConApiKeyDto | null>(null)
   const [pendingDelete, setPendingDelete] = useState<DespliegueDto | null>(null)
+  const [pantallaDe, setPantallaDe] = useState<DespliegueDto | null>(null)
+  // Stable while the modal is open: the form re-seeds itself whenever these change.
+  const valoresDePantalla = useMemo<ValoresDePantalla>(
+    () => ({ vistaEnDirecto: pantallaDe?.vistaEnDirecto ?? 'Baja', grabacionDeVideo: pantallaDe?.grabacionDeVideo ?? 'SegunRobot' }),
+    [pantallaDe],
+  )
 
   const fuente = useListaPaginada<DespliegueDto>({
     clave: ['despliegues'],
@@ -59,6 +102,15 @@ export function DespliguesPage() {
       showToast('success', 'Despliegue actualizado.')
     },
     onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo actualizar el despliegue.'),
+  })
+
+  const pantallaMutation = useMutation({
+    mutationFn: ({ id, valores }: { id: string; valores: ValoresDePantalla }) => rpaApi.updateDespliegue(id, valores),
+    onSuccess: () => {
+      invalidate()
+      setPantallaDe(null)
+      showToast('success', 'Guardado. Quien mira lo nota ya; el robot, en unos segundos.')
+    },
   })
 
   const regenerarMutation = useMutation({
@@ -136,6 +188,23 @@ export function DespliguesPage() {
         </span>
       ),
     },
+    {
+      clave: 'pantalla',
+      titulo: 'Vista en directo',
+      celda: (d) => {
+        const calidad = calidadDeVista(d.vistaEnDirecto)
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <Badge tone={calidad.tono}>{calidad.titulo}</Badge>
+            {d.grabacionDeVideo !== 'SegunRobot' && (
+              <span title={etiquetaDeGrabacion(d.grabacionDeVideo)} className={d.grabacionDeVideo === 'Activa' ? 'text-gray-600' : 'text-gray-300'}>
+                <Video size={15} aria-label={etiquetaDeGrabacion(d.grabacionDeVideo)} />
+              </span>
+            )}
+          </span>
+        )
+      },
+    },
     { clave: 'clave', titulo: 'Clave', celda: (d) => <span className="font-mono text-xs text-gray-500">{d.apiKeyPrefix}…</span> },
     {
       clave: 'uso',
@@ -147,6 +216,9 @@ export function DespliguesPage() {
       titulo: 'Acciones',
       celda: (d) => (
         <div className="-my-1 flex items-center gap-0.5">
+          <IconButton size="sm" label="Pantalla del robot" onClick={() => setPantallaDe(d)}>
+            <Monitor size={16} />
+          </IconButton>
           <IconButton size="sm" label="Regenerar clave" disabled={regenerarMutation.isPending} onClick={() => regenerarMutation.mutate(d.id)}>
             <RefreshCw size={16} />
           </IconButton>
@@ -189,7 +261,7 @@ export function DespliguesPage() {
             </Button>
           ),
         }}
-        anchoMinimo="860px"
+        anchoMinimo="980px"
       />
 
       <Modal
@@ -300,6 +372,27 @@ export function DespliguesPage() {
         </p>
         <code className="block break-all rounded-lg bg-gray-100 p-3 text-xs text-gray-800">{revelado?.apiKey}</code>
       </Modal>
+
+      <CrudFormModal
+        open={pantallaDe !== null}
+        title={pantallaDe ? `Pantalla de ${pantallaDe.servicioNombre} en ${pantallaDe.equipoNombre}` : 'Pantalla del robot'}
+        size="lg"
+        fields={camposDePantalla}
+        initialValues={valoresDePantalla}
+        submitting={pantallaMutation.isPending}
+        error={
+          pantallaMutation.error
+            ? pantallaMutation.error instanceof ApiError
+              ? pantallaMutation.error.message
+              : 'No se pudo guardar.'
+            : null
+        }
+        onSubmit={(valores) => pantallaDe && pantallaMutation.mutate({ id: pantallaDe.id, valores })}
+        onClose={() => {
+          setPantallaDe(null)
+          pantallaMutation.reset()
+        }}
+      />
 
       <ConfirmDialog
         open={pendingDelete !== null}

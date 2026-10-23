@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { EjecucionPasoDto, FlujoPasoDefDto } from './api'
-import { etiquetaDeClave, leerDatosDelCaso } from './datosDelCaso'
+import { etiquetaDeClave, leerDatos } from '../../lib/datos'
 import { pasosResueltos, progresoDelProceso } from './progreso'
 
 const definicion = (id: string, orden: number, nombre: string): FlujoPasoDefDto => ({
@@ -81,15 +81,15 @@ describe('etiquetaDeClave', () => {
   })
 })
 
-describe('leerDatosDelCaso', () => {
+describe('leerDatos', () => {
   it('says there is nothing for no data, an empty text or an empty object', () => {
-    expect(leerDatosDelCaso(null)).toEqual({ tipo: 'vacio' })
-    expect(leerDatosDelCaso('  ')).toEqual({ tipo: 'vacio' })
-    expect(leerDatosDelCaso('{}')).toEqual({ tipo: 'vacio' })
+    expect(leerDatos(null)).toEqual({ tipo: 'vacio' })
+    expect(leerDatos('  ')).toEqual({ tipo: 'vacio' })
+    expect(leerDatos('{}')).toEqual({ tipo: 'vacio' })
   })
 
   it('reads an object as one entry per field, keeping their order and giving each a readable label', () => {
-    const datos = leerDatosDelCaso('{"proveedor":"Balay","beneficio":15,"activo":true,"nota":null}')
+    const datos = leerDatos('{"proveedor":"Balay","beneficio":15,"activo":true,"nota":null}')
 
     expect(datos.tipo).toBe('entradas')
     if (datos.tipo !== 'entradas') return
@@ -103,7 +103,7 @@ describe('leerDatosDelCaso', () => {
   })
 
   it('folds lists and nested objects, saying what they hold', () => {
-    const datos = leerDatosDelCaso('{"productos":["a","b","c"],"cliente":{"id":1,"nombre":"x"},"uno":[1]}')
+    const datos = leerDatos('{"productos":["a","b","c"],"cliente":{"id":1,"nombre":"x"},"uno":[1]}')
 
     if (datos.tipo !== 'entradas') throw new Error('expected entries')
     const [productos, cliente, uno] = datos.entradas.map((e) => e.valor)
@@ -113,9 +113,31 @@ describe('leerDatosDelCaso', () => {
     expect(JSON.parse((productos as { json: string }).json)).toEqual(['a', 'b', 'c'])
   })
 
+  it('gives a list of records a table, and only a list of records', () => {
+    const datos = leerDatos('{"puntos":[{"fecha":"2026-10-21","precio":199.99},{"fecha":"2026-10-22","precio":149}],"tags":["a"],"mixta":[{"a":1},2]}')
+
+    if (datos.tipo !== 'entradas') throw new Error('expected entries')
+    const [puntos, tags, mixta] = datos.entradas.map((e) => e.valor)
+    expect(puntos).toMatchObject({
+      tipo: 'compuesto',
+      tabla: {
+        columnas: [
+          { clave: 'fecha', etiqueta: 'Fecha' },
+          { clave: 'precio', etiqueta: 'Precio' },
+        ],
+        filas: [
+          ['2026-10-21', '199.99'],
+          ['2026-10-22', '149'],
+        ],
+      },
+    })
+    expect((tags as { tabla?: unknown }).tabla).toBeUndefined()
+    expect((mixta as { tabla?: unknown }).tabla).toBeUndefined()
+  })
+
   it('shows as it is what is not a JSON object', () => {
-    expect(leerDatosDelCaso('no es json')).toEqual({ tipo: 'crudo', texto: 'no es json' })
-    expect(leerDatosDelCaso('[1,2]')).toMatchObject({ tipo: 'crudo' })
-    expect(leerDatosDelCaso('42')).toEqual({ tipo: 'crudo', texto: '42' })
+    expect(leerDatos('no es json')).toEqual({ tipo: 'crudo', texto: 'no es json' })
+    expect(leerDatos('[1,2]')).toMatchObject({ tipo: 'crudo' })
+    expect(leerDatos('42')).toEqual({ tipo: 'crudo', texto: '42' })
   })
 })

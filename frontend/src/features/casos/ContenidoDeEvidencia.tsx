@@ -1,6 +1,6 @@
 import { Check, ChevronDown, Copy } from 'lucide-react'
 import { useState } from 'react'
-import { leerDatosDelCaso, type ValorDeDato } from './datosDelCaso'
+import { leerDatos, type ValorDeDato } from '../../lib/datos'
 
 // An evidence's contenidoJson is free-form: a plain message, or an object/array worth reading as a few facts.
 function analizar(raw: string): { tipo: 'texto'; texto: string } | { tipo: 'json'; texto: string } {
@@ -43,7 +43,7 @@ export function ContenidoDeEvidencia({ raw }: { raw: string }) {
     )
   }
 
-  const datos = leerDatosDelCaso(raw)
+  const datos = leerDatos(raw)
   const hechos = datos.tipo === 'entradas' ? datos.entradas.slice(0, HECHOS_VISIBLES) : []
 
   async function copiar() {

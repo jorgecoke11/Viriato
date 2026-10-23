@@ -27,6 +27,46 @@ Tres cosas, todas desde el caso en Viriato:
 - El avance **es lo que el robot cuenta**: Viriato no lo adivina. Se guarda el último dato (`ProgresoPorcentaje`, `ProgresoMensaje`) mientras el paso
   corre y desaparece cuando termina. No entra en el historial del caso: el historial queda como era.
 
+## Quién decide la vista y el vídeo: la plataforma, por despliegue
+
+Si un robot se ve en directo, con qué calidad, y si graba vídeo **no lo decide cada robot**: se elige en **Despliegues → Pantalla del robot**
+(el icono del monitor de cada fila). La tabla muestra la calidad de cada uno y un icono de cámara si el vídeo está forzado.
+
+| Vista | Qué es | Imagen cada | Calidad / compresión del visor |
+|---|---|---|---|
+| Apagada | Nadie la ve; el robot no la sirve | — | — |
+| **Baja** (la de partida) | La que menos CPU le quita al robot | 500 ms | 2 / 9 |
+| Media | | 200 ms | 5 / 6 |
+| Alta | Como era antes | 20 ms | 6 / 2 |
+
+Vídeo de cada ejecución: *Lo decide el robot* (lo de siempre, `Grabacion__Activa`), *Grabar cada ejecución* o *No grabar*.
+
+**Por qué.** Medido el 22/10 con la imagen del extractor (1,5 CPU, Edge con una página que se redibuja), en % de un núcleo:
+
+| Situación | CPU extra | Datos en ~25 s |
+|---|---|---|
+| Vista sin nadie mirando | ~0 % | 0 |
+| Alguien mirando, como antes (Alta) | ~26 % (x11vnc 13 + Xvfb 11) | 16 MB |
+| Refresco cada 200 ms (Media) | ~11 % | 7,5 MB |
+| Refresco cada 500 ms + calidad 2 (Baja) | ~6 % | 3,5 MB |
+| Grabación de vídeo (todo el caso, mire quien mire) | ~17 % | — |
+
+La vista solo cuesta mientras alguien la tiene abierta (el panel del caso se conecta solo). Con el tope de 1,5 CPU eso bastaba para que Edge
+no arrancase a tiempo en el servidor (ver `EXTRACTOR_CPUS`); con 4 CPU sobra margen. Si un robot va lento, primero el tope de CPU, luego
+la vista (Baja o Apagada) y el vídeo.
+
+**Cómo llega a cada sitio:**
+
+- **Al que mira**, al momento: Viriato no enseña la pantalla de un despliegue con la vista apagada (ni en el caso ni la cámara del
+  Listado), aunque el robot haya dado su dirección, y a la de noVNC le añade `quality`/`compression` del nivel. El marco pide `reconnect`,
+  así que si el robot reinicia su servidor de pantalla vuelve solo.
+- **Al robot**, por `GET /api/v1/rpa/despliegue`, que ahora trae `pantalla: { vista: { calidad, milisegundosEntreImagenes, calidadImagen,
+  compresion } | null, grabarVideo: true | false | null }`. El robot lo lee cada pocos segundos mientras espera y cada 15 s mientras
+  trabaja (`Worker__IntervaloAjustesDuranteUnPaso`): un cambio se aplica sin reiniciarlo y sin esperar a que acabe el caso. El vídeo
+  sí se decide al empezar cada caso.
+
+Aunque un robot aún no siga la plataforma, apagar la vista ya le quita el coste: si nadie se conecta, x11vnc no trabaja.
+
 ## Para quien quiera verlo
 
 | Dónde | Qué |
@@ -93,6 +133,20 @@ La dirección se abre **desde el navegador de quien mira**, así que tiene que s
 - El puerto 6080 solo se publica en `127.0.0.1` en el compose de los robots, a propósito.
 
 ## Para el desarrollador del robot
+
+- `Viriato.Rpa.Client` 0.11.0 hace que el robot siga lo que se decide en Despliegues:
+  - `builder.AddVistaEnDirecto()` (o `services.AddViriatoVistaEnDirecto(...)`) arranca y para **x11vnc + websockify** según la calidad del
+    despliegue y los reinicia cuando cambia. El contenedor ya **no** debe arrancar x11vnc en su `entrypoint` (solo Xvfb). Lo que es de la
+    máquina va en la sección `VistaEnDirecto`: `Permitida` (veto del robot), `Pantalla` (por defecto `DISPLAY`), `PuertoWeb` (6080),
+    `PuertoVnc` (5900), `CarpetaNoVnc`, `Contrasena` (se le pasa a x11vnc en un fichero que borra al leerlo), `PermitirControl`. Sin
+    `DISPLAY` (Windows) no hace nada. Frente a un Viriato anterior (sin `pantalla`) sirve la vista como antes.
+  - `paso.VistaEnDirectoActiva`: si es `false`, no mandes `vistaUrl`.
+  - `paso.GrabarVideo(segunElRobot: opciones.Activa)`: lo que decidió Viriato, o la opción del robot si lo dejó en sus manos.
+  - Es el primero de una familia: `IAjusteDelDespliegue` recibe el estado del despliegue en cada lectura; otro ajuste que venga de la
+    plataforma se registra igual.
+- Para el extractor de BSH (repo `bsh_p01_prices_extractor`, necesita el token para reconstruir la imagen): subir a 0.11.0, añadir
+  `builder.AddVistaEnDirecto()` en `Program.cs` mapeando `VNC_PASSWORD`/`VNC_CONTROL` a `VistaEnDirecto__Contrasena`/`__PermitirControl`,
+  quitar x11vnc/websockify del `docker-entrypoint.sh`, y en `PreciosHandler` usar `paso.GrabarVideo(...)` y `paso.VistaEnDirectoActiva`.
 
 - `Viriato.Rpa.Client` 0.7.0: `await paso.IntentarReportarEnVivoAsync(porcentaje: 40, mensaje: "…", vistaUrl: "…")` (no lanza nunca: cómo va un robot es
   para leerlo, no puede tumbar un paso) o `ReportarEnVivoAsync` si se quiere saber que falló. Hasta publicarla, el extractor usa `ReportadorEnVivo`, que

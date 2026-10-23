@@ -19,6 +19,7 @@ using Viariato.Modules.Casos.Validation;
 using Viariato.Modules.Flujos.Domain;
 using Viariato.Modules.Flujos.Esquemas;
 using Viariato.Modules.RpaFleet.Auth;
+using Viariato.Modules.RpaFleet.Contracts;
 using Viariato.Modules.RpaFleet.Domain;
 using Viariato.Shared.Http;
 
@@ -64,7 +65,8 @@ internal static class RpaWorkerEndpoints
             .Where(f => f.Id == despliegue.FlujoId).Select(f => f.Nombre).FirstOrDefaultAsync(ct) ?? string.Empty;
 
         return Results.Ok(new DespliegueEstadoDto(
-            despliegue.Encendido, despliegue.Equipo?.Nombre ?? string.Empty, despliegue.Servicio?.Nombre ?? string.Empty, flujoNombre));
+            despliegue.Encendido, despliegue.Equipo?.Nombre ?? string.Empty, despliegue.Servicio?.Nombre ?? string.Empty, flujoNombre,
+            despliegue.ToPantallaDto()));
     }
 
     /// <summary>The settings of the process this Despliegue belongs to, as a code → value map. Plain text and
