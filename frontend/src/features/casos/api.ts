@@ -2,6 +2,7 @@ import { apiFetch, apiFetchArchivo } from '../../lib/apiClient'
 import { CABECERA_DE_RESUMEN, leerResumenDeZip, nombreDeContentDisposition } from './resumenDeZip'
 import type { ResultadoMasivo } from '../../lib/accionesMasivas'
 import type { PagedResult } from '../../lib/types'
+import type { Pulso } from '../../lib/usePulso'
 
 export interface FlujoAsignadoDto {
   id: string
@@ -305,6 +306,10 @@ export const listCasos = (filters: ListCasosFilters & { page?: number; pageSize?
   )
 
 export const getCaso = (id: string) => apiFetch<CasoDetailDto>(`/casos/${id}`)
+
+/** Cheap signatures that change when the panel / a case's screen would (see usePulso). */
+export const getPulsoDelPanel = () => apiFetch<Pulso>('/casos/resumen/pulso')
+export const getPulsoDelCaso = (id: string) => apiFetch<Pulso>(`/casos/${id}/pulso`)
 
 /**
  * A pass to watch the robots' screens served by Viriato's own address (/vista/): the server answers with a cookie only sent there,
