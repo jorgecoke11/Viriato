@@ -151,7 +151,7 @@ public sealed class RpaClientFlowTests(ViariatoApiFactory factory) : IClassFixtu
         var escenario = await CreateEscenarioAsync();
         var casoId = await StartCasoAsync(escenario, "Caso del worker");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var worker = new RpaWorker(RobotClient(escenario.ApiKey), new RpaWorkerOptions { IntervaloPolling = TimeSpan.FromMilliseconds(50) });
+        var worker = new RpaWorker(RobotClient(escenario.ApiKey), new RpaWorkerOptions { IntervaloPolling = TimeSpan.FromMilliseconds(50), IntervaloPollingMaximo = TimeSpan.FromMilliseconds(50) });
 
         string? visto = null;
         await worker.RunAsync(async (paso, ct) =>

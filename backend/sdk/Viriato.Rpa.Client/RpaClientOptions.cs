@@ -13,8 +13,11 @@ public sealed class RpaClientOptions
     /// <summary>
     /// Tells this running copy of the robot apart from the others of the same Despliegue (replicas of a container, more
     /// processes started with the same API key), so each one is its own slot: a copy stuck on a case does not stop the rest
-    /// from taking the next ones. Leave it empty: the client then makes one up when the process starts, which is what you want.
-    /// Set it only to keep a stable id, or when one process runs several robots.
+    /// from taking the next ones. Leave it empty, which is what you want: inside a container the client uses the container's name
+    /// (its hostname), so a robot that crashes and is restarted by Docker is still the same copy — it does not become a second one
+    /// while its unfinished case still counts as running; replicas each have their own. Outside a container it makes one up when
+    /// the process starts. Set it only to keep a stable id across recreations of the container (with a fixed <c>hostname:</c> in the
+    /// compose it is not needed), or when one process runs several robots.
     /// </summary>
     public string? InstanciaId { get; set; }
 
@@ -47,8 +50,26 @@ public sealed class RpaClientOptions
     /// <summary>The id made up for this process, the same for every client created in it.</summary>
     private static readonly string InstanciaDelProceso = Guid.NewGuid().ToString("N");
 
-    /// <summary>What this copy sends as its id: the configured one, or the one of the process.</summary>
-    internal string ResolveInstanciaId() => string.IsNullOrWhiteSpace(InstanciaId) ? InstanciaDelProceso : InstanciaId.Trim();
+    /// <summary>What this copy sends as its id: the configured one; else, in a container, the container's name; else the one of the process.</summary>
+    internal string ResolveInstanciaId() => ResolverInstancia(
+        InstanciaId, Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), Environment.MachineName);
+
+    /// <summary>
+    /// A container runs one copy of the robot and keeps its hostname when Docker restarts it, so that name is the copy: after a crash
+    /// the robot comes back as the same copy and is not handed a second case while the first still counts as running. A process
+    /// id would make every restart a new copy — two cases "in execution" for one robot. The .NET images set
+    /// <c>DOTNET_RUNNING_IN_CONTAINER</c>.
+    /// </summary>
+    internal static string ResolverInstancia(string? configurada, string? enContenedor, string? maquina)
+    {
+        if (!string.IsNullOrWhiteSpace(configurada)) return configurada.Trim();
+        if (string.Equals(enContenedor?.Trim(), "true", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(maquina))
+        {
+            return maquina.Trim();
+        }
+
+        return InstanciaDelProceso;
+    }
 
     internal Uri ResolveBaseAddress()
     {

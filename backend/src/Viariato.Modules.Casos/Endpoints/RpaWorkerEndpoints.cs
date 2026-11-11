@@ -54,7 +54,12 @@ internal static class RpaWorkerEndpoints
         group.MapPost("/pasos/{id:guid}/notificar", NotificarAsync);
     }
 
-    private static async Task<IResult> GetDespliegueAsync(ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
+    /// <summary>Whether the robot is switched on and how its screen is handled. With <paramref name="paso"/> — the step the robot is
+    /// running — it also says whether that step is still in progress: cancelling a Caso cannot reach into the robot's machine, so the
+    /// robot asks while it works and drops the work once this says no. One request for both, every few seconds of a step. A step
+    /// that is not this robot's is "not in progress" for it.</summary>
+    private static async Task<IResult> GetDespliegueAsync(
+        [FromQuery] Guid? paso, ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
     {
         var despliegue = await db.Set<Despliegue>().AsNoTracking()
             .Include(d => d.Equipo).Include(d => d.Servicio)
@@ -64,9 +69,18 @@ internal static class RpaWorkerEndpoints
         var flujoNombre = await db.Set<Flujo>().AsNoTracking()
             .Where(f => f.Id == despliegue.FlujoId).Select(f => f.Nombre).FirstOrDefaultAsync(ct) ?? string.Empty;
 
+        bool? pasoEnCurso = paso is { } pasoId
+            ? await (
+                from detalle in db.Set<RpaEjecucionDetalle>().AsNoTracking()
+                join ejecucionPaso in db.Set<EjecucionPaso>().AsNoTracking() on detalle.EjecucionPasoId equals ejecucionPaso.Id
+                where detalle.EjecucionPasoId == pasoId && detalle.DespliegueId == despliegue.Id
+                    && ejecucionPaso.Estado == EjecucionPasoEstado.EnProgreso
+                select detalle.Id).AnyAsync(ct)
+            : null;
+
         return Results.Ok(new DespliegueEstadoDto(
             despliegue.Encendido, despliegue.Equipo?.Nombre ?? string.Empty, despliegue.Servicio?.Nombre ?? string.Empty, flujoNombre,
-            despliegue.ToPantallaDto()));
+            despliegue.ToPantallaDto(), pasoEnCurso));
     }
 
     /// <summary>The settings of the process this Despliegue belongs to, as a code → value map. Plain text and
@@ -274,13 +288,15 @@ internal static class RpaWorkerEndpoints
         if (!despliegue.Encendido) return ProblemResults.Conflict(http, "El despliegue está apagado.");
 
         var config = opciones.Value;
-        var ahora = DateTimeOffset.UtcNow;
         var instanciaId = LeerInstancia(http);
 
         // One decision at a time for the whole platform: a service's global cap spans machines, and nothing narrower
         // than a platform-wide lock keeps two machines from both taking its last slot. A decision takes milliseconds.
         await using var transaccion = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock({CerrojoDeDespacho})", ct);
+
+        // Read once the lock is held: a request that queued behind others must not judge time limits by when it arrived.
+        var ahora = DateTimeOffset.UtcNow;
 
         // This copy is there, and free unless it already holds a step: written down so the other robots of the machine know
         // it exists. It lives in the same transaction, so it is only kept if the decision is.

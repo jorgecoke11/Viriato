@@ -97,6 +97,7 @@ public sealed class RpaRobotTests
         "--Viriato:BaseUrl=http://viriato.test",
         "--Viriato:ApiKey=clave",
         "--Worker:IntervaloPolling=00:00:00.001",
+        "--Worker:IntervaloPollingMaximo=00:00:00.001",
         "--Worker:EsperaTrasError=00:00:00.001",
     ];
 
