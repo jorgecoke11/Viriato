@@ -1,0 +1,22 @@
+# El lanzador dentro de la red de Docker de Viriato (Viriato en este mismo PC, ya arrancado). Dos cosas:
+#  - Los robots llegan a la API por dentro (http://api:8080), sin salir a Internet ni depender del túnel.
+#  - El Caddy de Viriato llega a la pantalla del robot con navegador por el nombre "extractor" (el mismo que usaba el contenedor suelto),
+#    así que /vista/ sigue funcionando sin cambiar nada en Viriato. Solo la primera copia con pantalla (puerto 6080) se ve desde fuera.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.red-viriato.yml up -d --build
+#
+# y en .env:  VISTA_URL_PUBLICA=https://<tu dominio>/vista/vnc.html?path=vista/websockify
+# Si tu Viriato es anterior al nombre fijo de red, su red se llama "<proyecto>_default": ponlo en VIRIATO_RED.
+services:
+  lanzador:
+    environment:
+      VIRIATO_URL: http://api:8080
+    networks:
+      default:
+      viriato:
+        aliases: [extractor, lanzador]
+
+networks:
+  viriato:
+    name: ${VIRIATO_RED:-viriato}
+    external: true
