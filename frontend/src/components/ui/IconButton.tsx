@@ -24,7 +24,7 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(({ label, variant
     type="button"
     aria-label={label}
     title={label}
-    className={`relative inline-flex shrink-0 items-center justify-center rounded-lg active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 ${sizes[size]} ${variants[variant]} ${className}`}
+    className={`relative inline-flex shrink-0 items-center justify-center rounded-lg select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${sizes[size]} ${variants[variant]} ${className}`}
     {...props}
   >
     {children}

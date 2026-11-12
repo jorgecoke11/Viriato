@@ -64,7 +64,7 @@ function tiempoDeLaEjecucion(ejecucion: EjecucionResumenDto): { valor: string; n
 function Dato({ etiqueta, valor, nota }: { etiqueta: string; valor: string; nota?: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">{etiqueta}</dt>
+      <dt className="text-[11px] font-medium text-gray-500">{etiqueta}</dt>
       <dd className="num mt-0.5 text-sm font-semibold text-gray-900">{valor}</dd>
       {nota && <dd className="num text-[11px] text-gray-500">{nota}</dd>}
     </div>
@@ -280,7 +280,7 @@ function EjecucionPasos({
     <div className="flex flex-col gap-5">
       {progreso.length > 0 && (
         <section aria-label="Dónde estaba el caso en su proceso" className="rounded-xl border border-gray-200 bg-surface px-4 py-4">
-          <h4 className="mb-3 flex items-baseline gap-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">
+          <h4 className="mb-3 flex items-baseline gap-2 text-xs font-semibold text-gray-500">
             Proceso
             <span className="num font-mono font-medium normal-case">
               {pasosResueltos(progreso)} de {progreso.length} resueltos

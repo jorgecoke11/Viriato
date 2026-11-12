@@ -62,7 +62,7 @@ export function ContenidoDeEvidencia({ raw }: { raw: string }) {
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {hechos.map((hecho) => (
             <div key={hecho.clave} className="min-w-0 rounded-lg bg-gray-50 px-3 py-2">
-              <dt className="truncate text-[11px] font-medium tracking-wide text-gray-500 uppercase" title={hecho.etiqueta}>
+              <dt className="truncate text-[11px] font-medium text-gray-500" title={hecho.etiqueta}>
                 {hecho.etiqueta}
               </dt>
               <dd className="num mt-0.5 truncate text-sm font-semibold text-gray-900" title={textoDeValor(hecho.valor)}>

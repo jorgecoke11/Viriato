@@ -41,7 +41,7 @@ export function TarjetasDeOpciones({
             role="radio"
             aria-checked={elegida}
             onClick={() => alCambiar(opcion.id)}
-            className={`relative flex flex-col gap-1.5 rounded-xl border p-4 text-left shadow-card transition-colors ${
+            className={`relative flex flex-col gap-1.5 rounded-xl border p-4 text-left shadow-card select-none transition-[color,background-color,border-color,box-shadow,scale] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 active:scale-[0.99] ${
               elegida ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 bg-surface hover:border-indigo-300 hover:bg-gray-50'
             }`}
           >

@@ -114,6 +114,24 @@ Notas para cuando se haga:
 - **Fuera de alcance:** comprar. El robot solo avisa; la compra la hace el usuario.
 - Tests: lectores de precio con HTML guardado de cada tienda (sin red), comparación con el límite, no repetir avisos, y una tienda caída no rompe el caso.
 
+### 39. Robots que se crean según la cola (autoescalado) — MUY LARGO PLAZO, NO EMPEZAR SIN PREGUNTAR
+**Antes de empezarla, preguntar al usuario.** No se coge en el trabajo autónomo aunque sea la primera que quede. Apuntada el 23/10.
+Idea: no tener muchos contenedores de robot encendidos sin trabajo; que se creen cuando hay cola y desaparezcan cuando no. Encaja con
+el modelo actual (el robot pide trabajo, la capacidad son las copias conectadas) y los robots pueden estar en cualquier servidor (solo
+necesitan la URL de Viriato y su clave).
+Opción preferida en la conversación (decidir con el usuario):
+- **Escalador según la cola + apagado por inactividad.** Un proceso pequeño en cada servidor de robots pregunta a Viriato cuántos casos
+  esperan para su despliegue y arranca contenedores hasta un **máximo por servidor**; cada robot se apaga solo tras X minutos sin
+  trabajo (nunca se le mata a mitad de caso). Con cola vacía puede quedarse en cero; el primer caso tras un rato parado paga el arranque.
+- Lo que haría falta: en Viriato, un endpoint con la clave del robot para «cuántos esperan» (la vista de la cola ya lo calcula); en el
+  SDK, una opción tipo `SalirSiOciosoMinutos`; el escalador vive en el repo de los robots, no en Viriato.
+Alternativas comentadas: un contenedor por caso (Edge limpio cada vez, pero paga el arranque en cada caso); Kubernetes + KEDA
+(desproporcionado para uno o dos PCs).
+Ojo: el límite real puede ser el portal (¿Tradeplace admite varias sesiones del mismo usuario?), el tope por servidor (Edge come CPU),
+el escalador necesita el socket de Docker (permiso potente) y un contenedor efímero que se cae deja su caso hasta el tiempo máximo.
+Relacionado (también para cuando haga falta, no ahora): medir la espera del cerrojo de despacho y, si los números lo piden, cambiar el
+cerrojo global por `FOR UPDATE SKIP LOCKED` + cerrojos por máquina/servicio (ver `docs/despacho-por-instancias.md`).
+
 ## Hecho
 
 - Lanzador de robots bajo demanda (tarea 39, 11/11): **un contenedor para todos los robots de la máquina**; cada robot es un proceso que solo existe mientras tiene trabajo.

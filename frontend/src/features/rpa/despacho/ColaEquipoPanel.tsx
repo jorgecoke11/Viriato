@@ -144,7 +144,7 @@ export function ColaEquipoPanel({ equipoId, activo }: { equipoId: string; activo
       </div>
 
       <section className="flex flex-col gap-1.5">
-        <h3 className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-gray-500 uppercase">
+        <h3 className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
           <Bot size={13} aria-hidden="true" /> Robots y sus copias
         </h3>
         {robots.length === 0 ? (
@@ -159,7 +159,7 @@ export function ColaEquipoPanel({ equipoId, activo }: { equipoId: string; activo
       </section>
 
       <section className="flex flex-col gap-1.5">
-        <h3 className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-gray-500 uppercase">
+        <h3 className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
           <Activity size={13} aria-hidden="true" /> En ejecución
         </h3>
         {enEjecucion.length === 0 ? (
@@ -184,7 +184,7 @@ export function ColaEquipoPanel({ equipoId, activo }: { equipoId: string; activo
       </section>
 
       <section className="flex flex-col gap-1.5">
-        <h3 className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-gray-500 uppercase">
+        <h3 className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
           <Hourglass size={13} aria-hidden="true" /> Esperando, en este orden
         </h3>
         {pendientes.length === 0 ? (

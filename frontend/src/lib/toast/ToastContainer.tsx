@@ -33,7 +33,7 @@ export function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismi
               <span className="min-w-0 flex-1 break-words">{toast.message}</span>
               <button
                 type="button"
-                className="-m-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-current opacity-60 hover:opacity-100"
+                className="-m-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-current opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-current"
                 onClick={() => onDismiss(toast.id)}
                 aria-label="Cerrar"
               >

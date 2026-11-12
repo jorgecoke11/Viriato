@@ -14,7 +14,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 const base =
   'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium select-none ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ' +
-  'active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100'
+  'active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100'
 
 const variants = {
   // brightness rather than a second shade: the same rule reads right on the light and the dark theme.

@@ -115,7 +115,7 @@ export function OrdenServicios({ orden, sinPosicion, onChange, disabled = false 
 
       {sinPosicion.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Sin posición — van después</p>
+          <p className="text-xs font-medium text-gray-500">Sin posición — van después</p>
           <ul className="flex flex-wrap gap-1.5">
             {sinPosicion.map((servicio) => (
               <li key={servicio.id}>

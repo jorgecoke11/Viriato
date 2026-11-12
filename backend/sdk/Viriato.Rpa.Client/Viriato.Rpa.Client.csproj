@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Viriato.Rpa.Client.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Viariato.ApiContracts\Viariato.ApiContracts.csproj" />
   </ItemGroup>
 

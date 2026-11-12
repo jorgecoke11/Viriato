@@ -33,5 +33,12 @@ internal sealed class RpaWorkerService(
             estado.CodigoSalida = 1;
             lifetime.StopApplication();
         }
+        catch (RobotBloqueadoException ex)
+        {
+            // The handler is still holding on to a cancelled case: only a fresh process gets this robot working again.
+            logger.LogCritical("{Motivo}", ex.Message);
+            estado.CodigoSalida = 1;
+            lifetime.StopApplication();
+        }
     }
 }
