@@ -28,12 +28,21 @@ public sealed class RpaWorkerOptions
     /// <summary>While a step runs, how often the Despliegue's settings (<see cref="IAjusteDelDespliegue"/>) are read again, so a change
     /// made in Viriato — the live view switched off on a slow robot — does not wait for the step to end. Only with settings registered.</summary>
     public TimeSpan IntervaloAjustesDuranteUnPaso { get; set; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Stop — the process ends, with exit code 0 — once the robot has gone this long without being handed a step (empty queue,
+    /// not its turn, or its Despliegue switched off). For a robot that something starts on demand (Viriato's launcher) instead of
+    /// leaving it running: it works until its queue is empty and gets out of the way. Null, the default: never, the robot waits
+    /// for work for as long as it runs.
+    /// </summary>
+    public TimeSpan? SalirSinTrabajo { get; set; }
 }
 
 /// <summary>
 /// The reusable robot loop: while the Despliegue is switched on, keep claiming steps off its queue and
 /// hand each to <c>handler</c>; whatever the handler returns (or throws) is reported back. Runs until
-/// the token is cancelled, then returns normally. A step interrupted by that cancellation is reported
+/// the token is cancelled — or, with <see cref="RpaWorkerOptions.SalirSinTrabajo"/>, until it has been idle that long — then
+/// returns normally. A step interrupted by that cancellation is reported
 /// as failed so it can be reprocessed — a claimed step is never handed out again on its own.
 /// </summary>
 public sealed class RpaWorker
@@ -58,6 +67,16 @@ public sealed class RpaWorker
     {
         ArgumentNullException.ThrowIfNull(handler);
 
+        var sinTrabajoDesde = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        // True when the robot was told to leave once idle and has been idle that long.
+        bool DebeSalir()
+        {
+            if (_options.SalirSinTrabajo is not { } limite || System.Diagnostics.Stopwatch.GetElapsedTime(sinTrabajoDesde) < limite) return false;
+            _logger.LogInformation("Sin trabajo desde hace {Tiempo}: el robot termina (Worker:SalirSinTrabajo).", limite);
+            return true;
+        }
+
         while (!ct.IsCancellationRequested)
         {
             try
@@ -67,6 +86,7 @@ public sealed class RpaWorker
                 await AplicarAjustesAsync(estado, ct).ConfigureAwait(false);
                 if (!estado.Encendido)
                 {
+                    if (DebeSalir()) return;
                     await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
                     continue;
                 }
@@ -74,11 +94,13 @@ public sealed class RpaWorker
                 var ejecucion = await _client.ObtenerSiguienteEjecucionAsync(ct).ConfigureAwait(false);
                 if (ejecucion is null)
                 {
+                    if (DebeSalir()) return;
                     await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
                     continue;
                 }
 
                 await ProcesarAsync(ejecucion, handler, ct).ConfigureAwait(false);
+                sinTrabajoDesde = System.Diagnostics.Stopwatch.GetTimestamp();
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

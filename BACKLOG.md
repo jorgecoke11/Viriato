@@ -116,6 +116,25 @@ Notas para cuando se haga:
 
 ## Hecho
 
+- Lanzador de robots bajo demanda (tarea 39, 11/11): **un contenedor para todos los robots de la máquina**; cada robot es un proceso que solo existe mientras tiene trabajo.
+  Proyecto nuevo `backend/sdk/Viriato.Rpa.Lanzador` (catálogo `robots.json` que se relee solo, `Planificador` con las reglas, `LanzadorDeRobots` con la ronda y
+  `ArrancadorDeProcesos`: sesión, carpeta temporal y pantalla virtual propias por copia, tope de memoria, nunca la clave de otro robot). API: `GET /rpa/lanzador/trabajo` y
+  `PUT /rpa/lanzador/estado` (con la clave del robot + cabecera `X-Viriato-Lanzador`, que evita que el robot parezca conectado), estado en el despliegue (migración
+  `LanzadorDeRobots`). SDK **0.12.0**: `Worker:SalirSinTrabajo` (el robot vacía su cola y sale con 0); `ApiContracts` 1.7.0. Pantalla: *Equipos → Despacho* dice
+  «Sin trabajo: arrancará solo / En marcha / Esperando para arrancar / No arranca» con el motivo, y los pendientes ya no dicen «Robot sin conexión». Docker: imagen
+  `ligero` (~320 MB) y `navegador` (Edge + Xvfb + openbox + noVNC, ~3 GB, solo amd64) y `ops/lanzador/` (compose, `.env.example`, `robots.example.json`).
+  Doc: `docs/lanzador-de-robots.md`. Verificado: backend completo (687 tests: 51 del lanzador, 102 del SDK, 6 de integración nuevos), front (tsc, eslint, 311 tests),
+  y **en Docker en local** con un proceso «ZZ prueba lanzador» de dos robots de ejemplo: 15 casos completados, con tope de 1 el segundo robot esperó su hueco y se vio
+  en pantalla, cada robot se apagó solo a los 10 s; en la imagen `navegador` cada arranque tuvo su pantalla `:99` y Edge 157. Medido en el Mac: lanzador en reposo
+  26–31 MB y 0,05 % de CPU; del caso creado a cogido, 1,1–3,4 s.
+    - Decisión: el lanzador decide **cuándo hay un robot arrancado**, no qué caso hace cada uno (eso sigue en Viriato). No se movió el árbitro fuera de la API.
+    - Decisión: sin clave nueva de equipo; el lanzador usa la clave de cada robot (la necesita de todos modos para dársela) y por eso el estado se guarda por despliegue.
+    - Decisión: robots como procesos dentro del contenedor, no un contenedor por ejecución (habría que darle el control de Docker de la máquina).
+    - Decisión: con el lanzador en su tope manda el orden del catálogo; un robot no suelta su hueco hasta vaciar su cola (sin turnos entre robots).
+    - **Falta (necesita al usuario, ver «Bloqueado»):** publicar `Viriato.Rpa.Client` 0.12.0 y `Viariato.ApiContracts` 1.7.0, subir los robots de BSH a 0.12 y medir en el
+      servidor con el extractor de verdad (memoria frente a los contenedores actuales, y el arranque en frío con Edge). No probado con un robot real con navegador.
+    - Quedó en la base de desarrollo del Mac: proceso «ZZ prueba lanzador», equipo «ZZ lanzador», servicios «ZZ robot A/B» y sus 15 casos. El lanzador de prueba está parado.
+
 - Vista en directo y vídeo decididos por la plataforma (22/10): en Despliegues → «Pantalla del robot», vista Apagada/Baja/Media/Alta (los existentes, Baja) y vídeo
   «lo decide el robot»/grabar/no grabar. Viriato deja de enseñar la vista apagada y pone la calidad de noVNC en la dirección; el robot lo lee de `GET /rpa/despliegue`
   (`pantalla`). SDK 0.11.0: `IAjusteDelDespliegue` (primero de una familia, releído cada 15 s durante un paso), `AddVistaEnDirecto` arranca/para x11vnc + websockify
@@ -337,6 +356,11 @@ Notas para cuando se haga:
 - **Rótulo «Estado de negocio» (tarea 27):** quitado de dentro de cada tipo de caso en las tarjetas de proceso (interpretado así: era el único sitio donde aparecía dentro del tipo).
 
 ## Bloqueado / necesita al usuario
+
+- **Lanzador de robots (tarea 39) con los robots de BSH:** el código está y funciona con robots de ejemplo. Para usarlo con los de verdad hace falta tu token de GitHub
+  Packages: (1) publicar `Viriato.Rpa.Client` 0.12.0 y `Viariato.ApiContracts` 1.7.0; (2) en `bsh_p01_prices_extractor`, subir los dos robots a 0.12.0 (el creador sigue en
+  0.6.0) y publicarlos en la carpeta de robots del servidor; (3) en el servidor, parar sus contenedores sueltos y arrancar `ops/lanzador` con la imagen `navegador`.
+  Antes y después: `docker stats --no-stream`, para saber cuánto se ahorra. Pasos en `docs/lanzador-de-robots.md`.
 
 - **Formularios de creador (22/10):** al desplegar, la migración `FormulariosDeCreador` pasa los 14 esquemas de los tipos a formularios (probada sobre una copia de la
   base de desarrollo: 14 formularios, 11 creadores y 320 casos enlazados). Los robots que crean casos **por tipo** dejan de tener sus datos comprobados contra ese

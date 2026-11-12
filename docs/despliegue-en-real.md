@@ -74,6 +74,9 @@ En la plataforma: *RPA → Equipos, Servicios, Despliegues* (un despliegue por r
 Cada robot usa `Viriato:BaseUrl = <PUBLIC_URL>` y `Viriato:ApiKey = <su clave>`. Para más capacidad, **más copias** con la misma clave
 (ver [despachador-esquema.md](despachador-esquema.md)). Pon siempre un **tiempo máximo** en cada servicio.
 
+**Para no tener un contenedor encendido por robot** (cada uno con su navegador), está el lanzador: un solo contenedor que arranca
+cada robot solo mientras tiene trabajo. Ver [lanzador-de-robots.md](lanzador-de-robots.md).
+
 **Los robots de BSH ya vienen en contenedores** (repositorio `bsh_p01_prices_extractor`: `docker compose up -d --build`, con su propio
 `.env` de claves). En el mismo PC, `VIRIATO_URL=http://host.docker.internal:8080` si usas el compose de desarrollo, o la dirección
 pública de arriba. El extractor lleva Microsoft Edge y una pantalla virtual; el creador es solo .NET. Para construirlos hace falta el token de

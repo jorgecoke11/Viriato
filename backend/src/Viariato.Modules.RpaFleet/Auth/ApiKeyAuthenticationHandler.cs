@@ -32,7 +32,9 @@ public sealed class ApiKeyAuthenticationHandler(
             return AuthenticateResult.NoResult();
         }
 
-        var identity = await validator.ValidateAsync(rawKey, Context.RequestAborted);
+        // The launcher asks with the robot's key but is not the robot: its calls must not make the robot look connected.
+        var esElLanzador = Request.Headers.ContainsKey(Viariato.ApiContracts.RpaHeaders.Lanzador);
+        var identity = await validator.ValidateAsync(rawKey, Context.RequestAborted, registrarUso: !esElLanzador);
         if (identity is null)
         {
             return AuthenticateResult.Fail("Clave de API inválida.");

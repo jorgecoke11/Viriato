@@ -410,6 +410,69 @@ public sealed class RpaWorkerTests
         Assert.DoesNotContain(client.Calls, c => c.StartsWith("completar"));
     }
 
+    private static (RpaWorker Worker, FakeRpaClient Client, CancellationTokenSource Cts) CreateQueSaleSinTrabajo(params EjecucionAsignadaDto[] queue)
+    {
+        // Nothing stops this worker from outside: if it comes back, it left by itself.
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var client = new FakeRpaClient();
+        foreach (var ejecucion in queue)
+        {
+            client.Claims.Enqueue(() => Task.FromResult<EjecucionAsignadaDto?>(ejecucion));
+        }
+
+        var options = FastOptions();
+        options.SalirSinTrabajo = TimeSpan.FromMilliseconds(40);
+        return (new RpaWorker(client, options), client, cts);
+    }
+
+    [Fact]
+    public async Task ToldToLeaveOnceIdle_TheWorkerEmptiesItsQueueAndThenReturnsByItself()
+    {
+        var (worker, client, cts) = CreateQueSaleSinTrabajo(NuevaEjecucion(), NuevaEjecucion());
+        var hechos = 0;
+
+        await worker.RunAsync((_, _) =>
+        {
+            hechos++;
+            return Task.FromResult(RpaStepResult.Completado());
+        }, cts.Token);
+
+        Assert.False(cts.IsCancellationRequested);
+        Assert.Equal(2, hechos);
+        Assert.Equal(2, client.Calls.Count(c => c.StartsWith("completar:")));
+    }
+
+    [Fact]
+    public async Task ToldToLeaveOnceIdle_TheIdleTimeCountsFromTheLastStep_NotFromTheStart()
+    {
+        var (worker, client, cts) = CreateQueSaleSinTrabajo(NuevaEjecucion());
+        var antesDeLaUltimaConsulta = 0;
+
+        await worker.RunAsync(async (_, _) =>
+        {
+            // Longer than the idle limit: a robot busy on a long step has not been idle.
+            await Task.Delay(120);
+            antesDeLaUltimaConsulta = client.Calls.Count(c => c == "claim");
+            return RpaStepResult.Completado();
+        }, cts.Token);
+
+        Assert.False(cts.IsCancellationRequested);
+        // After the step it asked again (and more than once) before giving up.
+        Assert.True(client.Calls.Count(c => c == "claim") > antesDeLaUltimaConsulta + 1);
+    }
+
+    [Fact]
+    public async Task ToldToLeaveOnceIdle_ASwitchedOffDespliegueAlsoCountsAsIdle()
+    {
+        var (worker, client, cts) = CreateQueSaleSinTrabajo(NuevaEjecucion());
+        for (var i = 0; i < 10_000; i++) client.Estados.Enqueue(() => Task.FromResult(Encendido(false)));
+
+        await worker.RunAsync((_, _) => Task.FromResult(RpaStepResult.Completado()), cts.Token);
+
+        Assert.False(cts.IsCancellationRequested);
+        Assert.DoesNotContain("claim", client.Calls);
+    }
+
     [Fact]
     public async Task AddViriatoRpaClient_RegistersAWorkerAndAClientThatCanBeResolved()
     {

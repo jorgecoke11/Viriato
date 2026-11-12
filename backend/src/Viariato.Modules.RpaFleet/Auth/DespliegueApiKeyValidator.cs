@@ -6,7 +6,7 @@ namespace Viariato.Modules.RpaFleet.Auth;
 
 public sealed class DespliegueApiKeyValidator(AppDbContext db) : IDespliegueApiKeyValidator
 {
-    public async Task<DespliegueIdentity?> ValidateAsync(string rawKey, CancellationToken ct)
+    public async Task<DespliegueIdentity?> ValidateAsync(string rawKey, CancellationToken ct, bool registrarUso = true)
     {
         var hash = ApiKeyGenerator.Hash(rawKey);
         var despliegue = await db.Set<Despliegue>().AsNoTracking().FirstOrDefaultAsync(d => d.ApiKeyHash == hash, ct);
@@ -15,9 +15,12 @@ public sealed class DespliegueApiKeyValidator(AppDbContext db) : IDespliegueApiK
             return null;
         }
 
-        await db.Set<Despliegue>()
-            .Where(d => d.Id == despliegue.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastUsedAt, DateTimeOffset.UtcNow), ct);
+        if (registrarUso)
+        {
+            await db.Set<Despliegue>()
+                .Where(d => d.Id == despliegue.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastUsedAt, DateTimeOffset.UtcNow), ct);
+        }
 
         return new DespliegueIdentity(despliegue.Id, despliegue.EquipoId, despliegue.ServicioId, despliegue.FlujoId, despliegue.Encendido);
     }

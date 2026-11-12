@@ -16,6 +16,7 @@ public static class CasosModuleEndpoints
         endpoints.MapEvidenciasEndpoints();
         endpoints.MapRevisionesEndpoints();
         endpoints.MapRpaWorkerEndpoints();
+        endpoints.MapLanzadorEndpoints();
         endpoints.MapDespachoColaEndpoints();
         endpoints.MapVistaEnDirectoEndpoints();
         endpoints.MapAlmacenRobotEndpoints();

@@ -22,3 +22,6 @@ ops/arranque/desplegado.json
 .idea/
 .DS_Store
 *.log
+
+## Lanzador de robots: el catálogo y los robots de cada PC
+ops/lanzador/robots/

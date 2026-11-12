@@ -270,6 +270,19 @@ export interface RobotDelEquipoDto {
   instancias: number
   /** Of those, the ones that hold nothing and could take a step. */
   libres: number
+  /** What the launcher that starts this robot on demand last said; null when nothing launches it (it is just left running). */
+  lanzador?: LanzadorDelRobotDto | null
+}
+
+/** A launcher's word on one robot: it starts it only while it has work. */
+export interface LanzadorDelRobotDto {
+  /** SinTrabajo, EnMarcha, EnEspera, Apagado or Fallo. */
+  estado: string
+  copias: number
+  maxCopias: number
+  /** Why: what it waits for, or what failed. */
+  detalle: string | null
+  vistoEn: string
 }
 
 export interface ColaEquipoDto {
