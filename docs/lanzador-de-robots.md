@@ -144,7 +144,10 @@ mkdir robots ; Copy-Item robots.example.json robots\robots.json
 2. **Elige la imagen** en `.env`: `LANZADOR_IMAGEN=ligero` (solo .NET, ~320 MB) o `navegador` (además Edge, Xvfb, openbox,
    x11vnc/noVNC y ffmpeg, ~3 GB en disco; solo `linux/amd64`). Con algún robot de `"pantalla": true` hace falta `navegador`.
 3. **Pon las claves** en `.env` (una variable por robot, la de su `claveEnv`) y `VIRIATO_URL`.
-4. `docker compose up -d --build` y `docker compose logs -f`.
+4. `docker compose up -d --build` y `docker compose logs -f`. **En el servidor de Viriato**, súmale la red de Viriato:
+   `docker compose -f docker-compose.yml -f docker-compose.red-viriato.yml up -d --build`. Así los robots llegan a la API por
+   dentro (`http://api:8080`) y la vista en directo pública (`/vista/`) sigue funcionando: el lanzador responde en esa red con el
+   nombre `extractor`, el que usaba el contenedor suelto. Pon `VISTA_URL_PUBLICA=https://<tu dominio>/vista/vnc.html?path=vista/websockify`.
 
 `LANZADOR_MEMORIA` y `LANZADOR_CPUS` son el tope **del contenedor entero**: el lanzador más los robots que tenga arrancados a la
 vez. Con `maxConPantalla: 1`, el tope real de memoria es un navegador, no uno por robot.

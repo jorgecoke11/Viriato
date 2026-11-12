@@ -1,4 +1,4 @@
-﻿# Qué pone en marcha arrancar.ps1 al iniciar sesión, y en qué orden (Viriato primero: el extractor se une a su red para la vista).
+# Qué pone en marcha arrancar.ps1 al iniciar sesión, y en qué orden (Viriato primero: el extractor se une a su red para la vista).
 # Copia este archivo como pilas.psd1 (no se sube a git: las carpetas son de cada PC) y ajústalo. Para que algo deje de arrancar solo,
 # quítalo de aquí.
 #
@@ -20,9 +20,11 @@
             Perfiles = @('tunnel')
         }
         @{
-            Nombre   = 'Robots BSH (P01), con la vista del extractor en /vista/'
-            Carpeta  = '..\bsh_p01_prices_extractor'
-            Archivos = @('docker-compose.yml', 'docker-compose.vista-publica.yml')
+            # Todos los robots en un contenedor, cada uno solo mientras tiene trabajo (docs/lanzador-de-robots.md). Sustituye a los
+            # contenedores sueltos de cada robot: no pongas los dos.
+            Nombre   = 'Lanzador de robots, con la vista del extractor en /vista/'
+            Carpeta  = 'ops\lanzador'
+            Archivos = @('docker-compose.yml', 'docker-compose.red-viriato.yml')
         }
         @{
             Nombre   = 'IA local del trading (Ollama)'
