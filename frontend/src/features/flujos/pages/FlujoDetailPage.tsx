@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Tabs } from '../../../components/ui/Tabs'
 import { ApiError } from '../../../lib/apiClient'
-import { duration, ease } from '../../../lib/motion/tokens'
+import { tabPanelVariants } from '../../../lib/motion/variants'
 import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../api'
 import { FlujoAlmacenPanel } from '../FlujoAlmacenPanel'
@@ -69,9 +69,10 @@ export function FlujoDetailPage() {
           {tab === 'versiones' && (
             <motion.div
               key="versiones"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <div className="mt-4">
                 <FlujoVersionesPanel flujoId={flujo.id} />
@@ -82,9 +83,10 @@ export function FlujoDetailPage() {
           {tab === 'estados' && (
             <motion.div
               key="estados"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Card className="mt-4">
                 <FlujoEstadosPanel flujoId={flujo.id} />
@@ -95,9 +97,10 @@ export function FlujoDetailPage() {
           {tab === 'tipos' && (
             <motion.div
               key="tipos"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Card className="mt-4">
                 <FlujoTiposCasoPanel flujoId={flujo.id} />
@@ -108,9 +111,10 @@ export function FlujoDetailPage() {
           {tab === 'formularios' && (
             <motion.div
               key="formularios"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <div className="mt-4">
                 <FlujoFormulariosPanel flujoId={flujo.id} />
@@ -121,9 +125,10 @@ export function FlujoDetailPage() {
           {tab === 'creadores' && (
             <motion.div
               key="creadores"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Card className="mt-4">
                 <FlujoCreadoresPanel flujoId={flujo.id} versionActivaId={flujo.versionActivaId} />
@@ -134,9 +139,10 @@ export function FlujoDetailPage() {
           {tab === 'lanzadores' && (
             <motion.div
               key="lanzadores"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Card className="mt-4">
                 <FlujoLanzadoresPanel flujoId={flujo.id} />
@@ -147,9 +153,10 @@ export function FlujoDetailPage() {
           {tab === 'notificaciones' && (
             <motion.div
               key="notificaciones"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Card className="mt-4">
                 <FlujoNotificacionesPanel flujoId={flujo.id} />
@@ -160,9 +167,10 @@ export function FlujoDetailPage() {
           {tab === 'reprocesamientos' && (
             <motion.div
               key="reprocesamientos"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Card className="mt-4">
                 <FlujoReprocesamientosPanel flujoId={flujo.id} />
@@ -173,9 +181,10 @@ export function FlujoDetailPage() {
           {tab === 'parametros' && (
             <motion.div
               key="parametros"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Card className="mt-4">
                 <FlujoParametrosPanel flujoId={flujo.id} />
@@ -186,9 +195,10 @@ export function FlujoDetailPage() {
           {tab === 'almacen' && (
             <motion.div
               key="almacen"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-              exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <div className="mt-4">
                 <FlujoAlmacenPanel flujoId={flujo.id} />

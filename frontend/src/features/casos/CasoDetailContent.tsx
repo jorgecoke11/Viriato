@@ -9,7 +9,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { Tabs } from '../../components/ui/Tabs'
 import { ApiError } from '../../lib/apiClient'
 import { usePulso } from '../../lib/usePulso'
-import { duration, ease } from '../../lib/motion/tokens'
+import { tabPanelVariants } from '../../lib/motion/variants'
 import { useToast } from '../../lib/toast/useToast'
 import { useAuth } from '../auth/useAuth'
 import * as casosApi from './api'
@@ -60,7 +60,7 @@ function Aviso({ tono, icono: Icono, titulo, children, accion }: { tono: TonoDeA
 function Dato({ etiqueta, children, debajo, titulo }: { etiqueta: string; children: ReactNode; debajo?: string; titulo?: string }) {
   return (
     <div className="bg-surface px-5 py-3.5" title={titulo}>
-      <dt className="text-xs font-medium tracking-wide text-gray-500 uppercase">{etiqueta}</dt>
+      <dt className="text-xs font-medium text-gray-500">{etiqueta}</dt>
       <dd className="num mt-1 text-sm font-semibold text-gray-900">{children}</dd>
       {debajo && <dd className="num mt-0.5 text-xs text-gray-500">{debajo}</dd>}
     </div>
@@ -207,9 +207,10 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
     <motion.div
       key={clave}
       className="mt-5"
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0, transition: { duration: duration.fast, ease: ease.out } }}
-      exit={{ opacity: 0, transition: { duration: duration.fast, ease: ease.in } }}
+      variants={tabPanelVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
     >
       {enCaja ? <Card>{contenido}</Card> : contenido}
     </motion.div>

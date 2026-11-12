@@ -3,8 +3,12 @@ namespace Viariato.ApiContracts;
 /// <summary>What GET /api/v1/rpa/despliegue reports back — "am I switched on?" plus enough context
 /// for a robot's own logs, and how the platform wants the robot's screen handled.</summary>
 /// <param name="Pantalla">Null only from a Viriato older than this field: the robot then keeps its own settings.</param>
+/// <param name="PasoEnCurso">Only when the robot asked about the step it is running (<c>?paso=</c>): false once that step was settled
+/// without it — a person cancelled it or its Caso, or the platform cut it for its maximum time — so the robot should drop the work.
+/// Null when it did not ask, or from a Viriato older than this field.</param>
 public sealed record DespliegueEstadoDto(
-    bool Encendido, string EquipoNombre, string ServicioNombre, string FlujoNombre, PantallaDelRobotDto? Pantalla = null);
+    bool Encendido, string EquipoNombre, string ServicioNombre, string FlujoNombre, PantallaDelRobotDto? Pantalla = null,
+    bool? PasoEnCurso = null);
 
 /// <summary>What the platform decided about the robot's screen for this Despliegue.</summary>
 /// <param name="Vista">The live view, or null when it is switched off: the robot should not serve it nor report its address.</param>

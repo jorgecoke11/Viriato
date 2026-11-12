@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { duration, ease } from '../../lib/motion/tokens'
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Button } from './Button'
@@ -31,7 +32,7 @@ export function BulkActionBar({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.15 }}
+          transition={{ duration: duration.fast, ease: ease.out }}
         >
           <p className="text-sm text-gray-700" aria-live="polite">
             <span className="num font-semibold text-gray-900">{cantidad}</span> {cantidad === 1 ? singular : plural}{' '}

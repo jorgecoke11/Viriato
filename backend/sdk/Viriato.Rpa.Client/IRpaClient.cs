@@ -84,6 +84,15 @@ public interface IRpaClient
     Task<CasoCreadoDto> CrearCasoAsync(CrearCasoRobotRequest request, CancellationToken ct = default);
 
     /// <summary>
+    /// <see cref="ObtenerEstadoAsync"/> for a robot that is running <paramref name="ejecucionPasoId"/>: the same answer, plus
+    /// <see cref="DespliegueEstadoDto.PasoEnCurso"/> — false once the step was settled without the robot (a person cancelled it or its
+    /// Caso, or the platform cut it for its maximum time), and the work should be dropped. One request for both, which is what
+    /// <see cref="RpaWorker"/> sends while a step runs. (A default body without the step, so test doubles written before 0.12 keep
+    /// compiling.)
+    /// </summary>
+    Task<DespliegueEstadoDto> ObtenerEstadoDuranteElPasoAsync(Guid ejecucionPasoId, CancellationToken ct = default) => ObtenerEstadoAsync(ct);
+
+    /// <summary>
     /// Attaches evidence (a screenshot, video, generated file or extracted data) to the step.
     /// <paramref name="archivo"/> is read to the end and then closed by this call.
     /// </summary>

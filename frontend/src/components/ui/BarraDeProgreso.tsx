@@ -22,7 +22,12 @@ export function BarraDeProgreso({
         aria-valuenow={valor}
         className="h-1.5 min-w-12 flex-1 overflow-hidden rounded-full bg-gray-200"
       >
-        <span className="block h-full rounded-full bg-indigo-500 transition-[width] duration-500" style={{ width: `${valor}%` }} />
+        {/* The bar is always full width and slides in from the left: transform, unlike width, does not lay the page out again
+            on every frame, and its rounded end keeps its shape. */}
+        <span
+          className="block h-full rounded-full bg-indigo-500 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+          style={{ transform: `translateX(${valor - 100}%)` }}
+        />
       </span>
       {mostrarCifra && <span className="num w-9 shrink-0 text-right text-xs font-medium text-gray-700">{valor} %</span>}
     </span>

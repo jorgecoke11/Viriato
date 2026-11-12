@@ -35,7 +35,7 @@ export function StatCard({
   // (and would restart the counter below every time the page refreshes its data).
   const envolver = (children: ReactNode) =>
     to ? (
-      <Link to={to} className={`${caja} transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-indigo-500`}>
+      <Link to={to} className={`${caja} transition-[color,background-color,border-color,scale] duration-150 ease-out hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-indigo-500 active:scale-[0.99]`}>
         {children}
       </Link>
     ) : (
@@ -47,7 +47,7 @@ export function StatCard({
       {/* Hidden on a phone: two cards per row leave the text no room otherwise. */}
       {icon && <span className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg sm:flex ${tones[tone]}`}>{icon}</span>}
       <div className="min-w-0">
-        <p className="truncate text-xs font-medium tracking-wide text-gray-500 uppercase">{label}</p>
+        <p className="truncate text-xs font-medium text-gray-500">{label}</p>
         <p className="num text-2xl leading-8 font-semibold text-gray-900">{typeof value === 'number' ? <ContadorAnimado valor={value} /> : value}</p>
         {hint && <p className="truncate text-xs text-gray-500">{hint}</p>}
       </div>

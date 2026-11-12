@@ -79,10 +79,10 @@ export function TrabajoDetailPage() {
           <table className="mt-2 w-full min-w-[560px] text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50/70">
               <tr>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Sujeto</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Estado</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Resumen</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase" />
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Sujeto</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Estado</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Resumen</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500" />
               </tr>
             </thead>
             <tbody>

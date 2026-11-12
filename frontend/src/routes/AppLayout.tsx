@@ -36,7 +36,7 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen bg-page">
       <motion.aside
-        className="hidden shrink-0 overflow-hidden border-r border-side-border bg-side lg:block"
+        className="hidden shrink-0 overflow-hidden border-r border-side-border bg-side backdrop-blur-xl backdrop-saturate-150 lg:block"
         // initial={false}: it mounts at its real width instead of growing into it (a visible jump after signing in).
         initial={false}
         animate={{ width: collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH }}
@@ -59,7 +59,7 @@ export function AppLayout() {
               onClick={() => setMobileNavOpen(false)}
             />
             <motion.div
-              className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-side-border bg-side shadow-pop"
+              className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-side-border bg-side shadow-pop backdrop-blur-2xl backdrop-saturate-150"
               variants={slideInRightVariants}
               initial="initial"
               animate="animate"
@@ -85,7 +85,7 @@ export function AppLayout() {
       </AnimatePresence>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-gray-200 bg-surface/90 px-3 py-2 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-gray-200/70 bg-surface/75 px-3 py-2 backdrop-blur-xl backdrop-saturate-150 lg:hidden">
           <button
             type="button"
             aria-label="Abrir menú"

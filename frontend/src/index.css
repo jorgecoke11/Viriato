@@ -15,22 +15,39 @@
    with other values (the `.dark` block below), not a second set of classes.
 
    Semantics worth knowing:
-     gray    warm neutral (paper and graphite, not blue-grey slate). 50-100 fills, 200-300 borders, 400 icons/placeholders, 500-600 secondary text,
+     The palette follows Apple's system colours (iOS / macOS), light and dark: neutral greys, one blue accent, and the
+     system green / orange / red / purple for states. Few colours, each with a meaning.
+     gray    neutral. 50-100 fills, 200-300 separators, 400 icons/placeholders, 500-600 secondary text,
              800-900 primary text. Inverts in the dark theme.
-     indigo  the brand / primary action. The name stayed, the colour is a petrol blue.
+     indigo  the brand / primary action. The name stayed, the colour is Apple's blue.
      green / amber / red / purple / blue  status — done, waiting, failed, needs a person, running. A status is
              never colour alone: badges carry a dot or an icon and a label.
      page / surface / raised  the canvas, the cards on it, and what floats above both (menus, dialogs).
-     side-*  the navigation rail (warm paper in the light theme, graphite in the dark one).
+     side-*  the navigation rail: a translucent material over the page.
 ------------------------------------------------------------------------------------------------ */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Esquinas más sobrias: una herramienta de trabajo, no una tarjeta de aplicación de moda. */
-  --radius-lg: 0.4rem;
-  --radius-xl: 0.5rem;
-  --radius-2xl: 0.625rem;
+  /* Esquinas de macOS: 8 px en controles (botones, campos), 12 px en superficies (tarjetas, paneles), 16 px en lo grande. */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  /* Espaciado entre letras según el tamaño, como hace Apple con San Francisco: lo pequeño un poco más abierto para que se lea,
+     lo grande más cerrado (si no, las letras se separan a medida que crecen). Y el interlineado, más apretado cuanto más grande. */
+  --text-xs--letter-spacing: 0.01em;
+  --text-sm--letter-spacing: -0.006em;
+  --text-base--letter-spacing: -0.011em;
+  --text-lg--letter-spacing: -0.014em;
+  --text-xl--letter-spacing: -0.017em;
+  --text-xl--line-height: 1.35;
+  --text-2xl--letter-spacing: -0.021em;
+  --text-2xl--line-height: 1.25;
+  --text-3xl--letter-spacing: -0.024em;
+  --text-3xl--line-height: 1.15;
+  --text-4xl--letter-spacing: -0.026em;
+  --text-4xl--line-height: 1.1;
 
   /* La fuente del sistema de Apple (San Francisco) donde existe; en Windows y Android, Inter, la más parecida, que va incluida. */
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
@@ -134,192 +151,193 @@
 }
 
 :root {
-  --c-gray-50: #faf9f6;
-  --c-gray-100: #f3f1ec;
-  --c-gray-200: #e6e2da;
-  --c-gray-300: #cfc9be;
-  --c-gray-400: #85807a;
-  --c-gray-500: #605c55;
-  --c-gray-600: #4b4842;
-  --c-gray-700: #38352f;
-  --c-gray-800: #282621;
-  --c-gray-900: #1b1a17;
-  --c-gray-950: #0f0e0c;
-  --c-indigo-50: #eef6f8;
-  --c-indigo-100: #d6eaef;
-  --c-indigo-200: #aed3dd;
-  --c-indigo-300: #7db7c7;
-  --c-indigo-400: #4a97ae;
-  --c-indigo-500: #2d7d95;
-  --c-indigo-600: #1f6a82;
-  --c-indigo-700: #1a566a;
-  --c-indigo-800: #174557;
-  --c-indigo-900: #153a49;
-  --c-indigo-950: #0b232d;
-  --c-blue-50: #eff6ff;
-  --c-blue-100: #dbeafe;
-  --c-blue-200: #bfdbfe;
-  --c-blue-300: #93c5fd;
-  --c-blue-400: #60a5fa;
-  --c-blue-500: #3b82f6;
-  --c-blue-600: #2563eb;
-  --c-blue-700: #1d4ed8;
-  --c-blue-800: #1e40af;
-  --c-blue-900: #1e3a8a;
-  --c-blue-950: #172554;
-  --c-red-50: #fef2f2;
-  --c-red-100: #fee2e2;
-  --c-red-200: #fecaca;
-  --c-red-300: #fca5a5;
-  --c-red-400: #f87171;
-  --c-red-500: #ef4444;
-  --c-red-600: #dc2626;
-  --c-red-700: #b91c1c;
-  --c-red-800: #991b1b;
-  --c-red-900: #7f1d1d;
-  --c-red-950: #450a0a;
-  --c-green-50: #f0fdf4;
-  --c-green-100: #dcfce7;
-  --c-green-200: #bbf7d0;
-  --c-green-300: #86efac;
-  --c-green-400: #4ade80;
-  --c-green-500: #22c55e;
-  --c-green-600: #16a34a;
-  --c-green-700: #15803d;
-  --c-green-800: #166534;
-  --c-green-900: #14532d;
-  --c-green-950: #052e16;
-  --c-amber-50: #fffbeb;
-  --c-amber-100: #fef3c7;
-  --c-amber-200: #fde68a;
-  --c-amber-300: #fcd34d;
-  --c-amber-400: #fbbf24;
-  --c-amber-500: #f59e0b;
-  --c-amber-600: #d97706;
-  --c-amber-700: #b45309;
-  --c-amber-800: #92400e;
-  --c-amber-900: #78350f;
-  --c-amber-950: #451a03;
-  --c-purple-50: #f8f0f6;
-  --c-purple-100: #f0dce9;
-  --c-purple-200: #e2bcd4;
-  --c-purple-300: #cf92b6;
-  --c-purple-400: #bb6b98;
-  --c-purple-500: #a14d7e;
-  --c-purple-600: #873d68;
-  --c-purple-700: #6e3254;
-  --c-purple-800: #582a45;
-  --c-purple-900: #482439;
-  --c-purple-950: #2c1423;
-  --c-page: #f5f3ee;
+  --c-gray-50: #f9f9fb;
+  --c-gray-100: #f2f2f5;
+  --c-gray-200: #e5e5ea;
+  --c-gray-300: #d1d1d6;
+  --c-gray-400: #8e8e93;
+  --c-gray-500: #6e6e73;
+  --c-gray-600: #515154;
+  --c-gray-700: #3a3a3c;
+  --c-gray-800: #2c2c2e;
+  --c-gray-900: #1d1d1f;
+  --c-gray-950: #0b0b0c;
+  --c-indigo-50: #edf5fd;
+  --c-indigo-100: #dbebfb;
+  --c-indigo-200: #b8d7f7;
+  --c-indigo-300: #85bbf2;
+  --c-indigo-400: #3890e9;
+  --c-indigo-500: #0071e3;
+  --c-indigo-600: #0063c8;
+  --c-indigo-700: #0051a3;
+  --c-indigo-800: #004284;
+  --c-indigo-900: #003468;
+  --c-indigo-950: #002449;
+  --c-blue-50: #edf6ff;
+  --c-blue-100: #dbecff;
+  --c-blue-200: #b8daff;
+  --c-blue-300: #85bfff;
+  --c-blue-400: #3897ff;
+  --c-blue-500: #007aff;
+  --c-blue-600: #006be0;
+  --c-blue-700: #0058b8;
+  --c-blue-800: #004794;
+  --c-blue-900: #003875;
+  --c-blue-950: #002752;
+  --c-red-50: #fff1f1;
+  --c-red-100: #ffe4e2;
+  --c-red-200: #ffc8c5;
+  --c-red-300: #ffa19c;
+  --c-red-400: #ff665e;
+  --c-red-500: #ff3b30;
+  --c-red-600: #e0342a;
+  --c-red-700: #b82a23;
+  --c-red-800: #94221c;
+  --c-red-900: #751b16;
+  --c-red-950: #52130f;
+  --c-green-50: #f1fbf3;
+  --c-green-100: #e3f7e8;
+  --c-green-200: #c6efd1;
+  --c-green-300: #9ee4af;
+  --c-green-400: #61d37e;
+  --c-green-500: #34c759;
+  --c-green-600: #2eaf4e;
+  --c-green-700: #258f40;
+  --c-green-800: #1e7334;
+  --c-green-900: #185c29;
+  --c-green-950: #11401c;
+  --c-amber-50: #fff8ed;
+  --c-amber-100: #fff0db;
+  --c-amber-200: #ffe1b8;
+  --c-amber-300: #ffcc85;
+  --c-amber-400: #ffac38;
+  --c-amber-500: #ff9500;
+  --c-amber-600: #e08300;
+  --c-amber-700: #b86b00;
+  --c-amber-800: #945600;
+  --c-amber-900: #754500;
+  --c-amber-950: #523000;
+  --c-purple-50: #f9f3fd;
+  --c-purple-100: #f4e7fa;
+  --c-purple-200: #e9cff6;
+  --c-purple-300: #d9acef;
+  --c-purple-400: #c178e5;
+  --c-purple-500: #af52de;
+  --c-purple-600: #9a48c3;
+  --c-purple-700: #7e3ba0;
+  --c-purple-800: #663081;
+  --c-purple-900: #502666;
+  --c-purple-950: #381a47;
+  --c-page: #f5f5f7;
   --c-surface: #ffffff;
   --c-surface-raised: #ffffff;
-  --c-overlay: rgb(27 26 23 / 0.45);
-  --c-side: #faf8f4;
-  --c-side-hover: #efece5;
-  --c-side-border: #e6e2da;
-  --c-side-text: #5f5a52;
-  --c-side-strong: #1b1a17;
-  --c-side-accent: #1f6a82;
-  --c-shadow-card: 0 1px 2px rgb(40 34 24 / 0.07);
-  --c-shadow-pop: 0 12px 32px -8px rgb(40 34 24 / 0.28);
-  --scroll-thumb: #d3cdc2;
-  --scroll-thumb-hover: #b5aea1;
+  --c-overlay: rgb(0 0 0 / 0.32);
+  /* The rail is a translucent material: content passing under it (the mobile drawer over a page) shows through, blurred. */
+  --c-side: rgb(242 242 246 / 0.82);
+  --c-side-hover: rgb(0 0 0 / 0.05);
+  --c-side-border: rgb(0 0 0 / 0.08);
+  --c-side-text: #6e6e73;
+  --c-side-strong: #1d1d1f;
+  --c-side-accent: #0071e3;
+  --c-shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.02);
+  --c-shadow-pop: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 12px 40px -12px rgb(0 0 0 / 0.28);
+  --scroll-thumb: #c7c7cc;
+  --scroll-thumb-hover: #aeaeb2;
   color-scheme: light;
 }
 
 .dark {
-  --c-gray-50: #1f1e1b;
-  --c-gray-100: #262421;
-  --c-gray-200: #32302c;
-  --c-gray-300: #46433e;
-  --c-gray-400: #8b867e;
-  --c-gray-500: #a8a39a;
-  --c-gray-600: #bfbab1;
-  --c-gray-700: #d6d2ca;
-  --c-gray-800: #e8e5df;
-  --c-gray-900: #f3f1ed;
-  --c-gray-950: #faf9f6;
-  --c-indigo-50: #0e2b36;
-  --c-indigo-100: #153a49;
-  --c-indigo-200: #1a4a5d;
-  --c-indigo-300: #1f5b72;
-  --c-indigo-400: #5aa5bc;
-  --c-indigo-500: #3b8fa8;
-  --c-indigo-600: #2b7a93;
-  --c-indigo-700: #8ec3d3;
-  --c-indigo-800: #b4d9e4;
-  --c-indigo-900: #d6eaef;
-  --c-indigo-950: #eef6f8;
-  --c-blue-50: #172554;
-  --c-blue-100: #1e3a8a;
-  --c-blue-200: #1e40af;
-  --c-blue-300: #1d4ed8;
-  --c-blue-400: #60a5fa;
-  --c-blue-500: #3b82f6;
-  --c-blue-600: #2563eb;
-  --c-blue-700: #93c5fd;
-  --c-blue-800: #bfdbfe;
-  --c-blue-900: #dbeafe;
-  --c-blue-950: #eff6ff;
-  --c-red-50: #450a0a;
-  --c-red-100: #7f1d1d;
-  --c-red-200: #991b1b;
-  --c-red-300: #b91c1c;
-  --c-red-400: #f87171;
-  --c-red-500: #ef4444;
-  --c-red-600: #ef4444;
-  --c-red-700: #fca5a5;
-  --c-red-800: #fecaca;
-  --c-red-900: #fee2e2;
-  --c-red-950: #fef2f2;
-  --c-green-50: #052e16;
-  --c-green-100: #14532d;
-  --c-green-200: #166534;
-  --c-green-300: #15803d;
-  --c-green-400: #4ade80;
-  --c-green-500: #22c55e;
-  --c-green-600: #22c55e;
-  --c-green-700: #86efac;
-  --c-green-800: #bbf7d0;
-  --c-green-900: #dcfce7;
-  --c-green-950: #f0fdf4;
-  --c-amber-50: #451a03;
-  --c-amber-100: #78350f;
-  --c-amber-200: #92400e;
-  --c-amber-300: #b45309;
-  --c-amber-400: #fbbf24;
-  --c-amber-500: #f59e0b;
-  --c-amber-600: #f59e0b;
-  --c-amber-700: #fcd34d;
-  --c-amber-800: #fde68a;
-  --c-amber-900: #fef3c7;
-  --c-amber-950: #fffbeb;
-  --c-purple-50: #2c1423;
-  --c-purple-100: #482439;
-  --c-purple-200: #582a45;
-  --c-purple-300: #6e3254;
-  --c-purple-400: #c47fa8;
-  --c-purple-500: #b0608f;
-  --c-purple-600: #b0608f;
-  --c-purple-700: #dba3c3;
-  --c-purple-800: #e8c3d9;
-  --c-purple-900: #f3e0ec;
-  --c-purple-950: #faf1f6;
-  --c-page: #141311;
-  --c-surface: #1c1b18;
-  --c-surface-raised: #24221f;
-  --c-overlay: rgb(8 7 5 / 0.7);
-  --c-side: #100f0d;
-  --c-side-hover: #1d1c19;
-  --c-side-border: #26241f;
-  --c-side-text: #a09a90;
-  --c-side-strong: #f3f1ed;
-  --c-side-accent: #8ec3d3;
-  --c-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
-  --c-shadow-pop: 0 18px 48px -12px rgb(0 0 0 / 0.7);
-  --scroll-thumb: #3a3732;
-  --scroll-thumb-hover: #524e47;
+  --c-gray-50: #1c1c1e;
+  --c-gray-100: #242426;
+  --c-gray-200: #2c2c2e;
+  --c-gray-300: #3a3a3c;
+  --c-gray-400: #8e8e93;
+  --c-gray-500: #a1a1a6;
+  --c-gray-600: #c7c7cc;
+  --c-gray-700: #d1d1d6;
+  --c-gray-800: #e5e5ea;
+  --c-gray-900: #f5f5f7;
+  --c-gray-950: #ffffff;
+  --c-indigo-50: #192d42;
+  --c-indigo-100: #173758;
+  --c-indigo-200: #154474;
+  --c-indigo-300: #135293;
+  --c-indigo-400: #369aff;
+  --c-indigo-500: #0a84ff;
+  --c-indigo-600: #0a84ff;
+  --c-indigo-700: #71b8ff;
+  --c-indigo-800: #a2d0ff;
+  --c-indigo-900: #c9e4ff;
+  --c-indigo-950: #e6f3ff;
+  --c-blue-50: #192d42;
+  --c-blue-100: #173758;
+  --c-blue-200: #154474;
+  --c-blue-300: #135293;
+  --c-blue-400: #369aff;
+  --c-blue-500: #0a84ff;
+  --c-blue-600: #0a84ff;
+  --c-blue-700: #71b8ff;
+  --c-blue-800: #a2d0ff;
+  --c-blue-900: #c9e4ff;
+  --c-blue-950: #e6f3ff;
+  --c-red-50: #402322;
+  --c-red-100: #572725;
+  --c-red-200: #722c29;
+  --c-red-300: #92312d;
+  --c-red-400: #ff665d;
+  --c-red-500: #ff453a;
+  --c-red-600: #ff453a;
+  --c-red-700: #ff938d;
+  --c-red-800: #ffb8b4;
+  --c-red-900: #ffd6d4;
+  --c-red-950: #ffeceb;
+  --c-green-50: #1f3927;
+  --c-green-100: #214b2d;
+  --c-green-200: #246134;
+  --c-green-300: #267a3c;
+  --c-green-400: #55d976;
+  --c-green-500: #30d158;
+  --c-green-600: #30d158;
+  --c-green-700: #87e49e;
+  --c-green-800: #b0eec0;
+  --c-green-900: #d1f5da;
+  --c-green-950: #eafaee;
+  --c-amber-50: #40311b;
+  --c-amber-100: #573e19;
+  --c-amber-200: #724e16;
+  --c-amber-300: #926014;
+  --c-amber-400: #ffb036;
+  --c-amber-500: #ff9f0a;
+  --c-amber-600: #ff9f0a;
+  --c-amber-700: #ffc771;
+  --c-amber-800: #ffdba2;
+  --c-amber-900: #ffeac9;
+  --c-amber-950: #fff5e6;
+  --c-purple-50: #362640;
+  --c-purple-100: #462c55;
+  --c-purple-200: #5a346f;
+  --c-purple-300: #713c8c;
+  --c-purple-400: #cb78f4;
+  --c-purple-500: #bf5af2;
+  --c-purple-600: #bf5af2;
+  --c-purple-700: #da9ff7;
+  --c-purple-800: #e7c0fa;
+  --c-purple-900: #f1dbfc;
+  --c-purple-950: #f9eefe;
+  --c-page: #000000;
+  --c-surface: #1c1c1e;
+  --c-surface-raised: #2c2c2e;
+  --c-overlay: rgb(0 0 0 / 0.55);
+  --c-side: rgb(28 28 30 / 0.82);
+  --c-side-hover: rgb(255 255 255 / 0.07);
+  --c-side-border: rgb(255 255 255 / 0.08);
+  --c-side-text: #98989d;
+  --c-side-strong: #f5f5f7;
+  --c-side-accent: #2997ff;
+  --c-shadow-card: 0 1px 2px rgb(0 0 0 / 0.5);
+  --c-shadow-pop: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 18px 48px -12px rgb(0 0 0 / 0.8);
+  --scroll-thumb: #48484a;
+  --scroll-thumb-hover: #636366;
   color-scheme: dark;
 }
 
@@ -334,6 +352,8 @@
     font-family: var(--font-sans);
     font-size: 15px;
     line-height: 1.5;
+    letter-spacing: -0.009em;
+    font-optical-sizing: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -424,7 +444,9 @@
   summary,
   .field,
   .cursor-pointer {
-    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    /* scale and translate too: in Tailwind 4 the scale and translate utilities set those properties, not transform, so
+       without them a button's press (active:scale-[0.97]) would snap instead of easing in. */
+    transition-property: color, background-color, border-color, box-shadow, transform, scale, translate, opacity;
     transition-duration: 150ms;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -456,3 +478,13 @@
    Framer Motion-driven system under src/lib/motion/ — see tokens.ts and variants.ts — since plain
    CSS keyframes can't play on the way out when React unmounts a node. MotionConfig in main.tsx
    wires prefers-reduced-motion into that system the same way the old @media block did here. */
+
+/* Translucent materials only where the person wants them: with "reduce transparency" they turn solid. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --c-side: #f2f2f6;
+  }
+  .dark {
+    --c-side: #1c1c1e;
+  }
+}

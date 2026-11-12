@@ -56,6 +56,13 @@ public sealed class RpaClient : IRpaClient, IDisposable
         return await response.Content.ReadFromJsonAsync<EjecucionAsignadaDto>(ct).ConfigureAwait(false);
     }
 
+    public async Task<DespliegueEstadoDto> ObtenerEstadoDuranteElPasoAsync(Guid ejecucionPasoId, CancellationToken ct = default)
+    {
+        using var response = await _http.GetAsync($"{RpaRoute}/despliegue?paso={ejecucionPasoId}", ct).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+        return (await response.Content.ReadFromJsonAsync<DespliegueEstadoDto>(ct).ConfigureAwait(false))!;
+    }
+
     public async Task<ParametrosProceso> ObtenerParametrosAsync(CancellationToken ct = default)
     {
         using var response = await _http.GetAsync($"{RpaRoute}/parametros", ct).ConfigureAwait(false);

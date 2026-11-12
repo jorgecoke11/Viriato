@@ -81,12 +81,12 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50/70">
             <tr>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Nº</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Estado</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Notas</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Creada</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Publicada</th>
-              <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Acciones</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Nº</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Estado</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Notas</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Creada</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Publicada</th>
+              <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Acciones</th>
             </tr>
           </thead>
           <tbody>

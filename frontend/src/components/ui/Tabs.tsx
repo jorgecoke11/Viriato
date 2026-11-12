@@ -28,7 +28,7 @@ export function Tabs<T extends string>({
             type="button"
             role="tab"
             aria-selected={isActive}
-            className={`relative -mb-px shrink-0 rounded-t-md px-3 py-2.5 text-sm font-medium ${
+            className={`relative -mb-px shrink-0 rounded-t-md px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 ${
               isActive ? 'text-indigo-600' : 'text-gray-500 hover:bg-gray-100/70 hover:text-gray-800'
             }`}
             onClick={() => onChange(tab.value)}

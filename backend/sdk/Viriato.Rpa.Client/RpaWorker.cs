@@ -7,8 +7,15 @@ namespace Viriato.Rpa.Client;
 
 public sealed class RpaWorkerOptions
 {
-    /// <summary>How long to wait when the Despliegue is switched off or the queue is empty.</summary>
+    /// <summary>How long to wait when the Despliegue is switched off or the queue is empty — the first time. While it stays that way
+    /// the wait doubles up to <see cref="IntervaloPollingMaximo"/>, and it is back to this as soon as a step arrives.</summary>
     public TimeSpan IntervaloPolling { get; set; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>The longest wait between two asks of an idle robot: an idle robot costs Viriato two requests per wait, so stretching
+    /// the wait while nothing comes saves most of them; the price is that a case arriving after a quiet spell may wait this long to
+    /// start. Keep it under the API's connection window (<c>Despacho:VentanaConexionSegundos</c>, 30 s) or an idle robot would look
+    /// disconnected between asks.</summary>
+    public TimeSpan IntervaloPollingMaximo { get; set; } = TimeSpan.FromSeconds(20);
 
     /// <summary>How long to wait after a transient failure (network down, server error) before polling again.</summary>
     public TimeSpan EsperaTrasError { get; set; } = TimeSpan.FromSeconds(10);
@@ -25,8 +32,11 @@ public sealed class RpaWorkerOptions
     /// A handler that returns <see cref="RpaStepResult.Fallido"/> on purpose already said why.</summary>
     public bool AdjuntarDetalleDeError { get; set; } = true;
 
-    /// <summary>While a step runs, how often the Despliegue's settings (<see cref="IAjusteDelDespliegue"/>) are read again, so a change
-    /// made in Viriato — the live view switched off on a slow robot — does not wait for the step to end. Only with settings registered.</summary>
+    /// <summary>While a step runs, how often the robot reads its Despliegue again — one request that answers two things: its settings
+    /// (<see cref="IAjusteDelDespliegue"/>), so a change made in Viriato (the live view switched off on a slow robot) does not wait for
+    /// the step to end; and whether the step is still in progress. When a person cancels the step (or its Caso), or the platform cuts
+    /// it for its maximum time, the handler's token is cancelled so the robot drops that work and asks for the next one instead of
+    /// finishing a case nobody wants. Zero switches both off.</summary>
     public TimeSpan IntervaloAjustesDuranteUnPaso { get; set; } = TimeSpan.FromSeconds(15);
 
     /// <summary>
@@ -77,6 +87,7 @@ public sealed class RpaWorker
             return true;
         }
 
+        var espera = _options.IntervaloPolling;
         while (!ct.IsCancellationRequested)
         {
             try
@@ -96,9 +107,16 @@ public sealed class RpaWorker
                 {
                     if (DebeSalir()) return;
                     await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
+                var ejecucion = estado.Encendido ? await _client.ObtenerSiguienteEjecucionAsync(ct).ConfigureAwait(false) : null;
+                if (ejecucion is null)
+                {
+                    // Nothing to do: wait, and a little longer each time it stays so.
+                    await Task.Delay(espera, ct).ConfigureAwait(false);
+                    espera = SiguienteEspera(espera);
                     continue;
                 }
 
+                espera = _options.IntervaloPolling;
                 await ProcesarAsync(ejecucion, handler, ct).ConfigureAwait(false);
                 sinTrabajoDesde = System.Diagnostics.Stopwatch.GetTimestamp();
             }
@@ -121,6 +139,13 @@ public sealed class RpaWorker
         }
     }
 
+    private TimeSpan SiguienteEspera(TimeSpan actual)
+    {
+        var maximo = _options.IntervaloPollingMaximo > _options.IntervaloPolling ? _options.IntervaloPollingMaximo : _options.IntervaloPolling;
+        var doble = actual * 2;
+        return doble < maximo ? doble : maximo;
+    }
+
     private async Task ProcesarAsync(
         EjecucionAsignadaDto ejecucion,
         Func<RpaStepContext, CancellationToken, Task<RpaStepResult>> handler,
@@ -130,44 +155,96 @@ public sealed class RpaWorker
 
         RpaStepResult resultado;
         using var finDelPaso = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var ajustes = _ajustes.Count > 0 ? SeguirAjustesAsync(finDelPaso.Token) : Task.CompletedTask;
+        // What the handler is given: the robot stopping, or the step cancelled in Viriato.
+        using var pasoVivo = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var cancelado = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var seguimiento = _options.IntervaloAjustesDuranteUnPaso > TimeSpan.Zero
+            ? SeguirElPasoAsync(ejecucion.EjecucionPasoId, pasoVivo, cancelado, finDelPaso.Token)
+            : Task.CompletedTask;
         try
         {
-            resultado = await handler(new RpaStepContext(_client, ejecucion, _ultimoEstado), ct).ConfigureAwait(false);
+            var trabajo = Ejecutar(handler, new RpaStepContext(_client, ejecucion, _ultimoEstado), pasoVivo.Token);
+            if (await Task.WhenAny(trabajo, cancelado.Task).ConfigureAwait(false) != trabajo)
+            {
+                // Cancelled in Viriato: the handler was told to stop; give it its time, then give up on it.
+                var espera = Task.Delay(_options.EsperaAlCancelar, ct);
+                if (await Task.WhenAny(trabajo, espera).ConfigureAwait(false) != trabajo)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    _logger.LogCritical("El paso {Paso} se canceló en Viriato y el robot no lo soltó en {Espera}; se detiene el robot.",
+                        ejecucion.EjecucionPasoId, _options.EsperaAlCancelar);
+                    throw new RobotBloqueadoException(ejecucion.EjecucionPasoId, _options.EsperaAlCancelar);
+                }
+            }
+
+            resultado = await trabajo.ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             await ReportarAsync(ejecucion, RpaStepResult.Fallido("El robot se detuvo antes de terminar el paso.")).ConfigureAwait(false);
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not RobotBloqueadoException)
         {
-            _logger.LogError(ex, "El paso {Paso} falló.", ejecucion.EjecucionPasoId);
-            if (_options.AdjuntarDetalleDeError)
-            {
-                await AdjuntarDetalleDeErrorAsync(ejecucion, ex).ConfigureAwait(false);
-            }
-
             resultado = RpaStepResult.Fallido(ex.Message);
+            if (!cancelado.Task.IsCompleted)
+            {
+                _logger.LogError(ex, "El paso {Paso} falló.", ejecucion.EjecucionPasoId);
+                if (_options.AdjuntarDetalleDeError)
+                {
+                    await AdjuntarDetalleDeErrorAsync(ejecucion, ex).ConfigureAwait(false);
+                }
+            }
         }
         finally
         {
             await finDelPaso.CancelAsync().ConfigureAwait(false);
-            await ajustes.ConfigureAwait(false);
+            await seguimiento.ConfigureAwait(false);
+        }
+
+        if (cancelado.Task.IsCompleted)
+        {
+            // Viriato already settled it: there is nothing to report, and the robot is free for the next one.
+            _logger.LogWarning("El paso {Paso} se canceló en Viriato; el robot lo dejó y pide el siguiente.", ejecucion.EjecucionPasoId);
+            return;
         }
 
         await ReportarAsync(ejecucion, resultado).ConfigureAwait(false);
     }
 
-    // Keeps the settings up to date while a step runs. Best effort: a failed read just waits for the next one.
-    private async Task SeguirAjustesAsync(CancellationToken finDelPaso)
+    // A handler that throws before its first await is the same as one whose task fails.
+    private static Task<RpaStepResult> Ejecutar(
+        Func<RpaStepContext, CancellationToken, Task<RpaStepResult>> handler, RpaStepContext contexto, CancellationToken ct)
+    {
+        try
+        {
+            return handler(contexto, ct);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromException<RpaStepResult>(ex);
+        }
+    }
+
+    // While a step runs, one read of the Despliegue now and then keeps its settings up to date and says whether the step is still
+    // wanted — cancelling a Caso cannot reach into this machine, so this is how the robot learns of it. Best effort: a failed read
+    // (or an older Viriato that does not say) just means "keep going".
+    private async Task SeguirElPasoAsync(
+        Guid pasoId, CancellationTokenSource pasoVivo, TaskCompletionSource cancelado, CancellationToken finDelPaso)
     {
         while (!finDelPaso.IsCancellationRequested)
         {
             try
             {
                 await Task.Delay(_options.IntervaloAjustesDuranteUnPaso, finDelPaso).ConfigureAwait(false);
-                await AplicarAjustesAsync(await _client.ObtenerEstadoAsync(finDelPaso).ConfigureAwait(false), finDelPaso).ConfigureAwait(false);
+                var estado = await _client.ObtenerEstadoDuranteElPasoAsync(pasoId, finDelPaso).ConfigureAwait(false);
+                await AplicarAjustesAsync(estado, finDelPaso).ConfigureAwait(false);
+                if (estado.PasoEnCurso is not false) continue;
+
+                _logger.LogWarning("El paso {Paso} ya no está en curso en Viriato (cancelado); se detiene su trabajo.", pasoId);
+                cancelado.TrySetResult();
+                await pasoVivo.CancelAsync().ConfigureAwait(false);
+                return;
             }
             catch (OperationCanceledException) when (finDelPaso.IsCancellationRequested)
             {
