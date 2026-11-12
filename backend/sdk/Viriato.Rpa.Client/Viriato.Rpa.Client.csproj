@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Viriato.Rpa.Client</RootNamespace>
     <PackageId>Viriato.Rpa.Client</PackageId>
-    <Version>0.11.0</Version>
+    <Version>0.12.0</Version>
     <Authors>Viriato</Authors>
     <RepositoryUrl>https://github.com/jorgecoke11/Viriato</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -21,6 +21,10 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Viriato.Rpa.Client.Tests" />
   </ItemGroup>
 
   <ItemGroup>

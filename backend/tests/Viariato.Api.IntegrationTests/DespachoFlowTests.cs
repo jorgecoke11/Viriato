@@ -2037,4 +2037,185 @@ public sealed class DespachoFlowTests(ViariatoApiFactory factory) : IClassFixtur
         Assert.Equal(2, robot.GetProperty("instancias").GetInt32());
         Assert.Equal(1, robot.GetProperty("libres").GetInt32());
     }
+    // ---------------------------------------------------------------- one copy, one step: under concurrency and after a cancellation
+
+    [Theory]
+    [InlineData("copia-unica")]
+    [InlineData("")]
+    public async Task OneCopyAskingManyTimesAtTheSameInstant_IsHandedOneStep_EvenWithoutACeiling(string instancia)
+    {
+        var e = await CrearEntornoAsync();
+        await ConfigurarAsync(e, null, "Prioridad");
+        for (var i = 0; i < 5; i++) await EncolarAsync(e, paraServicio1: true, $"Caso {i}");
+        var copia = instancia.Length == 0 ? e.Robot1 : Copia(e.Key1, instancia);
+
+        // A request retried while the first one still waits, two threads of one process...: all of them are the same copy.
+        var respuestas = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() => PedirAsync(copia))));
+
+        Assert.Single(respuestas, r => r is not null);
+        Assert.Single(await EnMarchaDelRobotAsync(e.Despliegue1));
+    }
+
+    [Fact]
+    public async Task TwoCopiesAskingManyTimesAtTheSameInstant_NeverHoldMoreThanTwoSteps()
+    {
+        var e = await CrearEntornoAsync();
+        await ConfigurarAsync(e, null, "Prioridad");
+        for (var i = 0; i < 6; i++) await EncolarAsync(e, paraServicio1: true, $"Caso {i}");
+        var copias = new[] { Copia(e.Key1, "copia-a"), Copia(e.Key1, "copia-b") };
+
+        var respuestas = await Task.WhenAll(
+            Enumerable.Range(0, 10).Select(i => Task.Run(() => PedirAsync(copias[i % 2]))));
+
+        Assert.Equal(2, respuestas.Count(r => r is not null));
+        Assert.Equal(2, (await EnMarchaDelRobotAsync(e.Despliegue1)).Count);
+    }
+
+    private static Task<HttpResponseMessage> CancelarCasoAsync(Entorno e, Guid casoId) =>
+        e.Admin.PostAsync($"/api/v1/casos/{casoId}/cancelar", null);
+
+    private static async Task CancelarAsync(Entorno e, string como, Guid casoId, Guid pasoId)
+    {
+        var respuesta = como switch
+        {
+            "caso" => await CancelarCasoAsync(e, casoId),
+            "ejecucion" => await CancelarEjecucionAsync(e, casoId, pasoId),
+            _ => await CancelarVariosAsync(e.Admin, [casoId]),
+        };
+        Assert.True(respuesta.IsSuccessStatusCode, $"Cancelar ({como}) respondió {(int)respuesta.StatusCode}.");
+    }
+
+    /// <summary>The steps a robot holds that the dispatcher counts as in execution.</summary>
+    private async Task<List<Guid>> EnMarchaDelRobotAsync(Guid despliegueId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await (
+            from d in db.Set<RpaEjecucionDetalle>().AsNoTracking()
+            join p in db.Set<EjecucionPaso>().AsNoTracking() on d.EjecucionPasoId equals p.Id
+            where d.DespliegueId == despliegueId && p.Estado == EjecucionPasoEstado.EnProgreso
+            select p.Id).ToListAsync();
+    }
+
+    [Theory]
+    [InlineData("caso")]
+    [InlineData("ejecucion")]
+    [InlineData("masiva")]
+    public async Task CancellingTheCasoACopyIsRunning_FreesThatCopy_AndItsNextRequestGetsTheNextCaso(string como)
+    {
+        var e = await CrearEntornoAsync();
+        await ConfigurarAsync(e, null, "Prioridad");
+        var uno = await EncolarAsync(e, paraServicio1: true, "Uno, se cancela en marcha");
+        var dos = await EncolarAsync(e, paraServicio1: true, "Dos");
+        var copia = Copia(e.Key1, "copia-unica");
+
+        var asignada = await PedirAsync(copia);
+        Assert.Equal(uno, asignada!.CasoId);
+        // While it holds the step (it restarted with the same id, say) it is handed nothing else.
+        Assert.Null(await PedirAsync(copia));
+
+        await CancelarAsync(e, como, uno, asignada.PasoId);
+
+        Assert.Empty(await EnMarchaDelRobotAsync(e.Despliegue1));
+        Assert.Equal(dos, (await PedirAsync(copia))!.CasoId);
+    }
+
+    [Theory]
+    [InlineData("caso")]
+    [InlineData("ejecucion")]
+    [InlineData("masiva")]
+    public async Task CancellingBothCasosOfARobot_LetsItTakeTheNextOnes_AsManyAsItHasCopies(string como)
+    {
+        var e = await CrearEntornoAsync();
+        await ConfigurarAsync(e, null, "Prioridad");
+        var uno = await EncolarAsync(e, paraServicio1: true, "Uno");
+        var dos = await EncolarAsync(e, paraServicio1: true, "Dos");
+        var tres = await EncolarAsync(e, paraServicio1: true, "Tres");
+        var cuatro = await EncolarAsync(e, paraServicio1: true, "Cuatro");
+        var a = Copia(e.Key1, "copia-a");
+        var b = Copia(e.Key1, "copia-b");
+
+        var deA = await PedirAsync(a);
+        var deB = await PedirAsync(b);
+        Assert.Equal([uno, dos], new[] { deA!.CasoId, deB!.CasoId });
+
+        await CancelarAsync(e, como, uno, deA.PasoId);
+        await CancelarAsync(e, como, dos, deB.PasoId);
+
+        Assert.Equal(tres, (await PedirAsync(a))!.CasoId);
+        Assert.Equal(cuatro, (await PedirAsync(b))!.CasoId);
+    }
+    [Theory]
+    [InlineData("caso")]
+    [InlineData("ejecucion")]
+    [InlineData("masiva")]
+    public async Task ARobotRunningACasoThatIsCancelled_DropsThatWork_AndTakesTheNextCaso(string como)
+    {
+        var e = await CrearEntornoAsync();
+        await ConfigurarAsync(e, null, "Prioridad");
+        var uno = await EncolarAsync(e, paraServicio1: true, "Uno, se cancela mientras el robot trabaja");
+        var dos = await EncolarAsync(e, paraServicio1: true, "Dos");
+
+        var empezado = new TaskCompletionSource<Guid>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var siguiente = new TaskCompletionSource<Guid>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var soltado = false;
+        var worker = new RpaWorker(Copia(e.Key1, "copia-unica"), new RpaWorkerOptions
+        {
+            IntervaloPolling = TimeSpan.FromMilliseconds(50),
+            IntervaloPollingMaximo = TimeSpan.FromMilliseconds(50),
+            IntervaloAjustesDuranteUnPaso = TimeSpan.FromMilliseconds(50),
+            EsperaAlCancelar = TimeSpan.FromSeconds(10),
+        });
+        using var parar = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+
+        var robot = worker.RunAsync(async (paso, ct) =>
+        {
+            if (paso.Ejecucion.CasoId == uno)
+            {
+                empezado.TrySetResult(paso.Ejecucion.EjecucionPasoId);
+                try
+                {
+                    // A long extraction that only stops when it is told to.
+                    await Task.Delay(Timeout.Infinite, ct);
+                }
+                catch (OperationCanceledException) when (!parar.IsCancellationRequested)
+                {
+                    soltado = true;
+                    throw;
+                }
+            }
+
+            siguiente.TrySetResult(paso.Ejecucion.CasoId);
+            return RpaStepResult.CasoCompletado();
+        }, parar.Token);
+
+        var pasoUno = await empezado.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        await CancelarAsync(e, como, uno, pasoUno);
+
+        Assert.Equal(dos, await siguiente.Task.WaitAsync(TimeSpan.FromSeconds(20)));
+        Assert.True(soltado, "the work on the cancelled caso must have been told to stop");
+        await parar.CancelAsync();
+        await robot;
+
+        Assert.Equal(CasoEstado.Cancelado, (await EstadoDelCasoAsync(uno)).Caso);
+        Assert.Equal(CasoEstado.Completado, (await EstadoDelCasoAsync(dos)).Caso);
+    }
+
+    [Fact]
+    public async Task ReadingItsDespliegueDuringAStep_TellsTheRobotWhetherTheStepIsStillInProgress_OnlyForItsOwn()
+    {
+        var e = await CrearEntornoAsync();
+        await ConfigurarAsync(e, null, "Prioridad");
+        var caso = await EncolarAsync(e, paraServicio1: true, "Uno");
+        var copia = Copia(e.Key1, "copia-unica");
+        var asignada = await PedirAsync(copia);
+
+        Assert.True((await copia.ObtenerEstadoDuranteElPasoAsync(asignada!.PasoId)).PasoEnCurso);
+        Assert.Null((await copia.ObtenerEstadoAsync()).PasoEnCurso);
+        // Another robot's step is never "in progress" for it, whatever its state.
+        Assert.False((await e.Robot2.ObtenerEstadoDuranteElPasoAsync(asignada.PasoId)).PasoEnCurso);
+
+        await CancelarAsync(e, "caso", caso, asignada.PasoId);
+        Assert.False((await copia.ObtenerEstadoDuranteElPasoAsync(asignada.PasoId)).PasoEnCurso);
+    }
 }

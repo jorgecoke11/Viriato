@@ -12,6 +12,7 @@ public sealed class RpaWorkerTests
     private static RpaWorkerOptions FastOptions() => new()
     {
         IntervaloPolling = Instant,
+        IntervaloPollingMaximo = Instant,
         EsperaTrasError = Instant,
         EsperaEntreReintentos = Instant,
         ReintentosAlReportar = 2,
@@ -30,6 +31,19 @@ public sealed class RpaWorkerTests
         public Func<Task>? OnEvidencia { get; set; }
         public CancellationTokenSource? StopWhenQueueDrains { get; set; }
 
+        /// <summary>What Viriato answers about a running step when the robot reads its Despliegue during it; null = the plain read.</summary>
+        public Func<Guid, Task<bool?>>? SigueEnCurso { get; set; }
+
+        /// <summary>When each claim was made, to see how long an idle robot waits between asks.</summary>
+        public List<long> ClaimTimes { get; } = [];
+
+        public async Task<DespliegueEstadoDto> ObtenerEstadoDuranteElPasoAsync(Guid ejecucionPasoId, CancellationToken ct = default)
+        {
+            Calls.Add("estado-paso");
+            if (SigueEnCurso is null) return await ObtenerEstadoAsync(ct);
+            return Encendido(true) with { PasoEnCurso = await SigueEnCurso(ejecucionPasoId) };
+        }
+
         public Task<DespliegueEstadoDto> ObtenerEstadoAsync(CancellationToken ct = default) =>
             Estados.Count > 0 ? Estados.Dequeue()() : Task.FromResult(Encendido(true));
 
@@ -38,6 +52,7 @@ public sealed class RpaWorkerTests
         public Task<EjecucionAsignadaDto?> ObtenerSiguienteEjecucionAsync(CancellationToken ct = default)
         {
             Calls.Add("claim");
+            ClaimTimes.Add(System.Diagnostics.Stopwatch.GetTimestamp());
             if (Claims.Count > 0) return Claims.Dequeue()();
 
             // Nothing scripted left: the scenario is over, so end the worker's loop.
@@ -408,6 +423,152 @@ public sealed class RpaWorkerTests
 
         Assert.Contains(client.Calls, c => c.StartsWith("fallar:El robot se detuvo"));
         Assert.DoesNotContain(client.Calls, c => c.StartsWith("completar"));
+    }
+
+    // ---------------------------------------------------------------- a step cancelled in Viriato while the robot runs it
+
+    private static (RpaWorker Worker, FakeRpaClient Client, CancellationTokenSource Cts) CreateConCancelacion(
+        TimeSpan esperaAlCancelar, params EjecucionAsignadaDto[] queue)
+    {
+        var (_, client, cts) = Create(queue);
+        var opciones = FastOptions();
+        opciones.IntervaloAjustesDuranteUnPaso = TimeSpan.FromMilliseconds(5);
+        opciones.EsperaAlCancelar = esperaAlCancelar;
+        return (new RpaWorker(client, opciones), client, cts);
+    }
+
+    [Fact]
+    public async Task AStepCancelledInViriato_HasItsHandlerToldToStop_IsNotReported_AndTheRobotTakesTheNextOne()
+    {
+        var cancelada = NuevaEjecucion();
+        var siguiente = NuevaEjecucion();
+        var (worker, client, cts) = CreateConCancelacion(TimeSpan.FromSeconds(5), cancelada, siguiente);
+        client.SigueEnCurso = id => Task.FromResult<bool?>(id != cancelada.EjecucionPasoId);
+        var atendidas = new List<Guid>();
+
+        await worker.RunAsync(async (paso, ct) =>
+        {
+            atendidas.Add(paso.Ejecucion.EjecucionPasoId);
+            if (paso.Ejecucion.EjecucionPasoId == cancelada.EjecucionPasoId) await Task.Delay(Timeout.Infinite, ct);
+            return RpaStepResult.CasoCompletado("hecho");
+        }, cts.Token);
+
+        Assert.Equal([cancelada.EjecucionPasoId, siguiente.EjecucionPasoId], atendidas);
+        // Viriato already settled the cancelled one: no failure, no evidence, only the next one's result.
+        Assert.Equal(["completar-caso:hecho"], client.Calls.Where(c => c is not ("claim" or "estado-paso")));
+    }
+
+    [Fact]
+    public async Task AHandlerThatIgnoresTheCancellation_StopsTheRobot_InsteadOfKeepingItBusyForEver()
+    {
+        var (worker, client, cts) = CreateConCancelacion(TimeSpan.FromMilliseconds(50), NuevaEjecucion(), NuevaEjecucion());
+        client.SigueEnCurso = _ => Task.FromResult<bool?>(false);
+        var nunca = new TaskCompletionSource<RpaStepResult>();
+
+        var error = await Assert.ThrowsAsync<RobotBloqueadoException>(() => worker.RunAsync((_, _) => nunca.Task, cts.Token));
+
+        Assert.Contains("hay que reiniciarlo", error.Message);
+        Assert.Single(client.Calls, c => c == "claim");
+    }
+
+    [Fact]
+    public async Task WhileTheStepIsStillWanted_OrViriatoCannotSay_TheHandlerRunsToTheEnd()
+    {
+        var (worker, client, cts) = CreateConCancelacion(TimeSpan.FromMilliseconds(50), NuevaEjecucion());
+        var preguntas = 0;
+        // Yes, a failed read, and a Viriato older than the answer (it does not say): none of them stops the step.
+        client.SigueEnCurso = _ => (++preguntas % 3) switch
+        {
+            0 => Task.FromResult<bool?>(true),
+            1 => Task.FromException<bool?>(new HttpRequestException("sin red")),
+            _ => Task.FromResult<bool?>(null),
+        };
+
+        await worker.RunAsync(async (_, ct) =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(100), ct);
+            return RpaStepResult.Completado("ok");
+        }, cts.Token);
+
+        Assert.True(preguntas > 2);
+        Assert.Contains("completar:ok", client.Calls);
+    }
+
+    [Fact]
+    public async Task WhileAStepRuns_OneReadOfTheDespliegue_ServesBothTheSettingsAndTheCancellation()
+    {
+        var (worker, client, cts) = CreateConCancelacion(TimeSpan.FromSeconds(5), NuevaEjecucion());
+        client.SigueEnCurso = _ => Task.FromResult<bool?>(true);
+
+        await worker.RunAsync(async (_, ct) =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(100), ct);
+            return RpaStepResult.Completado();
+        }, cts.Token);
+
+        // While the step runs only the step-time read is sent; there is no second, separate question.
+        Assert.Contains("estado-paso", client.Calls);
+        Assert.DoesNotContain(client.Calls, c => c.StartsWith("estado:"));
+    }
+
+    // ---------------------------------------------------------------- an idle robot asks less and less often
+
+    private static void EncolarVacios(FakeRpaClient client, int veces)
+    {
+        for (var i = 0; i < veces; i++) client.Claims.Enqueue(() => Task.FromResult<EjecucionAsignadaDto?>(null));
+    }
+
+    private static double MsEntre(long desde, long hasta) => System.Diagnostics.Stopwatch.GetElapsedTime(desde, hasta).TotalMilliseconds;
+
+    [Fact]
+    public async Task AnIdleRobot_WaitsLongerEachTimeTheQueueIsEmpty_UpToTheMaximum()
+    {
+        var (_, client, cts) = Create();
+        EncolarVacios(client, 6);
+        var opciones = FastOptions();
+        opciones.IntervaloPolling = TimeSpan.FromMilliseconds(20);
+        opciones.IntervaloPollingMaximo = TimeSpan.FromMilliseconds(80);
+
+        await new RpaWorker(client, opciones).RunAsync((_, _) => Task.FromResult(RpaStepResult.Completado()), cts.Token);
+
+        // 20, 40, 80, 80, 80 ms between asks (a little more, never less).
+        var huecos = client.ClaimTimes.Zip(client.ClaimTimes.Skip(1), MsEntre).ToList();
+        Assert.True(huecos.Count >= 5);
+        Assert.InRange(huecos[0], 18, 79);
+        Assert.InRange(huecos[1], 38, 400);
+        Assert.All(huecos.Skip(2).Take(3), h => Assert.True(h >= 75, $"{h} ms"));
+    }
+
+    [Fact]
+    public async Task AfterAStep_AnIdleRobotStartsAgainFromTheShortWait()
+    {
+        var (_, client, cts) = Create();
+        EncolarVacios(client, 4);
+        client.Claims.Enqueue(() => Task.FromResult<EjecucionAsignadaDto?>(NuevaEjecucion()));
+        EncolarVacios(client, 2);
+        var opciones = FastOptions();
+        opciones.IntervaloPolling = TimeSpan.FromMilliseconds(10);
+        opciones.IntervaloPollingMaximo = TimeSpan.FromMilliseconds(300);
+
+        await new RpaWorker(client, opciones).RunAsync((_, _) => Task.FromResult(RpaStepResult.Completado()), cts.Token);
+
+        // Before the step it had backed off to 80 ms; right after it, the first empty queue costs only the short wait again.
+        var t = client.ClaimTimes;
+        Assert.True(MsEntre(t[3], t[4]) >= 75);
+        Assert.True(MsEntre(t[5], t[6]) < 75, $"{MsEntre(t[5], t[6])} ms");
+    }
+
+    [Fact]
+    public void InAContainer_TheCopyIsTheContainer_SoARestartIsNotASecondCopy()
+    {
+        // Docker keeps a container's hostname across restarts; replicas each have their own.
+        Assert.Equal("a1b2c3d4e5f6", RpaClientOptions.ResolverInstancia(null, "true", "a1b2c3d4e5f6"));
+        Assert.Equal("mi-copia", RpaClientOptions.ResolverInstancia(" mi-copia ", "true", "a1b2c3d4e5f6"));
+
+        // Outside a container, one per process (several processes on one Windows machine are several copies).
+        var deEsteProceso = RpaClientOptions.ResolverInstancia(null, null, "PC-01");
+        Assert.NotEqual("PC-01", deEsteProceso);
+        Assert.Equal(deEsteProceso, RpaClientOptions.ResolverInstancia("", "false", "PC-01"));
     }
 
     [Fact]
