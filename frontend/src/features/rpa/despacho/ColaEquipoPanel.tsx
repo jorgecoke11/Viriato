@@ -6,7 +6,8 @@ import { useAuth } from '../../auth/useAuth'
 import { CancelarEjecucion } from '../../casos/CancelarEjecucion'
 import { PrioridadChip } from '../../casos/PrioridadChip'
 import * as rpaApi from '../api'
-import type { EnEjecucionDto, PendienteDto } from '../api'
+import type { EnEjecucionDto, LanzadorDelRobotDto, PendienteDto, RobotDelEquipoDto } from '../api'
+import { avisoDePendiente, lanzadorEnPantalla } from './lanzadorDelRobot'
 
 const MAX_VISIBLES = 12
 
@@ -37,13 +38,52 @@ function AvisoTiempo({ ejecucion }: { ejecucion: EnEjecucionDto }) {
   return <Badge tone={quedan < 5 ? 'warning' : 'neutral'}>Quedan {duracion(Math.max(0, quedan))}</Badge>
 }
 
-// Why a step is not moving: the robot that would take it is off, not answering, or busy with something else.
-function AvisoRobot({ pendiente }: { pendiente: PendienteDto }) {
+// Why a step is not moving: the robot that would take it is off, not answering, or busy with something else. A robot that a
+// launcher starts on demand is not "disconnected" when it is not running: it is about to be started, or waiting for room.
+function AvisoRobot({ pendiente, lanzador }: { pendiente: PendienteDto; lanzador: LanzadorDelRobotDto | null | undefined }) {
   if (!pendiente.robotEncendido) return <Badge tone="neutral">Robot apagado</Badge>
-  if (!pendiente.robotConectado) return <Badge tone="warning">Robot sin conexión</Badge>
+  if (!pendiente.robotConectado) {
+    const aviso = avisoDePendiente(lanzador)
+    if (aviso) {
+      return (
+        <Badge tone={aviso.tono} title={aviso.detalle ?? undefined}>
+          {aviso.texto}
+        </Badge>
+      )
+    }
+    return <Badge tone="warning">Robot sin conexión</Badge>
+  }
   if (pendiente.robotOcupado) return <Badge tone="info">Robot ocupado</Badge>
   if (pendiente.servicioAlLimiteGlobal) return <Badge tone="info">Servicio al límite</Badge>
   return null
+}
+
+// One robot of the machine: how many copies of it are there or, when a launcher starts it on demand, what the launcher says
+// about it and why.
+function RobotDeLaMaquina({ robot }: { robot: RobotDelEquipoDto }) {
+  const delLanzador = robot.encendido && robot.lanzador ? lanzadorEnPantalla(robot.lanzador) : null
+
+  return (
+    <li className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-surface px-3 py-2">
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{robot.servicioNombre}</span>
+        {!robot.encendido ? (
+          <Badge tone="neutral">Apagado</Badge>
+        ) : delLanzador ? (
+          <Badge tone={delLanzador.tono} live={delLanzador.enMarcha}>
+            {delLanzador.texto}
+          </Badge>
+        ) : robot.instancias === 0 ? (
+          <Badge tone="warning">Sin copias en marcha</Badge>
+        ) : (
+          <span className="num shrink-0 text-xs text-gray-600">
+            {robot.instancias} {robot.instancias === 1 ? 'copia' : 'copias'} · {robot.libres} {robot.libres === 1 ? 'libre' : 'libres'}
+          </span>
+        )}
+      </div>
+      {delLanzador?.detalle && <p className="text-xs text-gray-600">{delLanzador.detalle}</p>}
+    </li>
+  )
 }
 
 /**
@@ -77,6 +117,7 @@ export function ColaEquipoPanel({ equipoId, activo }: { equipoId: string; activo
 
   const { enUso, maxEjecucionesSimultaneas: max, enEjecucion, pendientes, robots } = cola.data
   const libresEnTotal = robots.filter((r) => r.encendido).reduce((suma, r) => suma + r.libres, 0)
+  const hayLanzador = robots.some((r) => r.lanzador)
   const visibles = pendientes.slice(0, MAX_VISIBLES)
 
   return (
@@ -96,7 +137,7 @@ export function ColaEquipoPanel({ equipoId, activo }: { equipoId: string; activo
           </div>
         ) : (
           <p className="text-xs text-gray-500">
-            Sin límite: la capacidad son las copias de los robots.{' '}
+            Sin límite: la capacidad son las copias de los robots{hayLanzador ? ', que un lanzador arranca cuando hay trabajo' : ''}.{' '}
             <span className="num font-mono text-gray-700">{libresEnTotal}</span> {libresEnTotal === 1 ? 'libre' : 'libres'} ahora.
           </p>
         )}
@@ -111,18 +152,7 @@ export function ColaEquipoPanel({ equipoId, activo }: { equipoId: string; activo
         ) : (
           <ul className="flex flex-col gap-1.5">
             {robots.map((r) => (
-              <li key={r.despliegueId} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-surface px-3 py-2">
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{r.servicioNombre}</span>
-                {!r.encendido ? (
-                  <Badge tone="neutral">Apagado</Badge>
-                ) : r.instancias === 0 ? (
-                  <Badge tone="warning">Sin copias en marcha</Badge>
-                ) : (
-                  <span className="num shrink-0 text-xs text-gray-600">
-                    {r.instancias} {r.instancias === 1 ? 'copia' : 'copias'} · {r.libres} {r.libres === 1 ? 'libre' : 'libres'}
-                  </span>
-                )}
-              </li>
+              <RobotDeLaMaquina key={r.despliegueId} robot={r} />
             ))}
           </ul>
         )}
@@ -178,7 +208,7 @@ export function ColaEquipoPanel({ equipoId, activo }: { equipoId: string; activo
                 {puedeCambiarPrioridad && <CancelarEjecucion variante="icono" casoId={p.casoId} ejecucionPasoId={p.ejecucionPasoId} nombre={p.casoTitulo} />}
                 <span className="flex shrink-0 flex-col items-end gap-1">
                   {p.posicion === 1 && (max === null || enUso < max) && <Badge tone="brand">Siguiente</Badge>}
-                  <AvisoRobot pendiente={p} />
+                  <AvisoRobot pendiente={p} lanzador={robots.find((r) => r.servicioId === p.servicioId)?.lanzador} />
                 </span>
               </li>
             ))}

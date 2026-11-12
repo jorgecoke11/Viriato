@@ -39,25 +39,20 @@ public sealed class RpaWorkerOptions
     /// finishing a case nobody wants. Zero switches both off.</summary>
     public TimeSpan IntervaloAjustesDuranteUnPaso { get; set; } = TimeSpan.FromSeconds(15);
 
-    /// <summary>How long a handler has to stop once its step was cancelled in Viriato. One that ignores its token (a browser that
-    /// hangs) would keep the robot busy for ever, so past this time the worker gives up on it and stops the robot with
-    /// <see cref="RobotBloqueadoException"/>: <see cref="RpaRobot"/> exits with code 1 and whoever runs it (Docker's restart policy,
-    /// a Windows service) starts it again clean.</summary>
-    public TimeSpan EsperaAlCancelar { get; set; } = TimeSpan.FromMinutes(1);
-}
-
-/// <summary>A step was cancelled in Viriato and its handler did not stop within <see cref="RpaWorkerOptions.EsperaAlCancelar"/>:
-/// the robot cannot take other work while that one keeps running, so it has to be restarted.</summary>
-public sealed class RobotBloqueadoException(Guid ejecucionPasoId, TimeSpan espera)
-    : Exception($"El paso {ejecucionPasoId} se canceló en Viriato y el robot no lo soltó en {espera.TotalSeconds:0} s; hay que reiniciarlo.")
-{
-    public Guid EjecucionPasoId { get; } = ejecucionPasoId;
+    /// <summary>
+    /// Stop — the process ends, with exit code 0 — once the robot has gone this long without being handed a step (empty queue,
+    /// not its turn, or its Despliegue switched off). For a robot that something starts on demand (Viriato's launcher) instead of
+    /// leaving it running: it works until its queue is empty and gets out of the way. Null, the default: never, the robot waits
+    /// for work for as long as it runs.
+    /// </summary>
+    public TimeSpan? SalirSinTrabajo { get; set; }
 }
 
 /// <summary>
 /// The reusable robot loop: while the Despliegue is switched on, keep claiming steps off its queue and
 /// hand each to <c>handler</c>; whatever the handler returns (or throws) is reported back. Runs until
-/// the token is cancelled, then returns normally. A step interrupted by that cancellation is reported
+/// the token is cancelled — or, with <see cref="RpaWorkerOptions.SalirSinTrabajo"/>, until it has been idle that long — then
+/// returns normally. A step interrupted by that cancellation is reported
 /// as failed so it can be reprocessed — a claimed step is never handed out again on its own.
 /// </summary>
 public sealed class RpaWorker
@@ -82,6 +77,16 @@ public sealed class RpaWorker
     {
         ArgumentNullException.ThrowIfNull(handler);
 
+        var sinTrabajoDesde = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        // True when the robot was told to leave once idle and has been idle that long.
+        bool DebeSalir()
+        {
+            if (_options.SalirSinTrabajo is not { } limite || System.Diagnostics.Stopwatch.GetElapsedTime(sinTrabajoDesde) < limite) return false;
+            _logger.LogInformation("Sin trabajo desde hace {Tiempo}: el robot termina (Worker:SalirSinTrabajo).", limite);
+            return true;
+        }
+
         var espera = _options.IntervaloPolling;
         while (!ct.IsCancellationRequested)
         {
@@ -90,6 +95,18 @@ public sealed class RpaWorker
                 var estado = await _client.ObtenerEstadoAsync(ct).ConfigureAwait(false);
                 _ultimoEstado = estado;
                 await AplicarAjustesAsync(estado, ct).ConfigureAwait(false);
+                if (!estado.Encendido)
+                {
+                    if (DebeSalir()) return;
+                    await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
+                    continue;
+                }
+
+                var ejecucion = await _client.ObtenerSiguienteEjecucionAsync(ct).ConfigureAwait(false);
+                if (ejecucion is null)
+                {
+                    if (DebeSalir()) return;
+                    await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
                 var ejecucion = estado.Encendido ? await _client.ObtenerSiguienteEjecucionAsync(ct).ConfigureAwait(false) : null;
                 if (ejecucion is null)
                 {
@@ -101,6 +118,7 @@ public sealed class RpaWorker
 
                 espera = _options.IntervaloPolling;
                 await ProcesarAsync(ejecucion, handler, ct).ConfigureAwait(false);
+                sinTrabajoDesde = System.Diagnostics.Stopwatch.GetTimestamp();
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

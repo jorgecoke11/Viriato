@@ -23,6 +23,9 @@ internal sealed class RpaWorkerService(
         {
             logger.LogInformation("Robot escuchando la cola de Viriato (Ctrl+C para salir).");
             await worker.RunAsync(handler.EjecutarAsync, stoppingToken);
+
+            // The worker came back by itself: it was told to leave once idle (Worker:SalirSinTrabajo). The process ends too.
+            if (!stoppingToken.IsCancellationRequested) lifetime.StopApplication();
         }
         catch (ViriatoApiException ex) when (ex.IsUnauthorized)
         {

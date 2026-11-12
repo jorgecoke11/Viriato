@@ -54,7 +54,15 @@ public sealed record ColaEquipoDto(
     IReadOnlyList<PendienteDto> Pendientes,
     IReadOnlyList<RobotDelEquipoDto> Robots);
 
-public sealed record RobotDelEquipoDto(Guid DespliegueId, Guid ServicioId, string ServicioNombre, bool Encendido, bool Conectado, int Instancias, int Libres);
+/// <param name="Lanzador">What the launcher that starts this robot on demand last said, or null if nothing launches it (or
+/// its launcher has gone quiet): then the robot is simply expected to be running.</param>
+public sealed record RobotDelEquipoDto(
+    Guid DespliegueId, Guid ServicioId, string ServicioNombre, bool Encendido, bool Conectado, int Instancias, int Libres,
+    LanzadorDelRobotDto? Lanzador = null);
+
+/// <param name="Estado">One of <c>EstadosDelLanzador</c>: SinTrabajo, EnMarcha, EnEspera, Apagado or Fallo.</param>
+/// <param name="Detalle">Why, in words: what it is waiting for, or what failed.</param>
+public sealed record LanzadorDelRobotDto(string Estado, int Copias, int MaxCopias, string? Detalle, DateTimeOffset VistoEn);
 
 /// <summary>
 /// What a machine is doing and what is waiting for it, in the order it will be served: the answer to "who goes
@@ -71,6 +79,14 @@ internal static class DespachoColaEndpoints
             .RequireAuthorization(Permissions.RpaDespacho)
             .MapGet("/cola", GetColaAsync);
     }
+
+    /// <summary>How long a launcher's word is believed. It reports every few seconds; after this it is taken as gone.</summary>
+    internal static readonly TimeSpan VigenciaDelLanzador = TimeSpan.FromSeconds(90);
+
+    private static LanzadorDelRobotDto? LanzadorDe(Despliegue d, DateTimeOffset ahora) =>
+        d is { LanzadorEstado: { } estado, LanzadorVistoEn: { } visto } && ahora - visto <= VigenciaDelLanzador
+            ? new LanzadorDelRobotDto(estado, d.LanzadorCopias ?? 0, d.LanzadorMaxCopias ?? 0, d.LanzadorDetalle, visto)
+            : null;
 
     private static async Task<IResult> GetColaAsync(
         Guid equipoId, AppDbContext db, IOptions<DespachoOptions> opciones, HttpContext http, CancellationToken ct)
@@ -126,7 +142,8 @@ internal static class DespachoColaEndpoints
             estado.Robots
                 .OrderBy(r => NombreServicio(r.Despliegue.ServicioId))
                 .Select(r => new RobotDelEquipoDto(
-                    r.Despliegue.Id, r.Despliegue.ServicioId, NombreServicio(r.Despliegue.ServicioId), r.Despliegue.Encendido, r.Conectado, r.Instancias, r.Libres))
+                    r.Despliegue.Id, r.Despliegue.ServicioId, NombreServicio(r.Despliegue.ServicioId), r.Despliegue.Encendido, r.Conectado, r.Instancias, r.Libres,
+                    LanzadorDe(r.Despliegue, ahora)))
                 .ToList()));
     }
 }

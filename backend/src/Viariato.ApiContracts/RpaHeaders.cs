@@ -10,4 +10,11 @@ public static class RpaHeaders
     /// instances existed — so a stuck copy would hold up the others.
     /// </summary>
     public const string Instancia = "X-Viriato-Instancia";
+
+    /// <summary>
+    /// Sent (with any value) by the launcher — the process that starts robots on demand — when it asks with a robot's key
+    /// whether there is work for it. It tells the platform the call is not the robot itself: it does not count as the
+    /// robot being connected, or an idle robot that is not running would look like a free copy to the dispatcher.
+    /// </summary>
+    public const string Lanzador = "X-Viriato-Lanzador";
 }

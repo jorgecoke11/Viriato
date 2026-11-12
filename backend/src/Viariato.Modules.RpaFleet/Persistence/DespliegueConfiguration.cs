@@ -20,6 +20,9 @@ public sealed class DespliegueConfiguration : IEntityTypeConfiguration<Despliegu
             .HasDefaultValue(CalidadVistaEnDirecto.Baja).HasSentinel((CalidadVistaEnDirecto)(-1));
         builder.Property(d => d.GrabacionDeVideo).HasConversion<string>().HasMaxLength(20).HasDefaultValue(GrabacionDeVideo.SegunRobot);
 
+        builder.Property(d => d.LanzadorEstado).HasMaxLength(20);
+        builder.Property(d => d.LanzadorDetalle).HasMaxLength(500);
+
         builder.HasOne(d => d.Equipo)
             .WithMany()
             .HasForeignKey(d => d.EquipoId)

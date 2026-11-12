@@ -51,4 +51,20 @@ public sealed class Despliegue
     public DateTimeOffset UpdatedAt { get; set; }
 
     public DateTimeOffset? LastUsedAt { get; set; }
+
+    /// <summary>What a launcher (the process that starts this robot only while it has work) last said about it: one of
+    /// <c>EstadosDelLanzador</c>. Null for a robot nobody launches on demand — one that is simply left running.</summary>
+    public string? LanzadorEstado { get; set; }
+
+    /// <summary>Copies of the robot the launcher had running when it last reported.</summary>
+    public int? LanzadorCopias { get; set; }
+
+    /// <summary>The most copies the launcher will run at once.</summary>
+    public int? LanzadorMaxCopias { get; set; }
+
+    /// <summary>Why it is in that state, in words (why it waits, what failed).</summary>
+    public string? LanzadorDetalle { get; set; }
+
+    /// <summary>When the launcher last reported. Old = the launcher itself is gone, and so is whatever it said.</summary>
+    public DateTimeOffset? LanzadorVistoEn { get; set; }
 }

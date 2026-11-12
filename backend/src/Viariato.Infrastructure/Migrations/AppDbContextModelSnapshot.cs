@@ -2366,6 +2366,28 @@ namespace Viariato.Infrastructure.Migrations
                         .HasDefaultValue("SegunRobot")
                         .HasColumnName("grabacion_de_video");
 
+                    b.Property<int?>("LanzadorCopias")
+                        .HasColumnType("integer")
+                        .HasColumnName("lanzador_copias");
+
+                    b.Property<string>("LanzadorDetalle")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("lanzador_detalle");
+
+                    b.Property<string>("LanzadorEstado")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("lanzador_estado");
+
+                    b.Property<int?>("LanzadorMaxCopias")
+                        .HasColumnType("integer")
+                        .HasColumnName("lanzador_max_copias");
+
+                    b.Property<DateTimeOffset?>("LanzadorVistoEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lanzador_visto_en");
+
                     b.Property<DateTimeOffset?>("LastUsedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_used_at");

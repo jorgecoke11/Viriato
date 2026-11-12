@@ -1,0 +1,30 @@
+{
+  "maxRobotsALaVez": 2,
+  "maxConPantalla": 1,
+  "salirSinTrabajoSegundos": 30,
+  "robots": [
+    {
+      "nombre": "bsh-creador",
+      "claveEnv": "CREADOR_API_KEY",
+      "comando": "dotnet",
+      "argumentos": ["/robots/bsh-creador/Bsh.CasesCreator.dll"],
+      "directorio": "/robots/bsh-creador",
+      "maxCopias": 1
+    },
+    {
+      "nombre": "bsh-extractor",
+      "claveEnv": "EXTRACTOR_API_KEY",
+      "comando": "dotnet",
+      "argumentos": ["/robots/bsh-extractor/Bsh.PricesExtractor.dll"],
+      "directorio": "/robots/bsh-extractor",
+      "maxCopias": 1,
+      "pantalla": true,
+      "memoriaMaximaMb": 1800,
+      "entorno": {
+        "Tradeplace__Credencial": "${TRADEPLACE_CREDENCIAL}",
+        "Vista__UrlPublica": "${VISTA_URL_PUBLICA}",
+        "Grabacion__Activa": "true"
+      }
+    }
+  ]
+}

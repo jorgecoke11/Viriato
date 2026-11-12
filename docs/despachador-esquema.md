@@ -98,6 +98,12 @@ flowchart LR
 | ¿Cuánto puede tardar un paso? | El **tiempo máximo del servicio** | *Servicios* |
 | ¿Cuántos de un servicio en toda la flota? | El **límite global** del servicio | *Servicios* |
 
+## Robots que no están siempre encendidos
+
+Todo lo anterior vale igual para un robot que arranca el **lanzador** solo cuando tiene trabajo
+([lanzador-de-robots.md](lanzador-de-robots.md)): mientras está arrancado pide `cola/siguiente` como cualquiera. El lanzador pregunta
+aparte cuánto hay pendiente (`GET /rpa/lanzador/trabajo`), y esas preguntas **no cuentan como que el robot esté conectado**.
+
 ## Escalar
 
 - **Contenedores**: `docker compose up -d --scale <robot>=3` (o `deploy.replicas: 3`). Todas las réplicas llevan la misma `Viriato__ApiKey`.
