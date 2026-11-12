@@ -12,7 +12,7 @@ export function Aparece({ children, retraso = 0, className }: { children: ReactN
       className={className}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: duration.slow, ease: ease.out, delay: retraso }}
+      transition={{ duration: duration.base, ease: ease.out, delay: retraso }}
     >
       {children}
     </motion.div>

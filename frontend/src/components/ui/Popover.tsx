@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { duration, ease } from '../../lib/motion/tokens'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -23,7 +24,7 @@ interface PopoverProps {
  */
 export function Popover({ trigger, children, label, width = 288 }: PopoverProps) {
   const [open, setOpen] = useState(false)
-  const [posicion, setPosicion] = useState<{ top: number; left: number } | null>(null)
+  const [posicion, setPosicion] = useState<{ top: number; left: number; origen: string; arriba: boolean } | null>(null)
   const anclaRef = useRef<HTMLElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const id = useId()
@@ -41,7 +42,9 @@ export function Popover({ trigger, children, label, width = 288 }: PopoverProps)
     const left = Math.min(Math.max(MARGEN, ancla.right - width), window.innerWidth - width - MARGEN)
     const cabeAbajo = ancla.bottom + GAP + alto <= window.innerHeight - MARGEN
     const top = cabeAbajo ? ancla.bottom + GAP : Math.max(MARGEN, ancla.top - GAP - alto)
-    setPosicion({ top, left })
+    // It grows out of its trigger: from the trigger's horizontal centre, on the edge that faces it.
+    const centroDelAncla = Math.min(Math.max(ancla.left + ancla.width / 2 - left, 0), width)
+    setPosicion({ top, left, origen: `${Math.round(centroDelAncla)}px ${cabeAbajo ? '0%' : '100%'}`, arriba: !cabeAbajo })
   }, [open, width, children])
 
   useEffect(() => {
@@ -98,11 +101,17 @@ export function Popover({ trigger, children, label, width = 288 }: PopoverProps)
               role="dialog"
               aria-label={label}
               className="fixed z-[70] rounded-xl border border-gray-200 bg-raised p-4 shadow-pop"
-              style={{ width, top: posicion?.top ?? -9999, left: posicion?.left ?? -9999, visibility: posicion ? 'visible' : 'hidden' }}
-              initial={{ opacity: 0, y: -4, scale: 0.98 }}
+              style={{
+                width,
+                top: posicion?.top ?? -9999,
+                left: posicion?.left ?? -9999,
+                visibility: posicion ? 'visible' : 'hidden',
+                transformOrigin: posicion?.origen ?? '50% 0%',
+              }}
+              initial={{ opacity: 0, y: posicion?.arriba ? 4 : -4, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.98 }}
-              transition={{ duration: 0.12 }}
+              exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1, ease: ease.out } }}
+              transition={{ duration: duration.fast, ease: ease.out }}
               onClick={(e) => e.stopPropagation()}
             >
               {children(close)}

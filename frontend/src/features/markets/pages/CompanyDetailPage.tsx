@@ -102,12 +102,12 @@ export function CompanyDetailPage() {
           <table className="mt-2 w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50/70">
               <tr>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Año</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">EPS</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Valor contable/acción</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Dividendo/acción</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Activo corriente</th>
-                <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">Pasivo corriente</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Año</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">EPS</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Valor contable/acción</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Dividendo/acción</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Activo corriente</th>
+                <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Pasivo corriente</th>
               </tr>
             </thead>
             <tbody>

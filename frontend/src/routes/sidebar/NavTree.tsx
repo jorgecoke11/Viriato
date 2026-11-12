@@ -110,7 +110,7 @@ export function NavTree({
               <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/20 text-side-accent [&>svg]:h-3.5 [&>svg]:w-3.5">
                 {node.icon}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold tracking-[0.06em] uppercase opacity-90">{node.label}</span>
+              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold opacity-80">{node.label}</span>
               <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring.snappy} className="shrink-0 text-side-text group-hover:text-side-strong">
                 <ChevronDown size={14} />
               </motion.span>
