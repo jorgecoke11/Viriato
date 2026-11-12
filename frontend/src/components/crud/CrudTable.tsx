@@ -51,12 +51,12 @@ export function CrudTable<T>({
             </th>
           )}
           {columns.map((column) => (
-            <th key={column.key} scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">
+            <th key={column.key} scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">
               {column.label}
             </th>
           ))}
           {hasActions && (
-            <th scope="col" className="px-4 py-2.5 text-xs font-medium tracking-wide text-gray-500 uppercase">
+            <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">
               Acciones
             </th>
           )}

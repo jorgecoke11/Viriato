@@ -28,7 +28,7 @@ interface Props<T> {
   anchoMinimo?: string
 }
 
-const cabecera = 'px-4 py-2.5 text-left text-xs font-medium tracking-wide whitespace-nowrap text-gray-500 uppercase'
+const cabecera = 'px-4 py-2.5 text-left text-xs font-medium whitespace-nowrap text-gray-500'
 
 /**
  * A table for any list of rows: columns given as data, an optional selection column, an optional click on the row. It

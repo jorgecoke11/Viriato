@@ -14,7 +14,8 @@ export function ContadorAnimado({ valor }: { valor: number }) {
   useEffect(() => {
     if (reducir) return
     const control = animate(desde.current, valor, {
-      duration: 0.8,
+      // Short: the counters live on screens that refresh every few seconds.
+      duration: 0.4,
       ease: ease.out,
       onUpdate: (v) => {
         desde.current = v

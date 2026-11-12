@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 export function DatoRotulado({ rotulo, ayuda, children }: { rotulo: string; ayuda?: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1" title={ayuda}>
-      <span className="text-[11px] font-medium tracking-wide text-gray-500 uppercase">{rotulo}</span>
+      <span className="text-[11px] font-medium text-gray-500">{rotulo}</span>
       <span className="flex min-w-0 flex-wrap items-center gap-1.5">{children}</span>
     </div>
   )

@@ -76,7 +76,7 @@ export function HomePage() {
       </Aparece>
 
       <section aria-labelledby="atencion" className="flex flex-col gap-3">
-        <h2 id="atencion" className="text-sm font-semibold tracking-wide text-gray-500 uppercase">
+        <h2 id="atencion" className="text-sm font-semibold text-gray-500">
           Ahora mismo
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -124,7 +124,7 @@ export function HomePage() {
       </section>
 
       <section aria-labelledby="procesos" className="flex flex-col gap-3">
-        <h2 id="procesos" className="text-sm font-semibold tracking-wide text-gray-500 uppercase">
+        <h2 id="procesos" className="text-sm font-semibold text-gray-500">
           Tus procesos
         </h2>
         {resumen.isLoading ? (
