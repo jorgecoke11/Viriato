@@ -70,6 +70,26 @@ export interface DespliegueDto {
   vistaEnDirecto: CalidadVistaEnDirecto
   /** Whether its robot records each run as a video. */
   grabacionDeVideo: GrabacionDeVideo
+  /** The robot version the launcher next to Viriato runs; null when it runs somewhere else, with its key. */
+  versionDeRobotNumero: number | null
+}
+
+/** One upload of the robot's program (the zip of its `dotnet publish`). */
+export interface VersionDeRobotDto {
+  id: string
+  numero: number
+  nombreArchivo: string
+  tamanoBytes: number
+  /** How it is run, worked out from the zip, e.g. `dotnet Bsh.PricesExtractor.dll`. */
+  ejecuta: string
+  /** It drives a browser. */
+  pantalla: boolean
+  memoriaMaximaMb: number | null
+  maxCopias: number
+  subidaPor: string | null
+  createdAt: string
+  /** The one the launcher runs. */
+  actual: boolean
 }
 
 export interface DespliegueConApiKeyDto {
@@ -168,6 +188,21 @@ export const regenerarClaveDespliegue = (id: string) =>
   apiFetch<DespliegueConApiKeyDto>(`/despliegues/${id}/regenerar-clave`, { method: 'POST' })
 
 export const deleteDespliegue = (id: string) => apiFetch<void>(`/despliegues/${id}`, { method: 'DELETE' })
+
+export const listVersionesDeRobot = (despliegueId: string) => apiFetch<VersionDeRobotDto[]>(`/despliegues/${despliegueId}/versiones`)
+
+export const subirVersionDeRobot = (despliegueId: string, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch<VersionDeRobotDto>(`/despliegues/${despliegueId}/versiones`, { method: 'POST', body: formData })
+}
+
+/** `null` stops the launcher running this robot (it is left to run somewhere else, with its key). */
+export const usarVersionDeRobot = (despliegueId: string, versionId: string | null) =>
+  apiFetch<void>(`/despliegues/${despliegueId}/version-actual`, { method: 'PUT', body: JSON.stringify({ versionId }) })
+
+export const borrarVersionDeRobot = (despliegueId: string, versionId: string) =>
+  apiFetch<void>(`/despliegues/${despliegueId}/versiones/${versionId}`, { method: 'DELETE' })
 
 export const listCredenciales = (filters: Record<string, string> = {}) =>
   apiFetch<PagedResult<CredencialDto>>(`/credenciales${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)

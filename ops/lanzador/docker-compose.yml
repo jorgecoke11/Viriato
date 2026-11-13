@@ -1,6 +1,7 @@
-# El lanzador de robots: UN contenedor para todos los robots de esta máquina. Cada robot se arranca solo mientras tiene trabajo en
-# Viriato y se apaga cuando vacía su cola. Ver docs/lanzador-de-robots.md.
+# El lanzador de robots para una máquina QUE NO ES la de Viriato. En el servidor de Viriato no hace falta nada de esto: el lanzador ya
+# viene en docker-compose.prod.yml y los robots se suben en Viriato (RPA → Despliegues). Ver docs/lanzador-de-robots.md.
 #
+# Aquí los robots van en una carpeta con su catálogo (robots.json) y cada uno con la clave de su despliegue en .env:
 #   Copy-Item .env.example .env                       # y rellena las claves
 #   Copy-Item robots.example.json robots\robots.json  # el catálogo, junto a las carpetas de los robots
 #   docker compose up -d --build

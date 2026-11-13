@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -10,6 +13,8 @@ using Viariato.Modules.Casos.Domain;
 using Viariato.Modules.Flujos.Domain;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Domain;
+using Viariato.Modules.RpaFleet.Lanzador;
+using RpaLanzadorOptions = Viariato.Modules.RpaFleet.Lanzador.LanzadorOptions;
 using Viariato.Shared.Http;
 
 namespace Viariato.Modules.Casos.Endpoints;
@@ -35,6 +40,84 @@ internal static class LanzadorEndpoints
 
         group.MapGet("/trabajo", GetTrabajoAsync);
         group.MapPut("/estado", PutEstadoAsync);
+
+        // The launcher that runs next to Viriato: no robot key, the secret both share (see SecretoDelLanzador).
+        var delLanzador = endpoints.MapGroup("/api/v1/rpa/lanzador")
+            .AllowAnonymous()
+            .AddEndpointFilter(async (contexto, siguiente) =>
+            {
+                var secreto = contexto.HttpContext.RequestServices.GetRequiredService<SecretoDelLanzador>();
+                if (!secreto.Disponible) return Results.NotFound();
+                return secreto.Coincide(contexto.HttpContext.Request.Headers[RpaHeaders.SecretoDelLanzador].ToString())
+                    ? await siguiente(contexto)
+                    : Results.Unauthorized();
+            });
+
+        delLanzador.MapGet("/catalogo", GetCatalogoAsync);
+        delLanzador.MapGet("/versiones/{id:guid}/paquete", GetPaqueteAsync);
+    }
+
+    /// <summary>
+    /// Which robots the launcher next to Viriato runs: every Despliegue with a robot version uploaded (on an active machine, of an
+    /// active service), how to run it, and a fresh pass for it. Read every round.
+    /// </summary>
+    private static async Task<IResult> GetCatalogoAsync(
+        AppDbContext db, SecretoDelLanzador secreto, IOptions<RpaLanzadorOptions> opciones, CancellationToken ct)
+    {
+        var o = opciones.Value;
+        var despliegues = await db.Set<Despliegue>().AsNoTracking()
+            .Include(d => d.Servicio).Include(d => d.Equipo).Include(d => d.VersionDeRobot)
+            .Where(d => d.VersionDeRobotId != null && d.Servicio!.Activo && d.Equipo!.Activo)
+            .OrderBy(d => d.CreatedAt)
+            .ToListAsync(ct);
+
+        var flujoIds = despliegues.Select(d => d.FlujoId).Distinct().ToList();
+        var flujos = await db.Set<Flujo>().AsNoTracking().Where(f => flujoIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id, f => f.Nombre, ct);
+        var vecesPorServicio = despliegues.GroupBy(d => d.ServicioId).ToDictionary(g => g.Key, g => g.Count());
+        var vista = string.IsNullOrWhiteSpace(o.UrlPublica) ? null : $"{o.UrlPublica.TrimEnd('/')}/vista/vnc.html?path=vista/websockify";
+
+        var robots = despliegues.Select(d =>
+        {
+            var v = d.VersionDeRobot!;
+            var nombre = vecesPorServicio[d.ServicioId] > 1
+                ? $"{d.Servicio!.Nombre} · {flujos.GetValueOrDefault(d.FlujoId, d.FlujoId.ToString("N")[..8])}"
+                : d.Servicio!.Nombre;
+
+            var entorno = v.EntornoJson is null
+                ? new Dictionary<string, string>()
+                : JsonSerializer.Deserialize<Dictionary<string, string>>(v.EntornoJson) ?? [];
+            // Where people see its screen from: through Viriato's own address, /vista/.
+            if (v.Pantalla && vista is not null) entorno.TryAdd("Vista__UrlPublica", vista);
+
+            return new RobotDelCatalogoDto(
+                d.Id, nombre, secreto.EmitirPase(d.Id), v.Id, v.Numero, v.Sha256, v.Raiz, v.Comando, v.Argumentos, v.Pantalla,
+                v.MemoriaMaximaMb, v.MaxCopias, entorno);
+        }).ToList();
+
+        // Still two with the same name (same service and process on two machines): the machine tells them apart.
+        var repetidos = robots.GroupBy(r => r.Nombre, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).Select(g => g.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        robots = robots.Select(r => repetidos.Contains(r.Nombre)
+            ? r with { Nombre = $"{r.Nombre} ({despliegues.First(d => d.Id == r.DespliegueId).Equipo!.Nombre})" }
+            : r).ToList();
+
+        return Results.Ok(new CatalogoDelLanzadorDto(Math.Max(1, o.MaxRobotsALaVez), Math.Max(0, o.MaxConPantalla), robots));
+    }
+
+    /// <summary>The zip of a robot version, for the launcher to unpack and run.</summary>
+    private static async Task<IResult> GetPaqueteAsync(Guid id, AppDbContext db, AlmacenDeRobots almacen, HttpContext http, CancellationToken ct)
+    {
+        var version = await db.Set<VersionDeRobot>().AsNoTracking().FirstOrDefaultAsync(v => v.Id == id, ct);
+        if (version is null) return ProblemResults.NotFound(http, "Versión no encontrada.");
+
+        try
+        {
+            return Results.File(almacen.Abrir(version.Ruta), "application/zip", version.NombreArchivo);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return ProblemResults.NotFound(http, "El archivo de esa versión ya no está en el servidor: súbela de nuevo.");
+        }
     }
 
     /// <summary>Whether it is worth having a copy of this robot running: what waits in its queue and what its copies hold.

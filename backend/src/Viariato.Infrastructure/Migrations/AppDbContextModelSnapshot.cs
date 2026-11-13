@@ -2400,6 +2400,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<Guid?>("VersionDeRobotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_de_robot_id");
+
                     b.Property<string>("VistaEnDirecto")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -2417,6 +2421,9 @@ namespace Viariato.Infrastructure.Migrations
 
                     b.HasIndex("ServicioId")
                         .HasDatabaseName("ix_despliegues_servicio_id");
+
+                    b.HasIndex("VersionDeRobotId")
+                        .HasDatabaseName("ix_despliegues_version_de_robot_id");
 
                     b.HasIndex("EquipoId", "ServicioId", "FlujoId")
                         .IsUnique()
@@ -2657,6 +2664,95 @@ namespace Viariato.Infrastructure.Migrations
                         .HasDatabaseName("ix_servicios_nombre");
 
                     b.ToTable("servicios", "rpafleet");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.VersionDeRobot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.PrimitiveCollection<List<string>>("Argumentos")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("argumentos");
+
+                    b.Property<string>("Comando")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)")
+                        .HasColumnName("comando");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DespliegueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("despliegue_id");
+
+                    b.Property<string>("EntornoJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("entorno_json");
+
+                    b.Property<int>("MaxCopias")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_copias");
+
+                    b.Property<int?>("MemoriaMaximaMb")
+                        .HasColumnType("integer")
+                        .HasColumnName("memoria_maxima_mb");
+
+                    b.Property<string>("NombreArchivo")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)")
+                        .HasColumnName("nombre_archivo");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("integer")
+                        .HasColumnName("numero");
+
+                    b.Property<bool>("Pantalla")
+                        .HasColumnType("boolean")
+                        .HasColumnName("pantalla");
+
+                    b.Property<string>("Raiz")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)")
+                        .HasColumnName("raiz");
+
+                    b.Property<string>("Ruta")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("ruta");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sha256");
+
+                    b.Property<string>("SubidaPor")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("subida_por");
+
+                    b.Property<long>("TamanoBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tamano_bytes");
+
+                    b.HasKey("Id")
+                        .HasName("pk_versiones_de_robot");
+
+                    b.HasIndex("DespliegueId", "Numero")
+                        .IsUnique()
+                        .HasDatabaseName("ix_versiones_de_robot_despliegue_id_numero");
+
+                    b.ToTable("versiones_de_robot", "rpafleet");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Users.Domain.Permission", b =>
@@ -3493,9 +3589,17 @@ namespace Viariato.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_despliegues_servicio_servicio_id");
 
+                    b.HasOne("Viariato.Modules.RpaFleet.Domain.VersionDeRobot", "VersionDeRobot")
+                        .WithMany()
+                        .HasForeignKey("VersionDeRobotId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_despliegues_version_de_robot_version_de_robot_id");
+
                     b.Navigation("Equipo");
 
                     b.Navigation("Servicio");
+
+                    b.Navigation("VersionDeRobot");
                 });
 
             modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.EquipoServicioOrden", b =>
@@ -3548,6 +3652,16 @@ namespace Viariato.Infrastructure.Migrations
                     b.Navigation("Plantilla");
 
                     b.Navigation("Servicio");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.VersionDeRobot", b =>
+                {
+                    b.HasOne("Viariato.Modules.RpaFleet.Domain.Despliegue", null)
+                        .WithMany()
+                        .HasForeignKey("DespliegueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_versiones_de_robot_despliegues_despliegue_id");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Users.Domain.RefreshToken", b =>

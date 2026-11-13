@@ -98,29 +98,16 @@ ni saber ninguna contraseña más. El pase va firmado con una clave derivada de 
 la API) y no sirve como token de la API. Probado de punta a punta con Caddy: sin pase, 401 en la página y en el websocket; con pase, la
 página llega y el websocket abre (101).
 
-Para ponerlo en marcha, **en el PC donde corren Viriato y el extractor** (tienen que ser el mismo):
+Con el lanzador que viene con Viriato no hay nada que poner en marcha: `/vista/` lleva a la pantalla del primer robot con navegador
+que tenga arrancado (`lanzador:6080`), y el robot recibe la dirección pública de su vista sin que nadie la escriba. Compruébalo así:
 
-1. Actualiza Viriato: `git pull` y `docker compose -f docker-compose.prod.yml --profile tunnel up -d --build api web`. La red de Viriato
-   pasa a llamarse siempre `viriato` (antes dependía del nombre del proyecto): Docker recrea los contenedores, los datos no se tocan.
-2. Comprueba la puerta antes de enchufar el robot: `curl -I https://app.viriato.org/vista/vnc.html` tiene que dar **401**. (502 es un
-   Viriato sin actualizar o sin extractor; 200 sin pase es que no está la puerta: no sigas.)
-3. En el repositorio de los robots, `git pull` (su `docker-compose.vista-publica.yml` ya busca la red `viriato`) y en su `.env`:
-   ```
-   VISTA_EN_DIRECTO=true
-   VISTA_URL_PUBLICA=https://app.viriato.org/vista/vnc.html?path=vista/websockify
-   ```
-   (`path=vista/websockify` le dice a noVNC por dónde abrir el websocket; sin él lo buscaría en la raíz.) `VNC_PASSWORD` ya no hace falta:
-   si la pones, cada persona que mire tendrá que teclearla.
-4. Arranca el extractor unido a la red de Viriato (el arranque automático, [arranque-automatico.md](arranque-automatico.md), ya lo hace así):
-   ```powershell
-   docker compose -f docker-compose.yml -f docker-compose.vista-publica.yml up -d extractor
-   ```
-5. Pruébalo desde el móvil **con datos**: entra en Viriato, abre un caso en ejecución y mira el panel *En directo*.
+1. `curl -I https://app.viriato.org/vista/vnc.html` tiene que dar **401** sin pase. (200 sin pase es que no está la puerta: no sigas.)
+2. Desde el móvil **con datos**: entra en Viriato, abre un caso en ejecución de un robot con navegador y mira el panel *En directo*.
 
-Límites: **un solo extractor** (con varias copias, el nombre `extractor` no sabría a cuál mandar) y los dos en el mismo PC. Si el extractor
-corre en otra máquina alcanzable desde la de Viriato, pon su dirección en `VISTA_UPSTREAM` del `.env` de Viriato (por defecto
-`extractor:6080`). Lo que se sirve en `/vista/` corre con la dirección de Viriato: pon detrás solo tus propios robots. Cloudflare Access sigue
-siendo una capa extra opcional por delante de todo.
+Límites: solo se ve desde fuera **la primera copia con pantalla** del lanzador (la segunda usa el puerto 6081, que Caddy no sirve). Si
+el robot corre en otra máquina alcanzable desde la de Viriato, pon su dirección en `VISTA_UPSTREAM` del `.env` de Viriato (por defecto
+`lanzador:6080`). Lo que se sirve en `/vista/` corre con la dirección de Viriato: pon detrás solo tus propios robots. Cloudflare Access
+sigue siendo una capa extra opcional por delante de todo.
 
 ## Poner la dirección de la vista a mano (`VISTA_URL_PUBLICA`)
 

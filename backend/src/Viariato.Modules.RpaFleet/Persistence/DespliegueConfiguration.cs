@@ -33,6 +33,12 @@ public sealed class DespliegueConfiguration : IEntityTypeConfiguration<Despliegu
             .HasForeignKey(d => d.ServicioId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // The version it runs; removing a version that is in use is refused by the endpoint, the database just forgets it.
+        builder.HasOne(d => d.VersionDeRobot)
+            .WithMany()
+            .HasForeignKey(d => d.VersionDeRobotId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(d => d.ApiKeyHash).IsUnique();
         builder.HasIndex(d => new { d.EquipoId, d.ServicioId, d.FlujoId }).IsUnique();
     }

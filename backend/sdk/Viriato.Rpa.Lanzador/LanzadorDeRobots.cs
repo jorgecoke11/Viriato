@@ -12,13 +12,27 @@ namespace Viriato.Rpa.Lanzador;
 /// can say what is started and why something is not.
 /// </summary>
 public sealed class LanzadorDeRobots(
-    IOptionsMonitor<LanzadorOptions> opciones,
+    ICatalogoDelLanzador catalogo,
     IViriatoDelLanzador viriato,
     IArrancadorDeRobots arrancador,
-    Func<string, string?> variable,
     TimeProvider reloj,
     ILogger<LanzadorDeRobots> logger) : BackgroundService
 {
+    /// <summary>With the catalogue file and each robot's key in an environment variable.</summary>
+    public LanzadorDeRobots(
+        IOptionsMonitor<LanzadorOptions> opciones,
+        IViriatoDelLanzador viriato,
+        IArrancadorDeRobots arrancador,
+        Func<string, string?> variable,
+        TimeProvider reloj,
+        ILogger<LanzadorDeRobots> logger)
+        : this(new CatalogoDeArchivo(opciones, variable), viriato, arrancador, reloj, logger)
+    {
+    }
+
+    // The settings of the last round: how often to look, how long to give a robot to stop.
+    private LanzadorOptions _opciones = new();
+
     /// <summary>What the launcher remembers about one robot between rounds.</summary>
     private sealed class Memoria
     {
@@ -70,7 +84,7 @@ public sealed class LanzadorDeRobots(
                     logger.LogError(ex, "La ronda del lanzador ha fallado; se reintenta.");
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, opciones.CurrentValue.IntervaloSegundos)), reloj, stoppingToken).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, _opciones.IntervaloSegundos)), reloj, stoppingToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -86,13 +100,14 @@ public sealed class LanzadorDeRobots(
     /// <summary>One round: look after what is running, ask Viriato, start what is missing, report.</summary>
     public async Task CicloAsync(CancellationToken ct)
     {
-        var o = opciones.CurrentValue;
+        var leido = await catalogo.LeerAsync(_robots.Values.All(m => m.Copias.Count == 0), ct).ConfigureAwait(false);
+        var o = _opciones = leido.Opciones;
 
-        var problemas = o.Validar(variable);
+        var problemas = leido.Problemas;
         if (problemas.Count > 0)
         {
             var texto = string.Join(Environment.NewLine, problemas.Select(p => "  - " + p));
-            if (texto != _ultimoProblemaDeCatalogo)
+            if (texto != _ultimoProblemaDeCatalogo && !leido.ProblemasYaContados)
             {
                 logger.LogError("El catálogo del lanzador no es válido; no se arranca nada hasta corregirlo:{Salto}{Problemas}", Environment.NewLine, texto);
                 _ultimoProblemaDeCatalogo = texto;
@@ -110,7 +125,7 @@ public sealed class LanzadorDeRobots(
         {
             if (!_robots.TryGetValue(robot.Nombre, out var memoria)) _robots[robot.Nombre] = memoria = new Memoria();
 
-            var clave = variable(robot.ClaveEnv)!;
+            var clave = leido.Claves[robot.Nombre];
             claves[robot.Nombre] = clave;
 
             var trabajo = await PreguntarAsync(robot, memoria, clave, ct).ConfigureAwait(false);
@@ -247,7 +262,9 @@ public sealed class LanzadorDeRobots(
         catch (Exception ex)
         {
             var aviso = ex is ClaveRechazadaException
-                ? $"Viriato rechaza la clave de {robot.Nombre} (variable {robot.ClaveEnv}): revisa que sea la de su despliegue y que no se haya regenerado."
+                ? string.IsNullOrEmpty(robot.ClaveEnv)
+                    ? $"Viriato rechaza el pase de {robot.Nombre}; se pide otro en la próxima ronda."
+                    : $"Viriato rechaza la clave de {robot.Nombre} (variable {robot.ClaveEnv}): revisa que sea la de su despliegue y que no se haya regenerado."
                 : $"No se pudo preguntar a Viriato por {robot.Nombre}: {ex.Message}";
 
             // Said once, not every few seconds while it lasts.
@@ -339,7 +356,7 @@ public sealed class LanzadorDeRobots(
         if (copias.Count == 0) return;
 
         logger.LogInformation("Parando {Copias} robots en marcha…", copias.Count);
-        var gracia = TimeSpan.FromSeconds(Math.Max(0, opciones.CurrentValue.GraciaAlPararSegundos));
+        var gracia = TimeSpan.FromSeconds(Math.Max(0, _opciones.GraciaAlPararSegundos));
         await Task.WhenAll(copias.Select(c => c.PararAsync(gracia))).ConfigureAwait(false);
         foreach (var memoria in _robots.Values) memoria.Copias.Clear();
     }

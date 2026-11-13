@@ -36,3 +36,40 @@ public static class EstadosDelLanzador
 
     public static readonly IReadOnlyList<string> Todos = [SinTrabajo, EnMarcha, EnEspera, Apagado, Fallo];
 }
+
+/// <summary>
+/// What GET /api/v1/rpa/lanzador/catalogo answers to the launcher that lives next to Viriato (it proves it with the shared secret,
+/// header <see cref="RpaHeaders.SecretoDelLanzador"/>): which robots it runs, how, and a pass for each. Read every round, so a
+/// version uploaded in Viriato, or a robot switched to another version, takes effect without touching the server.
+/// </summary>
+/// <param name="MaxRobotsALaVez">The machine's ceiling: copies of any robot running at once.</param>
+/// <param name="MaxConPantalla">Of those, how many may drive a browser.</param>
+public sealed record CatalogoDelLanzadorDto(int MaxRobotsALaVez, int MaxConPantalla, IReadOnlyList<RobotDelCatalogoDto> Robots);
+
+/// <summary>One robot of the catalogue: one Despliegue with a robot version uploaded to Viriato.</summary>
+/// <param name="Nombre">For the logs and the screen: the service's name (and the process's, when the service has several).</param>
+/// <param name="Clave">A pass that authenticates as this Despliegue for a few days. The launcher asks with it and hands it to the
+/// copies it starts, so no key is ever written anywhere.</param>
+/// <param name="VersionId">The version to run; its package is at GET /api/v1/rpa/lanzador/versiones/{id}/paquete.</param>
+/// <param name="Sha256">Of the package, to check the download.</param>
+/// <param name="Raiz">Folder inside the package the robot lives in ("" = its root): a zip of the folder rather than of its contents.</param>
+/// <param name="Comando">The program to run, e.g. <c>dotnet</c>.</param>
+/// <param name="Argumentos">Its arguments, relative to <paramref name="Raiz"/>, e.g. <c>["Bsh.PricesExtractor.dll"]</c>.</param>
+/// <param name="Pantalla">It drives a browser: it gets a virtual screen of its own.</param>
+/// <param name="MemoriaMaximaMb">A copy using more than this is stopped. Null: no limit.</param>
+/// <param name="MaxCopias">Copies of it that may run at once.</param>
+/// <param name="Entorno">Extra settings for the robot (environment variables, <c>Seccion__Clave</c>).</param>
+public sealed record RobotDelCatalogoDto(
+    Guid DespliegueId,
+    string Nombre,
+    string Clave,
+    Guid VersionId,
+    int Numero,
+    string Sha256,
+    string Raiz,
+    string Comando,
+    IReadOnlyList<string> Argumentos,
+    bool Pantalla,
+    int? MemoriaMaximaMb,
+    int MaxCopias,
+    IReadOnlyDictionary<string, string> Entorno);

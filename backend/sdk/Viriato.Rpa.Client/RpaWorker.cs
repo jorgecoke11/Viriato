@@ -39,6 +39,12 @@ public sealed class RpaWorkerOptions
     /// finishing a case nobody wants. Zero switches both off.</summary>
     public TimeSpan IntervaloAjustesDuranteUnPaso { get; set; } = TimeSpan.FromSeconds(15);
 
+    /// <summary>How long a handler has to stop once its step was cancelled in Viriato. One that ignores its token (a browser that
+    /// hangs) would keep the robot busy for ever, so past this time the worker gives up on it and stops the robot with
+    /// <see cref="RobotBloqueadoException"/>: <see cref="RpaRobot"/> exits with code 1 and whoever runs it (Docker's restart policy,
+    /// a Windows service) starts it again clean.</summary>
+    public TimeSpan EsperaAlCancelar { get; set; } = TimeSpan.FromMinutes(1);
+
     /// <summary>
     /// Stop — the process ends, with exit code 0 — once the robot has gone this long without being handed a step (empty queue,
     /// not its turn, or its Despliegue switched off). For a robot that something starts on demand (Viriato's launcher) instead of
@@ -46,6 +52,14 @@ public sealed class RpaWorkerOptions
     /// for work for as long as it runs.
     /// </summary>
     public TimeSpan? SalirSinTrabajo { get; set; }
+}
+
+/// <summary>A step was cancelled in Viriato and its handler did not stop within <see cref="RpaWorkerOptions.EsperaAlCancelar"/>:
+/// the robot cannot take other work while that one keeps running, so it has to be restarted.</summary>
+public sealed class RobotBloqueadoException(Guid ejecucionPasoId, TimeSpan espera)
+    : Exception($"El paso {ejecucionPasoId} se canceló en Viriato y el robot no lo soltó en {espera.TotalSeconds:0} s; hay que reiniciarlo.")
+{
+    public Guid EjecucionPasoId { get; } = ejecucionPasoId;
 }
 
 /// <summary>
@@ -95,21 +109,11 @@ public sealed class RpaWorker
                 var estado = await _client.ObtenerEstadoAsync(ct).ConfigureAwait(false);
                 _ultimoEstado = estado;
                 await AplicarAjustesAsync(estado, ct).ConfigureAwait(false);
-                if (!estado.Encendido)
-                {
-                    if (DebeSalir()) return;
-                    await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
-                    continue;
-                }
-
-                var ejecucion = await _client.ObtenerSiguienteEjecucionAsync(ct).ConfigureAwait(false);
-                if (ejecucion is null)
-                {
-                    if (DebeSalir()) return;
-                    await Task.Delay(_options.IntervaloPolling, ct).ConfigureAwait(false);
                 var ejecucion = estado.Encendido ? await _client.ObtenerSiguienteEjecucionAsync(ct).ConfigureAwait(false) : null;
                 if (ejecucion is null)
                 {
+                    if (DebeSalir()) return;
+
                     // Nothing to do: wait, and a little longer each time it stays so.
                     await Task.Delay(espera, ct).ConfigureAwait(false);
                     espera = SiguienteEspera(espera);

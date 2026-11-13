@@ -194,4 +194,171 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
 
         await Assert.ThrowsAsync<ClaveRechazadaException>(() => Lanzador().TrabajoAsync("vrt_no_existe", default));
     }
+
+    // ---- The launcher next to Viriato: robots uploaded to their Despliegue, a shared secret, passes instead of keys ----
+
+    private static byte[] ZipDeRobot(string programa = "Robot", bool conNavegador = true)
+    {
+        using var memoria = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(memoria, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var archivos = new List<string> { $"{programa}.dll", $"{programa}.runtimeconfig.json", "runtimes/linux/native/selenium-manager" };
+            if (conNavegador) archivos.Add("WebDriver.dll");
+            foreach (var nombre in archivos)
+            {
+                using var escritor = new StreamWriter(zip.CreateEntry($"publicado/{nombre}").Open());
+                escritor.Write(nombre);
+            }
+        }
+
+        return memoria.ToArray();
+    }
+
+    private static Task<HttpResponseMessage> SubirAsync(Escenario e, byte[] zip, string nombre = "robot.zip")
+    {
+        var formulario = new MultipartFormDataContent();
+        var archivo = new ByteArrayContent(zip);
+        archivo.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+        formulario.Add(archivo, "file", nombre);
+        return e.Admin.PostAsync($"/api/v1/despliegues/{e.DespliegueId}/versiones", formulario);
+    }
+
+    private HttpClient LanzadorJuntoAViriato()
+    {
+        var http = factory.CreateClient();
+        http.DefaultRequestHeaders.Add(RpaHeaders.SecretoDelLanzador, File.ReadAllText(factory.ArchivoSecretoDelLanzador).Trim());
+        return http;
+    }
+
+    private async Task<RobotDelCatalogoDto?> EnElCatalogoAsync(Escenario e)
+    {
+        var catalogo = await LanzadorJuntoAViriato().GetFromJsonAsync<CatalogoDelLanzadorDto>("/api/v1/rpa/lanzador/catalogo");
+        return catalogo!.Robots.SingleOrDefault(r => r.DespliegueId == e.DespliegueId);
+    }
+
+    [Fact]
+    public async Task UploadingAZip_IsTheWholeDeployment_AndThePassWorksAsTheRobotsKey()
+    {
+        var e = await CreateEscenarioAsync();
+        Assert.Null(await EnElCatalogoAsync(e));
+
+        var subida = await SubirAsync(e, ZipDeRobot("Bsh.PricesExtractor"), "extractor.zip");
+        Assert.Equal(HttpStatusCode.OK, subida.StatusCode);
+        var version = await subida.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, version.GetProperty("numero").GetInt32());
+        Assert.Equal("dotnet Bsh.PricesExtractor.dll", version.GetProperty("ejecuta").GetString());
+        Assert.True(version.GetProperty("pantalla").GetBoolean());
+        Assert.True(version.GetProperty("actual").GetBoolean());
+
+        var despliegue = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/despliegues/{e.DespliegueId}");
+        Assert.Equal(1, despliegue.GetProperty("versionDeRobotNumero").GetInt32());
+
+        var robot = await EnElCatalogoAsync(e);
+        Assert.NotNull(robot);
+        Assert.Equal("publicado/", robot.Raiz);
+        Assert.Equal(("dotnet", "Bsh.PricesExtractor.dll"), (robot.Comando, robot.Argumentos.Single()));
+        Assert.True(robot.Pantalla);
+        Assert.Equal("https://viriato.example/vista/vnc.html?path=vista/websockify", robot.Entorno["Vista__UrlPublica"]);
+        Assert.StartsWith(RpaHeaders.PrefijoDePase, robot.Clave);
+
+        // The pass is the robot's key: the launcher asks with it, and the robot it starts works with it.
+        await StartCasoAsync(e, "Con pase");
+        Assert.Equal(new TrabajoDelDespliegueDto(true, 1, 0, false), await Lanzador().TrabajoAsync(robot.Clave, default));
+        var ejecucion = await Robot(robot.Clave).ObtenerSiguienteEjecucionAsync();
+        Assert.NotNull(ejecucion);
+
+        // What is downloaded is what was uploaded.
+        var paquete = await LanzadorJuntoAViriato().GetByteArrayAsync($"/api/v1/rpa/lanzador/versiones/{robot.VersionId}/paquete");
+        Assert.Equal(robot.Sha256, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(paquete)), ignoreCase: true);
+    }
+
+    [Fact]
+    public async Task TheLaunchersCatalogue_DownloadsAndUnpacksTheRobot_ReadyToRun()
+    {
+        var e = await CreateEscenarioAsync();
+        Assert.Equal(HttpStatusCode.OK, (await SubirAsync(e, ZipDeRobot("Creador", conNavegador: false))).StatusCode);
+
+        var carpeta = Path.Combine(factory.CarpetaDelLanzador, "descargados-" + Guid.NewGuid().ToString("N"));
+        var catalogo = new CatalogoDeViriato(
+            factory.CreateClient(),
+            new LanzadorOptions { ViriatoUrl = "http://localhost" },
+            new LanzadorJuntoAViriato(factory.ArchivoSecretoDelLanzador, carpeta),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogoDeViriato>.Instance);
+
+        var leido = await catalogo.LeerAsync(nadaEnMarcha: true, default);
+
+        Assert.Empty(leido.Problemas);
+        var robot = leido.Opciones.Robots.Single(r => leido.Claves[r.Nombre].Length > 0 && r.Argumentos.SequenceEqual(["Creador.dll"]));
+        Assert.False(robot.Pantalla);
+        Assert.True(File.Exists(Path.Combine(robot.Directorio!, "Creador.dll")));
+        if (!OperatingSystem.IsWindows())
+        {
+            var ayudante = Path.Combine(robot.Directorio!, "runtimes", "linux", "native", "selenium-manager");
+            Assert.True(File.GetUnixFileMode(ayudante).HasFlag(UnixFileMode.UserExecute));
+        }
+
+        // A new version is downloaded beside it; the old one is tidied away only while nothing runs.
+        Assert.Equal(HttpStatusCode.OK, (await SubirAsync(e, ZipDeRobot("Creador", conNavegador: false))).StatusCode);
+        var otra = await catalogo.LeerAsync(nadaEnMarcha: false, default);
+        var nueva = otra.Opciones.Robots.Single(r => r.Nombre == robot.Nombre);
+        Assert.NotEqual(robot.Directorio, nueva.Directorio);
+        Assert.True(Directory.Exists(robot.Directorio));
+        await catalogo.LeerAsync(nadaEnMarcha: true, default);
+        Assert.False(Directory.Exists(robot.Directorio));
+        Assert.True(Directory.Exists(nueva.Directorio));
+    }
+
+    [Fact]
+    public async Task GoingBack_OrStopping_TheLauncherFollowsIt()
+    {
+        var e = await CreateEscenarioAsync();
+        var primera = (await (await SubirAsync(e, ZipDeRobot())).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var segunda = (await (await SubirAsync(e, ZipDeRobot())).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        Assert.Equal(2, (await EnElCatalogoAsync(e))!.Numero);
+
+        // The one in use cannot be deleted.
+        Assert.Equal(HttpStatusCode.Conflict, (await e.Admin.DeleteAsync($"/api/v1/despliegues/{e.DespliegueId}/versiones/{segunda}")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/version-actual", new { versionId = primera })).StatusCode);
+        Assert.Equal(primera, (await EnElCatalogoAsync(e))!.VersionId);
+        Assert.Equal(HttpStatusCode.NoContent, (await e.Admin.DeleteAsync($"/api/v1/despliegues/{e.DespliegueId}/versiones/{segunda}")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/version-actual", new { versionId = (Guid?)null })).StatusCode);
+        Assert.Null(await EnElCatalogoAsync(e));
+
+        var versiones = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/despliegues/{e.DespliegueId}/versiones");
+        Assert.Equal(1, versiones.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AZipThatIsNotARobot_IsRefusedWithTheReason()
+    {
+        var e = await CreateEscenarioAsync();
+        var respuesta = await SubirAsync(e, "esto no es un zip"u8.ToArray());
+
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+        Assert.Contains("No es un archivo .zip válido", await respuesta.Content.ReadAsStringAsync());
+        Assert.Null(await EnElCatalogoAsync(e));
+    }
+
+    [Fact]
+    public async Task WithoutTheSecret_TheCatalogueAndTheRobotsAreClosed()
+    {
+        var e = await CreateEscenarioAsync();
+        await SubirAsync(e, ZipDeRobot());
+        var robot = (await EnElCatalogoAsync(e))!;
+
+        var anonimo = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonimo.GetAsync("/api/v1/rpa/lanzador/catalogo")).StatusCode);
+        anonimo.DefaultRequestHeaders.Add(RpaHeaders.SecretoDelLanzador, "adivinado");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonimo.GetAsync("/api/v1/rpa/lanzador/catalogo")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonimo.GetAsync($"/api/v1/rpa/lanzador/versiones/{robot.VersionId}/paquete")).StatusCode);
+
+        // A user's session is not the launcher either.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await e.Admin.GetAsync("/api/v1/rpa/lanzador/catalogo")).StatusCode);
+
+        // A tampered pass is no key.
+        var falso = robot.Clave[..^4] + (robot.Clave.EndsWith("AAAA", StringComparison.Ordinal) ? "BBBB" : "AAAA");
+        await Assert.ThrowsAsync<ClaveRechazadaException>(() => Lanzador().TrabajoAsync(falso, default));
+    }
 }
