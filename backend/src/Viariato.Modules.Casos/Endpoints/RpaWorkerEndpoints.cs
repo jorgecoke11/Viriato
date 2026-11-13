@@ -616,14 +616,11 @@ internal static class RpaWorkerEndpoints
     {
         if (string.IsNullOrWhiteSpace(request.Evento) || !System.Text.RegularExpressions.Regex.IsMatch(request.Evento.Trim(), "^[a-z0-9_]{1,60}$"))
         {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["evento"] = ["El evento es un código de 1 a 60 letras minúsculas, números o _ (p. ej. precio_bajado)."],
-            });
+            return ProblemResults.ValidationProblem("evento", "El evento es un código de 1 a 60 letras minúsculas, números o _ (p. ej. precio_bajado).");
         }
         if (request.Datos is { } datos && datos.ValueKind is not (JsonValueKind.Object or JsonValueKind.Null or JsonValueKind.Undefined))
         {
-            return Results.ValidationProblem(new Dictionary<string, string[]> { ["datos"] = ["Los datos del aviso tienen que ser un objeto JSON."] });
+            return ProblemResults.ValidationProblem("datos", "Los datos del aviso tienen que ser un objeto JSON.");
         }
 
         var detalle = await RpaWorkerAuthorization.RequireClaimedStepAsync(db, principal.GetDespliegueId(), id, ct);

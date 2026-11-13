@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # El lanzador de robots: UN contenedor para todos los robots de la máquina. Arranca cada robot solo mientras tiene trabajo en Viriato
-# y lo deja apagarse cuando vacía su cola. Los robots no van dentro de la imagen: junto a Viriato los descarga de él (se suben en cada
-# despliegue); en otra máquina se montan en /robots con su robots.json (ver docs/lanzador-de-robots.md).
+# y lo deja apagarse cuando vacía su cola. Los robots no van dentro de la imagen: los descarga de Viriato, donde se suben en cada
+# despliegue (ver docs/lanzador-de-robots.md). Lo arranca docker-compose.prod.yml de Viriato.
 #
 # Se construye desde la carpeta backend/ (el contexto es backend/), con una de dos variantes:
 #   docker build -f sdk/Viriato.Rpa.Lanzador/Dockerfile --target ligero    -t viriato-lanzador:ligero .
@@ -23,14 +23,11 @@ RUN dotnet publish sdk/Viriato.Rpa.Lanzador/Viriato.Rpa.Lanzador.csproj -c Relea
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS ligero
 # Sin privilegios: ni el lanzador ni los robots que arranca necesitan ser root.
 RUN useradd --create-home --uid 1000 robot \
- && mkdir -p /robots /home/robot/.cache/selenium /var/lib/lanzador/robots \
+ && mkdir -p /home/robot/.cache/selenium /var/lib/lanzador/robots \
  && chown -R robot:robot /home/robot /var/lib/lanzador
 WORKDIR /lanzador
 COPY --from=build /app .
 USER robot
-# El catálogo se relee cuando cambia; en una carpeta montada los avisos del sistema de archivos no llegan, así que se mira cada poco.
-ENV LANZADOR_CATALOGO=/robots/robots.json \
-    DOTNET_USE_POLLING_FILE_WATCHER=1
 ENTRYPOINT ["dotnet", "Viriato.Rpa.Lanzador.dll"]
 
 FROM ligero AS navegador

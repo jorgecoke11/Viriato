@@ -55,7 +55,6 @@ public sealed class LanzadorJuntoAViriatoTests : IDisposable
         Assert.Equal(["Bsh.CasesCreator.dll"], como.Argumentos);
         Assert.False(como.Pantalla);
         Assert.Null(como.MemoriaMaximaMb);
-        Assert.Equal(1, como.MaxCopias);
     }
 
     [Fact]
@@ -82,14 +81,20 @@ public sealed class LanzadorJuntoAViriatoTests : IDisposable
     {
         var como = Bien(Zip(
             ("run.sh", "#!/bin/sh"),
-            ("robot.json", """{ "comando": "./run.sh", "argumentos": ["--rapido"], "pantalla": true, "memoriaMaximaMb": 900, "maxCopias": 3, "entorno": { "Portal__Url": "https://x" } }""")));
+            ("robot.json", """{ "comando": "./run.sh", "argumentos": ["--rapido"], "pantalla": true, "memoriaMaximaMb": 900, "entorno": { "Portal__Url": "https://x" } }""")));
 
         Assert.Equal("./run.sh", como.Comando);
         Assert.Equal(["--rapido"], como.Argumentos);
         Assert.True(como.Pantalla);
         Assert.Equal(900, como.MemoriaMaximaMb);
-        Assert.Equal(3, como.MaxCopias);
         Assert.Equal("https://x", como.Entorno["Portal__Url"]);
+    }
+
+    [Fact]
+    public void WhatTheRobotJsonDoesNotKnow_IsIgnored_ReplicasAreTheDespliegues()
+    {
+        var como = Bien(Zip(("A.dll", "x"), ("A.runtimeconfig.json", "{}"), ("robot.json", """{ "maxCopias": 3, "pantalla": true }""")));
+        Assert.True(como.Pantalla);
     }
 
     [Fact]
@@ -100,7 +105,7 @@ public sealed class LanzadorJuntoAViriatoTests : IDisposable
         Assert.Contains("varios programas", Mal(Zip(("A.dll", "x"), ("A.runtimeconfig.json", "{}"), ("B.dll", "x"), ("B.runtimeconfig.json", "{}"))));
         Assert.Contains("Falta A.dll", Mal(Zip(("A.runtimeconfig.json", "{}"))));
         Assert.Contains("ruta no permitida", Mal(Zip(("../fuera.dll", "x"), ("A.runtimeconfig.json", "{}"))));
-        Assert.Contains("no se entiende", Mal(Zip(("robot.json", """{ "comandoo": "x" }"""))));
+        Assert.Contains("no se entiende", Mal(Zip(("robot.json", """{ "comando": """))));
     }
 
     private sealed class Reloj(DateTimeOffset ahora) : TimeProvider
@@ -143,7 +148,7 @@ public sealed class LanzadorJuntoAViriatoTests : IDisposable
     [Fact]
     public void EveryPass_IsValid_WhateverItsSignatureLooksLike()
     {
-        // Base64url signatures often contain '_', the pass's own separator.
+        // Whatever the id and the signature look like, a pass made here is read back here.
         var secreto = Secreto(new Reloj(DateTimeOffset.UtcNow));
         for (var i = 0; i < 200; i++)
         {
@@ -160,13 +165,26 @@ public sealed class LanzadorJuntoAViriatoTests : IDisposable
         var pase = secreto.EmitirPase(Guid.NewGuid());
 
         // Another Despliegue's id, or a later expiry, with the same signature.
-        var partes = pase.Split('_', 4);
-        Assert.Null(secreto.ValidarPase($"rpl_{Guid.NewGuid():N}_{partes[2]}_{partes[3]}"));
-        Assert.Null(secreto.ValidarPase($"rpl_{partes[1]}_{long.Parse(partes[2]) + 999}_{partes[3]}"));
+        var partes = pase["rpl_".Length..].Split('.');
+        Assert.Null(secreto.ValidarPase($"rpl_{Guid.NewGuid():N}.{partes[1]}.{partes[2]}"));
+        Assert.Null(secreto.ValidarPase($"rpl_{partes[0]}.{long.Parse(partes[1]) + 999}.{partes[2]}"));
+        // Without its prefix it is not a robot's pass.
+        Assert.Null(secreto.ValidarPase(pase["rpl_".Length..]));
         Assert.Null(secreto.ValidarPase("rpl_basura"));
         Assert.Null(secreto.ValidarPase("rpa_una-clave-normal"));
 
         Assert.Null(Secreto(reloj, "otro-secreto").ValidarPase(pase));
+    }
+
+    [Fact]
+    public void APassMadeForAnotherPurpose_IsNoRobotsPass_EvenWithTheSameSecret()
+    {
+        var reloj = new Reloj(DateTimeOffset.UtcNow);
+        var secreto = Secreto(reloj);
+        var deVista = Viariato.Shared.Seguridad.PaseFirmado.Emitir(
+            secreto.Secreto(), "viriato:vista-en-directo", Guid.NewGuid(), reloj.Ahora.AddDays(1), "rpl_");
+
+        Assert.Null(secreto.ValidarPase(deVista));
     }
 
     [Fact]
@@ -175,6 +193,6 @@ public sealed class LanzadorJuntoAViriatoTests : IDisposable
         var secreto = new SecretoDelLanzador(Microsoft.Extensions.Options.Options.Create(new LanzadorOptions()), TimeProvider.System);
         Assert.False(secreto.Disponible);
         Assert.False(secreto.Coincide("x"));
-        Assert.Null(secreto.ValidarPase("rpl_x_1_y"));
+        Assert.Null(secreto.ValidarPase("rpl_x.1.y"));
     }
 }

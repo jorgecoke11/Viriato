@@ -7,8 +7,8 @@ public sealed class PlanificadorTests
 {
     private static readonly DateTimeOffset Ahora = new(2026, 11, 11, 10, 0, 0, TimeSpan.Zero);
 
-    private static RobotOptions Robot(string nombre, int maxCopias = 1, bool pantalla = false) =>
-        new() { Nombre = nombre, ClaveEnv = nombre.ToUpperInvariant() + "_KEY", Comando = "dotnet", MaxCopias = maxCopias, Pantalla = pantalla };
+    private static RobotOptions Robot(string nombre, int replicas = 1, bool pantalla = false) =>
+        new() { Nombre = nombre, Comando = "dotnet", Replicas = replicas, Pantalla = pantalla };
 
     private static TrabajoDelDespliegueDto Trabajo(int pendientes = 0, int enEjecucion = 0, bool encendido = true, bool alLimite = false) =>
         new(encendido, pendientes, enEjecucion, alLimite);
@@ -40,7 +40,7 @@ public sealed class PlanificadorTests
     [Fact]
     public void ARobotIsGivenOneCopyPerStep_UpToItsOwnMaximum()
     {
-        var decision = Una(Opciones(maxRobots: 10), new(Robot("extractor", maxCopias: 3), Trabajo(pendientes: 7), Vivas: 0));
+        var decision = Una(Opciones(maxRobots: 10), new(Robot("extractor", replicas: 3), Trabajo(pendientes: 7), Vivas: 0));
 
         Assert.Equal(3, decision.Arrancar);
     }
@@ -49,7 +49,7 @@ public sealed class PlanificadorTests
     public void AnIdleCopyAlreadyRunning_TakesTheWork_SoNothingNewIsStarted()
     {
         // One copy is there and holds nothing: it will be handed the step that waits.
-        var decision = Una(Opciones(maxRobots: 10), new(Robot("extractor", maxCopias: 3), Trabajo(pendientes: 1, enEjecucion: 0), Vivas: 1));
+        var decision = Una(Opciones(maxRobots: 10), new(Robot("extractor", replicas: 3), Trabajo(pendientes: 1, enEjecucion: 0), Vivas: 1));
 
         Assert.Equal(0, decision.Arrancar);
         Assert.Equal(EstadosDelLanzador.EnMarcha, decision.Estado);
@@ -58,7 +58,7 @@ public sealed class PlanificadorTests
     [Fact]
     public void ABusyCopy_DoesNotCountForWhatWaits_SoMoreAreStarted()
     {
-        var decision = Una(Opciones(maxRobots: 10), new(Robot("extractor", maxCopias: 3), Trabajo(pendientes: 5, enEjecucion: 1), Vivas: 1));
+        var decision = Una(Opciones(maxRobots: 10), new(Robot("extractor", replicas: 3), Trabajo(pendientes: 5, enEjecucion: 1), Vivas: 1));
 
         Assert.Equal(2, decision.Arrancar);
     }
@@ -97,7 +97,7 @@ public sealed class PlanificadorTests
         var decisiones = Planificador.Decidir(
             Opciones(maxRobots: 2),
             [
-                new(Robot("uno", maxCopias: 2), Trabajo(pendientes: 5), Vivas: 0),
+                new(Robot("uno", replicas: 2), Trabajo(pendientes: 5), Vivas: 0),
                 new(Robot("dos"), Trabajo(pendientes: 5), Vivas: 0),
             ],
             Ahora);
@@ -115,7 +115,7 @@ public sealed class PlanificadorTests
             Opciones(maxRobots: 2),
             [
                 new(Robot("uno"), Trabajo(enEjecucion: 1), Vivas: 1),
-                new(Robot("dos", maxCopias: 3), Trabajo(pendientes: 5), Vivas: 0),
+                new(Robot("dos", replicas: 3), Trabajo(pendientes: 5), Vivas: 0),
             ],
             Ahora);
 
@@ -193,7 +193,7 @@ public sealed class PlanificadorTests
     [Fact]
     public void ARobotParkedWithZeroCopies_IsNeverStarted_AndSaysWhy()
     {
-        var decision = Una(Opciones(), new(Robot("extractor", maxCopias: 0), Trabajo(pendientes: 3), Vivas: 0));
+        var decision = Una(Opciones(), new(Robot("extractor", replicas: 0), Trabajo(pendientes: 3), Vivas: 0));
 
         Assert.Equal(0, decision.Arrancar);
         Assert.Equal(EstadosDelLanzador.EnEspera, decision.Estado);
@@ -229,63 +229,6 @@ public sealed class PlanificadorTests
     }
 }
 
-public sealed class CatalogoTests
-{
-    private static LanzadorOptions Valido() => new()
-    {
-        ViriatoUrl = "http://viriato.test",
-        Robots = [new RobotOptions { Nombre = "extractor", ClaveEnv = "EXTRACTOR_API_KEY", Comando = "dotnet" }],
-    };
-
-    private static string? Variables(string nombre) => nombre == "EXTRACTOR_API_KEY" ? "clave" : null;
-
-    [Fact]
-    public void ACompleteCatalogue_HasNoProblems() => Assert.Empty(Valido().Validar(Variables));
-
-    [Fact]
-    public void AnEmptyCatalogue_NamesEverythingMissing()
-    {
-        var problemas = new LanzadorOptions().Validar(Variables);
-
-        Assert.Contains(problemas, p => p.Contains("VIRIATO_URL"));
-        Assert.Contains(problemas, p => p.Contains("ningún robot"));
-    }
-
-    [Fact]
-    public void ARobotWhoseKeyVariableIsEmpty_IsReportedNamingTheVariable_NeverAValue()
-    {
-        var problemas = Valido().Validar(_ => null);
-
-        Assert.Contains(problemas, p => p.Contains("EXTRACTOR_API_KEY") && p.Contains("extractor"));
-    }
-
-    [Fact]
-    public void EveryMistakeInARobot_IsListedAtOnce()
-    {
-        var o = Valido();
-        o.Robots.Add(new RobotOptions { Nombre = "EXTRACTOR", ClaveEnv = "", Comando = "", MaxCopias = -1, MemoriaMaximaMb = 0 });
-
-        var problemas = o.Validar(Variables);
-
-        Assert.Contains(problemas, p => p.Contains("dos robots"));
-        Assert.Contains(problemas, p => p.Contains("\"comando\""));
-        Assert.Contains(problemas, p => p.Contains("\"claveEnv\""));
-        Assert.Contains(problemas, p => p.Contains("\"maxCopias\""));
-        Assert.Contains(problemas, p => p.Contains("\"memoriaMaximaMb\""));
-    }
-
-    [Theory]
-    [InlineData("viriato.test")]
-    [InlineData("ftp://viriato.test")]
-    public void AnAddressThatIsNotHttp_IsReported(string url)
-    {
-        var o = Valido();
-        o.ViriatoUrl = url;
-
-        Assert.Contains(o.Validar(Variables), p => p.Contains("no es una URL http(s) válida"));
-    }
-}
-
 public sealed class EntornoDelRobotTests
 {
     private static LanzadorOptions Opciones() => new() { ViriatoUrl = "http://viriato.test", SalirSinTrabajoSegundos = 45 };
@@ -295,7 +238,7 @@ public sealed class EntornoDelRobotTests
     {
         var robot = new RobotOptions { Nombre = "creador" };
 
-        var entorno = EntornoDelRobot.Construir(new ArranqueDeRobot(robot, "la-clave", null, Opciones()), "/tmp/lanzador/creador-1", _ => null);
+        var entorno = EntornoDelRobot.Construir(new ArranqueDeRobot(robot, "la-clave", null, Opciones()), "/tmp/lanzador/creador-1");
 
         Assert.Equal("http://viriato.test", entorno["Viriato__BaseUrl"]);
         Assert.Equal("la-clave", entorno["Viriato__ApiKey"]);
@@ -309,8 +252,8 @@ public sealed class EntornoDelRobotTests
     {
         var robot = new RobotOptions { Nombre = "extractor", Pantalla = true, Entorno = { ["Vista__UrlPublica"] = "http://localhost:{puertoWeb}/vnc.html" } };
 
-        var primero = EntornoDelRobot.Construir(new ArranqueDeRobot(robot, "k", 0, Opciones()), "/t", _ => null);
-        var segundo = EntornoDelRobot.Construir(new ArranqueDeRobot(robot, "k", 1, Opciones()), "/t", _ => null);
+        var primero = EntornoDelRobot.Construir(new ArranqueDeRobot(robot, "k", 0, Opciones()), "/t");
+        var segundo = EntornoDelRobot.Construir(new ArranqueDeRobot(robot, "k", 1, Opciones()), "/t");
 
         Assert.Equal(":99", primero["DISPLAY"]);
         Assert.Equal("6080", primero["VistaEnDirecto__PuertoWeb"]);
@@ -324,14 +267,13 @@ public sealed class EntornoDelRobotTests
     }
 
     [Fact]
-    public void ARobotsOwnSettings_CanTakeValuesFromTheLaunchersEnvironment()
+    public void ARobotsOwnSettings_ArePassedAsTheyCome()
     {
-        var robot = new RobotOptions { Nombre = "extractor", Entorno = { ["Tradeplace__Credencial"] = "${TRADEPLACE_CREDENCIAL}", ["Otro"] = "a-${NO_EXISTE}-b" } };
+        var robot = new RobotOptions { Nombre = "extractor", Entorno = { ["Portal__Url"] = "https://portal", ["Vista__Puerto"] = "{puertoWeb}" } };
 
-        var entorno = EntornoDelRobot.Construir(
-            new ArranqueDeRobot(robot, "k", null, Opciones()), "/t", n => n == "TRADEPLACE_CREDENCIAL" ? "tradeplace_credentials" : null);
+        var entorno = EntornoDelRobot.Construir(new ArranqueDeRobot(robot, "k", 0, Opciones()), "/t");
 
-        Assert.Equal("tradeplace_credentials", entorno["Tradeplace__Credencial"]);
-        Assert.Equal("a--b", entorno["Otro"]);
+        Assert.Equal("https://portal", entorno["Portal__Url"]);
+        Assert.Equal("6080", entorno["Vista__Puerto"]);
     }
 }

@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+using Viariato.Shared.Seguridad;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -60,38 +60,11 @@ internal static class VistaEnDirectoEndpoints
 /// </summary>
 internal static class PaseDeVista
 {
-    private static readonly byte[] Proposito = "viriato:vista-en-directo"u8.ToArray();
+    private const string Proposito = "viriato:vista-en-directo";
 
-    public static string Emitir(string signingKey, Guid userId, DateTimeOffset caduca)
-    {
-        var contenido = $"{userId:N}.{caduca.ToUnixTimeSeconds()}";
-        return $"{contenido}.{Convert.ToHexString(Firmar(signingKey, contenido))}";
-    }
+    public static string Emitir(string signingKey, Guid userId, DateTimeOffset caduca) =>
+        PaseFirmado.Emitir(Encoding.UTF8.GetBytes(signingKey), Proposito, userId, caduca);
 
-    public static bool EsValido(string signingKey, string? pase, DateTimeOffset ahora)
-    {
-        if (string.IsNullOrEmpty(pase)) return false;
-
-        var partes = pase.Split('.');
-        if (partes.Length != 3 || !Guid.TryParseExact(partes[0], "N", out _) || !long.TryParse(partes[1], out var caduca)) return false;
-        if (DateTimeOffset.FromUnixTimeSeconds(caduca) <= ahora) return false;
-
-        byte[] firma;
-        try
-        {
-            firma = Convert.FromHexString(partes[2]);
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-
-        return CryptographicOperations.FixedTimeEquals(firma, Firmar(signingKey, $"{partes[0]}.{partes[1]}"));
-    }
-
-    private static byte[] Firmar(string signingKey, string contenido)
-    {
-        var clave = HMACSHA256.HashData(Encoding.UTF8.GetBytes(signingKey), Proposito);
-        return HMACSHA256.HashData(clave, Encoding.UTF8.GetBytes(contenido));
-    }
+    public static bool EsValido(string signingKey, string? pase, DateTimeOffset ahora) =>
+        PaseFirmado.Validar(Encoding.UTF8.GetBytes(signingKey), Proposito, pase, ahora) is not null;
 }

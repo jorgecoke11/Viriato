@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace Viariato.Modules.RpaFleet.Options;
+namespace Viariato.Shared.Options;
 
 public sealed class CredencialesOptions
 {

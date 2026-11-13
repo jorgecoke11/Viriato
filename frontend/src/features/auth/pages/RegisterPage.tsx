@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useAuth } from '../useAuth'
 import { AuthShell } from './AuthShell'
 
@@ -26,7 +26,7 @@ export function RegisterPage() {
       await register(email, password, displayName)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo completar el registro.')
+      setError(mensajeDeError(err, 'No se pudo completar el registro.'))
     } finally {
       setSubmitting(false)
     }

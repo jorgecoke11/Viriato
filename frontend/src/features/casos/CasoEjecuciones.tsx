@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Timeline, TimelineGrupo, TimelineItem, type TonoDeNodo } from '../../components/ui/Timeline'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { spring } from '../../lib/motion/tokens'
 import { collapseVariants } from '../../lib/motion/variants'
 import { useToast } from '../../lib/toast/useToast'
@@ -251,7 +251,7 @@ function EjecucionPasos({
       setPendingReprocesar(null)
       showToast('success', 'Paso reprocesado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo reprocesar el paso.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo reprocesar el paso.')),
   })
 
   if (query.isLoading) return <Skeleton className="h-24 rounded-xl" />

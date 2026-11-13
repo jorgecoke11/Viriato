@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Viariato.ApiContracts;
 
 namespace Viriato.Rpa.Lanzador;
@@ -18,18 +17,6 @@ public sealed class LanzadorDeRobots(
     TimeProvider reloj,
     ILogger<LanzadorDeRobots> logger) : BackgroundService
 {
-    /// <summary>With the catalogue file and each robot's key in an environment variable.</summary>
-    public LanzadorDeRobots(
-        IOptionsMonitor<LanzadorOptions> opciones,
-        IViriatoDelLanzador viriato,
-        IArrancadorDeRobots arrancador,
-        Func<string, string?> variable,
-        TimeProvider reloj,
-        ILogger<LanzadorDeRobots> logger)
-        : this(new CatalogoDeArchivo(opciones, variable), viriato, arrancador, reloj, logger)
-    {
-    }
-
     // The settings of the last round: how often to look, how long to give a robot to stop.
     private LanzadorOptions _opciones = new();
 
@@ -59,7 +46,6 @@ public sealed class LanzadorDeRobots(
     }
 
     private readonly Dictionary<string, Memoria> _robots = new(StringComparer.OrdinalIgnoreCase);
-    private string? _ultimoProblemaDeCatalogo;
 
     /// <summary>Copies running right now, by robot. For the logs and the tests.</summary>
     public IReadOnlyDictionary<string, int> EnMarcha => _robots.ToDictionary(r => r.Key, r => r.Value.Copias.Count, StringComparer.OrdinalIgnoreCase);
@@ -103,20 +89,9 @@ public sealed class LanzadorDeRobots(
         var leido = await catalogo.LeerAsync(_robots.Values.All(m => m.Copias.Count == 0), ct).ConfigureAwait(false);
         var o = _opciones = leido.Opciones;
 
-        var problemas = leido.Problemas;
-        if (problemas.Count > 0)
-        {
-            var texto = string.Join(Environment.NewLine, problemas.Select(p => "  - " + p));
-            if (texto != _ultimoProblemaDeCatalogo && !leido.ProblemasYaContados)
-            {
-                logger.LogError("El catálogo del lanzador no es válido; no se arranca nada hasta corregirlo:{Salto}{Problemas}", Environment.NewLine, texto);
-                _ultimoProblemaDeCatalogo = texto;
-            }
+        // Viriato not answering yet, or its secret not there yet: the catalogue has said so in the log. Nothing new starts.
+        if (leido.Problemas.Count > 0) return;
 
-            return;
-        }
-
-        _ultimoProblemaDeCatalogo = null;
         var ahora = reloj.GetUtcNow();
         var situaciones = new List<SituacionDeRobot>(o.Robots.Count);
         var claves = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -190,7 +165,7 @@ public sealed class LanzadorDeRobots(
             try
             {
                 await viriato.ReportarAsync(
-                    claves[robot.Nombre], new EstadoDelLanzadorRequest(estado, memoria.Copias.Count, Math.Max(0, robot.MaxCopias), detalle), ct).ConfigureAwait(false);
+                    claves[robot.Nombre], new EstadoDelLanzadorRequest(estado, memoria.Copias.Count, detalle), ct).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
@@ -262,9 +237,7 @@ public sealed class LanzadorDeRobots(
         catch (Exception ex)
         {
             var aviso = ex is ClaveRechazadaException
-                ? string.IsNullOrEmpty(robot.ClaveEnv)
-                    ? $"Viriato rechaza el pase de {robot.Nombre}; se pide otro en la próxima ronda."
-                    : $"Viriato rechaza la clave de {robot.Nombre} (variable {robot.ClaveEnv}): revisa que sea la de su despliegue y que no se haya regenerado."
+                ? $"Viriato rechaza el pase de {robot.Nombre}; se pide otro en la próxima ronda."
                 : $"No se pudo preguntar a Viriato por {robot.Nombre}: {ex.Message}";
 
             // Said once, not every few seconds while it lasts.

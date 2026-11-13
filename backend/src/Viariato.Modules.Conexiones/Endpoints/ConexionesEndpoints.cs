@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Viariato.Infrastructure;
 using Viariato.Modules.Conexiones.Domain;
 using Viariato.Modules.Conexiones.Tipos;
-using Viariato.Modules.RpaFleet.Security;
+using Viariato.Shared.Seguridad;
 using Viariato.Shared.Authorization;
 using Viariato.Shared.Http;
 

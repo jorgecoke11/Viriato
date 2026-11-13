@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError as mensajeDelServidor } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import { ConfirmDialog } from './ConfirmDialog'
 
@@ -50,7 +50,7 @@ export function ConfirmAction<R>({
       showToast('success', typeof mensajeDeExito === 'function' ? mensajeDeExito(resultado) : mensajeDeExito)
       alTerminar?.(resultado)
     } catch (err) {
-      showToast('error', err instanceof ApiError ? err.message : mensajeDeError)
+      showToast('error', mensajeDelServidor(err, mensajeDeError))
     } finally {
       setPendiente(false)
     }

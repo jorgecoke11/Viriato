@@ -8,7 +8,7 @@ import type { ColumnaDeTabla } from '../../../components/ui/DataTable'
 import { IconButton } from '../../../components/ui/IconButton'
 import { ListaDeDatos } from '../../../components/ui/ListaDeDatos'
 import { PageHeader } from '../../../components/ui/PageHeader'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { paginarEnCliente } from '../../../lib/lista'
 import { useToast } from '../../../lib/toast/useToast'
 import { useListaPaginada } from '../../../lib/useListaPaginada'
@@ -40,7 +40,7 @@ export function PlantillasDespachoPage() {
     },
     onError: (err) => {
       setPendingDelete(null)
-      showToast('error', err instanceof ApiError ? err.message : 'No se pudo eliminar la plantilla.')
+      showToast('error', mensajeDeError(err, 'No se pudo eliminar la plantilla.'))
     },
   })
 

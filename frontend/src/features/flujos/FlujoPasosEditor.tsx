@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as rpaApi from '../rpa/api'
 import * as flujosApi from './api'
@@ -75,7 +75,7 @@ export function FlujoPasosEditor({ flujoId, versionId, onClose }: { flujoId: str
       queryClient.invalidateQueries({ queryKey: [`flujo-${flujoId}-versiones`] })
       showToast('success', 'Pasos guardados.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudieron guardar los pasos.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudieron guardar los pasos.')),
   })
 
   const agentes = agentesQuery.data?.items ?? []

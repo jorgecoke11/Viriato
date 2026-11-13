@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import * as rpaApi from '../api'
 import type { PlantillaDespachoDto } from '../api'
@@ -72,7 +72,7 @@ export function PlantillaDespachoModal({
       showToast('success', plantilla ? 'Plantilla guardada.' : 'Plantilla creada.')
       onClose()
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'No se pudo guardar la plantilla.'),
+    onError: (err) => setError(mensajeDeError(err, 'No se pudo guardar la plantilla.')),
   })
 
   return (

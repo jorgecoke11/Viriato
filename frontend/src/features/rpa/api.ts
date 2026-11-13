@@ -33,6 +33,8 @@ export interface ServicioDto {
   tiempoMaximoMinutos: number | null
   createdAt: string
   updatedAt: string
+  /** Number of the latest version of its robot uploaded; null with none. */
+  ultimaVersion: number | null
 }
 
 export interface CreateServicioInput {
@@ -70,11 +72,26 @@ export interface DespliegueDto {
   vistaEnDirecto: CalidadVistaEnDirecto
   /** Whether its robot records each run as a video. */
   grabacionDeVideo: GrabacionDeVideo
-  /** The robot version the launcher next to Viriato runs; null when it runs somewhere else, with its key. */
+  /** The version of its service's robot the launcher next to Viriato runs; null when it runs somewhere else, with its key, or
+   * its service has none uploaded yet. */
   versionDeRobotNumero: number | null
+  /** The launcher next to Viriato runs it (with its service's robot). */
+  enElLanzador: boolean
+  /** The version it is held at; null follows the latest. */
+  versionFijadaId: string | null
+  /** Replicas: copies of its robot the launcher may run at once when it has work (0 = parked). Set here, not by the robot. */
+  replicas: number
+  /** Memory ceiling of a copy, in MB; null = what its version says. */
+  memoriaMaximaMb: number | null
 }
 
-/** One upload of the robot's program (the zip of its `dotnet publish`). */
+/** How much the launcher next to Viriato may run at once on its machine. */
+export interface AjustesDelLanzadorDto {
+  maxRobotsALaVez: number
+  maxConNavegador: number
+}
+
+/** One upload of a service's robot (the zip of its `dotnet publish`). */
 export interface VersionDeRobotDto {
   id: string
   numero: number
@@ -85,11 +102,12 @@ export interface VersionDeRobotDto {
   /** It drives a browser. */
   pantalla: boolean
   memoriaMaximaMb: number | null
-  maxCopias: number
   subidaPor: string | null
   createdAt: string
-  /** The one the launcher runs. */
-  actual: boolean
+  /** The latest: what every despliegue not held at another one runs. */
+  ultima: boolean
+  /** The machines whose despliegue the launcher runs with it. */
+  usadaPor: string[]
 }
 
 export interface DespliegueConApiKeyDto {
@@ -189,20 +207,29 @@ export const regenerarClaveDespliegue = (id: string) =>
 
 export const deleteDespliegue = (id: string) => apiFetch<void>(`/despliegues/${id}`, { method: 'DELETE' })
 
-export const listVersionesDeRobot = (despliegueId: string) => apiFetch<VersionDeRobotDto[]>(`/despliegues/${despliegueId}/versiones`)
+export const listVersionesDeRobot = (servicioId: string) => apiFetch<VersionDeRobotDto[]>(`/servicios/${servicioId}/versiones`)
 
-export const subirVersionDeRobot = (despliegueId: string, file: File) => {
+export const subirVersionDeRobot = (servicioId: string, file: File) => {
   const formData = new FormData()
   formData.append('file', file)
-  return apiFetch<VersionDeRobotDto>(`/despliegues/${despliegueId}/versiones`, { method: 'POST', body: formData })
+  return apiFetch<VersionDeRobotDto>(`/servicios/${servicioId}/versiones`, { method: 'POST', body: formData })
 }
 
-/** `null` stops the launcher running this robot (it is left to run somewhere else, with its key). */
-export const usarVersionDeRobot = (despliegueId: string, versionId: string | null) =>
-  apiFetch<void>(`/despliegues/${despliegueId}/version-actual`, { method: 'PUT', body: JSON.stringify({ versionId }) })
+export const borrarVersionDeRobot = (servicioId: string, versionId: string) =>
+  apiFetch<void>(`/servicios/${servicioId}/versiones/${versionId}`, { method: 'DELETE' })
 
-export const borrarVersionDeRobot = (despliegueId: string, versionId: string) =>
-  apiFetch<void>(`/despliegues/${despliegueId}/versiones/${versionId}`, { method: 'DELETE' })
+/** Whether the launcher runs this despliegue, and with which version of its service's robot (`versionId` null = the latest). */
+export const guardarRobotDelDespliegue = (despliegueId: string, input: { enElLanzador: boolean; versionId: string | null }) =>
+  apiFetch<DespliegueDto>(`/despliegues/${despliegueId}/robot`, { method: 'PUT', body: JSON.stringify(input) })
+
+/** `memoriaMaximaMb` null: what the robot's version says. */
+export const guardarRobotEnElLanzador = (despliegueId: string, input: { replicas: number; memoriaMaximaMb: number | null }) =>
+  apiFetch<DespliegueDto>(`/despliegues/${despliegueId}/lanzador`, { method: 'PUT', body: JSON.stringify(input) })
+
+export const getAjustesDelLanzador = () => apiFetch<AjustesDelLanzadorDto>('/lanzador/ajustes')
+
+export const guardarAjustesDelLanzador = (input: AjustesDelLanzadorDto) =>
+  apiFetch<AjustesDelLanzadorDto>('/lanzador/ajustes', { method: 'PUT', body: JSON.stringify(input) })
 
 export const listCredenciales = (filters: Record<string, string> = {}) =>
   apiFetch<PagedResult<CredencialDto>>(`/credenciales${buildQuery({ searchTerm: filters.search, page: filters.page, pageSize: filters.pageSize ?? '100' })}`)
@@ -314,7 +341,7 @@ export interface LanzadorDelRobotDto {
   /** SinTrabajo, EnMarcha, EnEspera, Apagado or Fallo. */
   estado: string
   copias: number
-  maxCopias: number
+  replicas: number
   /** Why: what it waits for, or what failed. */
   detalle: string | null
   vistoEn: string

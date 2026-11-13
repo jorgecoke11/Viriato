@@ -26,7 +26,7 @@ public sealed record DecisionDeRobot(string Nombre, int Arrancar, string? Estado
 /// It only decides <b>when a robot is running</b>. Which step each copy gets is Viriato's business, as always: a started
 /// copy asks for work like any robot. The rules:
 /// <list type="number">
-/// <item>A robot wants one copy per step it has (running or waiting), up to its <c>maxCopias</c>. Copies already running
+/// <item>A robot wants one copy per step it has (running or waiting), up to its replicas (set on its Despliegue in Viriato). Copies already running
 /// and idle count first: nothing new is started while an idle copy could take the work.</item>
 /// <item>Nothing is started for a robot that is switched off in Viriato, whose service is at its global cap, or that
 /// failed a moment ago (it waits, a little longer after each failure in a row).</item>
@@ -54,9 +54,9 @@ public static class Planificador
                 continue;
             }
 
-            var maxCopias = Math.Max(0, robot.MaxCopias);
+            var replicas = Math.Max(0, robot.Replicas);
             var ocupadas = Math.Min(situacion.Vivas, trabajo.EnEjecucion);
-            var deseadas = Math.Min(maxCopias, ocupadas + trabajo.Pendientes);
+            var deseadas = Math.Min(replicas, ocupadas + trabajo.Pendientes);
             var faltan = Math.Max(0, deseadas - situacion.Vivas);
 
             string? porQueNo = null;
@@ -89,7 +89,7 @@ public static class Planificador
                     if (robot.Pantalla && conPantalla >= opciones.MaxConPantalla)
                     {
                         porQueNo = opciones.MaxConPantalla == 0
-                            ? "Este lanzador no admite robots con navegador (maxConPantalla es 0)."
+                            ? "El lanzador no admite robots con navegador: en Viriato, «Lanzador» tiene 0 con navegador."
                             : $"Esperando la pantalla: ya hay {conPantalla} de {opciones.MaxConPantalla} robots con navegador en marcha.";
                         break;
                     }
@@ -100,9 +100,9 @@ public static class Planificador
                 }
             }
 
-            if (trabajo.Encendido && maxCopias == 0 && trabajo.Pendientes > 0)
+            if (trabajo.Encendido && replicas == 0 && trabajo.Pendientes > 0)
             {
-                porQueNo = "Está aparcado en el catálogo del lanzador (maxCopias es 0).";
+                porQueNo = "Está aparcado: tiene 0 réplicas en su despliegue.";
             }
 
             var copias = situacion.Vivas + arrancar;

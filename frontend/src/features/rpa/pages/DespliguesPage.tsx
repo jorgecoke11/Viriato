@@ -1,11 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Monitor, Package, Plus, RefreshCw, Server, Trash2, Video } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { CrudFormModal } from '../../../components/crud/CrudFormModal'
-import type { CrudField } from '../../../components/crud/types'
+import { Cpu, Plus, Server, Settings2, Trash2, Video } from 'lucide-react'
+import { useState } from 'react'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
-import { TarjetasDeOpciones } from '../../../components/ui/TarjetasDeOpciones'
 import type { ColumnaDeTabla } from '../../../components/ui/DataTable'
 import { IconButton } from '../../../components/ui/IconButton'
 import { ListaDeDatos } from '../../../components/ui/ListaDeDatos'
@@ -13,46 +10,15 @@ import { PageHeader } from '../../../components/ui/PageHeader'
 import { Switch } from '../../../components/ui/Switch'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { Modal } from '../../../components/ui/Modal'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import { useListaPaginada } from '../../../lib/useListaPaginada'
 import * as flujosApi from '../../flujos/api'
 import * as rpaApi from '../api'
 import type { DespliegueConApiKeyDto, DespliegueDto } from '../api'
-import { VersionesDelRobotModal } from '../VersionesDelRobotModal'
-import {
-  calidadDeVista,
-  calidadesDeVista,
-  etiquetaDeGrabacion,
-  opcionesDeGrabacion,
-  type CalidadVistaEnDirecto,
-  type GrabacionDeVideo,
-} from '../pantallaDelRobot'
-
-type ValoresDePantalla = { vistaEnDirecto: CalidadVistaEnDirecto; grabacionDeVideo: GrabacionDeVideo }
-
-/** The robot's screen, decided here and read by the robot from Viriato: the live view (and how smooth) and the video of each run. */
-const camposDePantalla: CrudField<ValoresDePantalla>[] = [
-  {
-    name: 'vistaEnDirecto',
-    label: 'Vista en directo',
-    type: 'custom',
-    helpText: 'Mirar la pantalla le quita CPU al robot mientras alguien la tiene abierta. Si va lento, bájala o apágala.',
-    render: ({ value, onChange }) => (
-      <>
-        <span className="text-sm font-medium text-gray-700">Vista en directo</span>
-        <TarjetasDeOpciones etiqueta="Vista en directo" columnas={2} opciones={calidadesDeVista} valor={value} alCambiar={onChange} />
-      </>
-    ),
-  },
-  {
-    name: 'grabacionDeVideo',
-    label: 'Vídeo de cada ejecución',
-    type: 'select',
-    options: [...opcionesDeGrabacion],
-    helpText: 'Grabar lee la pantalla durante todo el caso, aunque nadie mire.',
-  },
-]
+import { ConfiguracionDelDespliegueModal, type ApartadoDelDespliegue } from '../ConfiguracionDelDespliegueModal'
+import { AjustesDelLanzadorModal } from '../AjustesDelLanzadorModal'
+import { calidadDeVista, etiquetaDeGrabacion } from '../pantallaDelRobot'
 
 export function DespliguesPage() {
   const queryClient = useQueryClient()
@@ -64,14 +30,9 @@ export function DespliguesPage() {
   const [flujoDestinoId, setFlujoDestinoId] = useState('')
   const [revelado, setRevelado] = useState<DespliegueConApiKeyDto | null>(null)
   const [pendingDelete, setPendingDelete] = useState<DespliegueDto | null>(null)
-  const [pantallaDe, setPantallaDe] = useState<DespliegueDto | null>(null)
-  const [robotDe, setRobotDe] = useState<DespliegueDto | null>(null)
-  // Stable while the modal is open: the form re-seeds itself whenever these change.
-  const valoresDePantalla = useMemo<ValoresDePantalla>(
-    () => ({ vistaEnDirecto: pantallaDe?.vistaEnDirecto ?? 'Baja', grabacionDeVideo: pantallaDe?.grabacionDeVideo ?? 'SegunRobot' }),
-    [pantallaDe],
-  )
-
+  const [configurandoId, setConfigurandoId] = useState<string | null>(null)
+  const [apartado, setApartado] = useState<ApartadoDelDespliegue>('general')
+  const [verLanzador, setVerLanzador] = useState(false)
   const fuente = useListaPaginada<DespliegueDto>({
     clave: ['despliegues'],
     obtenerId: (d) => d.id,
@@ -94,7 +55,7 @@ export function DespliguesPage() {
       setFlujoDestinoId('')
       setRevelado(result)
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el despliegue.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo crear el despliegue.')),
   })
 
   const toggleMutation = useMutation({
@@ -103,16 +64,7 @@ export function DespliguesPage() {
       invalidate()
       showToast('success', 'Despliegue actualizado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo actualizar el despliegue.'),
-  })
-
-  const pantallaMutation = useMutation({
-    mutationFn: ({ id, valores }: { id: string; valores: ValoresDePantalla }) => rpaApi.updateDespliegue(id, valores),
-    onSuccess: () => {
-      invalidate()
-      setPantallaDe(null)
-      showToast('success', 'Guardado. Quien mira lo nota ya; el robot, en unos segundos.')
-    },
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo actualizar el despliegue.')),
   })
 
   const regenerarMutation = useMutation({
@@ -121,7 +73,7 @@ export function DespliguesPage() {
       invalidate()
       setRevelado(result)
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo regenerar la clave.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo regenerar la clave.')),
   })
 
   const deleteMutation = useMutation({
@@ -131,7 +83,7 @@ export function DespliguesPage() {
       setPendingDelete(null)
       showToast('success', 'Despliegue eliminado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo eliminar el despliegue.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo eliminar el despliegue.')),
   })
 
   const equipos = equiposQuery.data?.items.filter((e) => e.activo) ?? []
@@ -139,6 +91,13 @@ export function DespliguesPage() {
   const flujos = flujosQuery.data?.items.filter((f) => f.activo) ?? []
 
   const nombreFlujo = (id: string) => flujosQuery.data?.items.find((f) => f.id === id)?.nombre ?? '—'
+  // The live row, so the modal shows what was just saved.
+  const configurando = fuente.filas.find((d) => d.id === configurandoId) ?? null
+
+  function configurar(d: DespliegueDto, en: ApartadoDelDespliegue = 'general') {
+    setApartado(en)
+    setConfigurandoId(d.id)
+  }
 
   async function copiarClave(clave: string) {
     try {
@@ -150,36 +109,23 @@ export function DespliguesPage() {
   }
 
   const columnas: ColumnaDeTabla<DespliegueDto>[] = [
-    { clave: 'equipo', titulo: 'Equipo', celda: (d) => d.equipoNombre },
-    { clave: 'servicio', titulo: 'Servicio', celda: (d) => d.servicioNombre },
-    { clave: 'proceso', titulo: 'Proceso', celda: (d) => nombreFlujo(d.flujoId) },
     {
-      clave: 'destino',
-      titulo: 'Puede crear casos en',
+      clave: 'despliegue',
+      titulo: 'Despliegue',
       celda: (d) => (
-        <select
-          aria-label={`Proceso en el que ${d.servicioNombre} puede crear casos`}
-          className="max-w-[200px] field !min-h-8 !w-auto !px-2 !py-1"
-          value={d.flujoDestinoId ?? ''}
-          disabled={toggleMutation.isPending}
-          onChange={(e) =>
-            toggleMutation.mutate(e.target.value ? { id: d.id, flujoDestinoId: e.target.value } : { id: d.id, quitarFlujoDestino: true })
-          }
-        >
-          <option value="">Ninguno</option>
-          {flujos.map((flujo) => (
-            <option key={flujo.id} value={flujo.id}>
-              {flujo.nombre}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium text-gray-900">{d.servicioNombre}</span>
+          <span className="text-xs text-gray-500">
+            {d.equipoNombre} · {nombreFlujo(d.flujoId)}
+          </span>
+        </div>
       ),
     },
     {
       clave: 'encendido',
       titulo: 'Encendido',
       celda: (d) => (
-        <span className="inline-flex items-center gap-2.5">
+        <span className="inline-flex items-center gap-2.5" onClick={(e) => e.stopPropagation()}>
           <Switch
             checked={d.encendido}
             label={`${d.encendido ? 'Apagar' : 'Encender'} el despliegue de ${d.servicioNombre}`}
@@ -189,6 +135,27 @@ export function DespliguesPage() {
           <span className={d.encendido ? 'text-green-700' : 'text-gray-500'}>{d.encendido ? 'Sí' : 'No'}</span>
         </span>
       ),
+    },
+    {
+      clave: 'robot',
+      titulo: 'Robot',
+      celda: (d) =>
+        !d.enElLanzador ? (
+          <span className="text-gray-400" title="No lo arranca el lanzador de Viriato: corre en otro sitio, con su clave">
+            Fuera
+          </span>
+        ) : d.versionDeRobotNumero === null ? (
+          <span title="Lo arrancará el lanzador en cuanto subas una versión en Servicios">
+            <Badge tone="warning">Sin versión</Badge>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            <Badge tone={d.versionFijadaId ? 'neutral' : 'brand'}>
+              {d.versionFijadaId ? `Fijada en v${d.versionDeRobotNumero}` : `v${d.versionDeRobotNumero}`}
+            </Badge>
+            <span className="text-xs text-gray-500">{d.replicas === 0 ? 'aparcado' : `× ${d.replicas}`}</span>
+          </span>
+        ),
     },
     {
       clave: 'pantalla',
@@ -208,38 +175,17 @@ export function DespliguesPage() {
       },
     },
     {
-      clave: 'robot',
-      titulo: 'Robot',
-      celda: (d) =>
-        d.versionDeRobotNumero !== null ? (
-          <button type="button" className="rounded-md" onClick={() => setRobotDe(d)} title="Lo arranca el lanzador de Viriato">
-            <Badge tone="brand">Versión {d.versionDeRobotNumero}</Badge>
-          </button>
-        ) : (
-          <span className="text-gray-400" title="No lo arranca el lanzador de Viriato: corre en otro sitio, con su clave">
-            Fuera
-          </span>
-        ),
-    },
-    { clave: 'clave', titulo: 'Clave', celda: (d) => <span className="font-mono text-xs text-gray-500">{d.apiKeyPrefix}…</span> },
-    {
       clave: 'uso',
       titulo: 'Último uso',
       celda: (d) => <span className="text-gray-500">{d.lastUsedAt ? new Date(d.lastUsedAt).toLocaleString() : 'Nunca'}</span>,
     },
     {
       clave: 'acciones',
-      titulo: 'Acciones',
+      titulo: '',
       celda: (d) => (
-        <div className="-my-1 flex items-center gap-0.5">
-          <IconButton size="sm" label="Versiones del robot" onClick={() => setRobotDe(d)}>
-            <Package size={16} />
-          </IconButton>
-          <IconButton size="sm" label="Pantalla del robot" onClick={() => setPantallaDe(d)}>
-            <Monitor size={16} />
-          </IconButton>
-          <IconButton size="sm" label="Regenerar clave" disabled={regenerarMutation.isPending} onClick={() => regenerarMutation.mutate(d.id)}>
-            <RefreshCw size={16} />
+        <div className="-my-1 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+          <IconButton size="sm" label="Configurar" onClick={() => configurar(d)}>
+            <Settings2 size={16} />
           </IconButton>
           <IconButton size="sm" variant="danger" label="Eliminar despliegue" onClick={() => setPendingDelete(d)}>
             <Trash2 size={16} />
@@ -255,10 +201,16 @@ export function DespliguesPage() {
         title="Despliegues"
         description="Un servicio instalado en un equipo para un proceso: de aquí sale la clave con la que se identifica el robot."
         actions={
-          <Button onClick={() => setShowNuevo(true)}>
-            <Plus size={16} />
-            Nuevo
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setVerLanzador(true)}>
+              <Cpu size={16} />
+              Lanzador
+            </Button>
+            <Button onClick={() => setShowNuevo(true)}>
+              <Plus size={16} />
+              Nuevo
+            </Button>
+          </div>
         }
       />
 
@@ -269,6 +221,7 @@ export function DespliguesPage() {
         nombreDeFila={(d) => `${d.servicioNombre} en ${d.equipoNombre}`}
         entidad={{ singular: 'despliegue', plural: 'despliegues' }}
         buscador={false}
+        alHacerClic={(d) => configurar(d)}
         vacio={{
           icono: <Server size={22} />,
           titulo: 'Sin despliegues',
@@ -280,7 +233,7 @@ export function DespliguesPage() {
             </Button>
           ),
         }}
-        anchoMinimo="1080px"
+        anchoMinimo="1160px"
       />
 
       <Modal
@@ -393,28 +346,17 @@ export function DespliguesPage() {
         <code className="block break-all rounded-lg bg-gray-100 p-3 text-xs text-gray-800">{revelado?.apiKey}</code>
       </Modal>
 
-      <CrudFormModal
-        open={pantallaDe !== null}
-        title={pantallaDe ? `Pantalla de ${pantallaDe.servicioNombre} en ${pantallaDe.equipoNombre}` : 'Pantalla del robot'}
-        size="lg"
-        fields={camposDePantalla}
-        initialValues={valoresDePantalla}
-        submitting={pantallaMutation.isPending}
-        error={
-          pantallaMutation.error
-            ? pantallaMutation.error instanceof ApiError
-              ? pantallaMutation.error.message
-              : 'No se pudo guardar.'
-            : null
-        }
-        onSubmit={(valores) => pantallaDe && pantallaMutation.mutate({ id: pantallaDe.id, valores })}
-        onClose={() => {
-          setPantallaDe(null)
-          pantallaMutation.reset()
-        }}
+      <ConfiguracionDelDespliegueModal
+        despliegue={configurando}
+        apartado={apartado}
+        alCambiarApartado={setApartado}
+        flujos={flujos}
+        nombreFlujo={nombreFlujo}
+        regenerando={regenerarMutation.isPending}
+        alRegenerarClave={(d) => regenerarMutation.mutate(d.id)}
+        onClose={() => setConfigurandoId(null)}
       />
-
-      <VersionesDelRobotModal despliegue={robotDe} onClose={() => setRobotDe(null)} />
+      <AjustesDelLanzadorModal open={verLanzador} onClose={() => setVerLanzador(false)} />
 
       <ConfirmDialog
         open={pendingDelete !== null}

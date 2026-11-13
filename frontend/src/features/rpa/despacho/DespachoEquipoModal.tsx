@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Modal } from '../../../components/ui/Modal'
 import { Skeleton } from '../../../components/ui/Skeleton'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import * as rpaApi from '../api'
 import type { DespachoEquipoDto, PlantillaDespachoDto } from '../api'
@@ -80,7 +80,7 @@ export function DespachoEquipoModal({
       showToast('success', 'Despacho guardado.')
       onClose()
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo guardar el despacho.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo guardar el despacho.')),
   })
 
   const guardarComoPlantilla = useMutation({
@@ -98,7 +98,7 @@ export function DespachoEquipoModal({
       setPlantillaId(creada.id)
       showToast('success', `Plantilla «${creada.nombre}» guardada.`)
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo guardar la plantilla.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo guardar la plantilla.')),
   })
 
   const plantillaElegida = plantillas.data?.find((p) => p.id === plantillaId)

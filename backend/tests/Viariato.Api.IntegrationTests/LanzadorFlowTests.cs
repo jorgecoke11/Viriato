@@ -20,7 +20,7 @@ namespace Viariato.Api.IntegrationTests;
 /// </summary>
 public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixture<ViariatoApiFactory>
 {
-    private sealed record Escenario(HttpClient Admin, Guid EquipoId, Guid FlujoId, Guid DespliegueId, string ApiKey);
+    private sealed record Escenario(HttpClient Admin, Guid EquipoId, Guid FlujoId, Guid DespliegueId, string ApiKey, Guid ServicioId);
 
     private static async Task<Guid> IdOfAsync(HttpResponseMessage response)
     {
@@ -69,7 +69,7 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
         Assert.Equal(HttpStatusCode.OK, despliegue.StatusCode);
         var cuerpo = await despliegue.Content.ReadFromJsonAsync<JsonElement>();
 
-        return new Escenario(client, equipoId, flujoId, cuerpo.GetProperty("despliegue").GetProperty("id").GetGuid(), cuerpo.GetProperty("apiKey").GetString()!);
+        return new Escenario(client, equipoId, flujoId, cuerpo.GetProperty("despliegue").GetProperty("id").GetGuid(), cuerpo.GetProperty("apiKey").GetString()!, servicioId);
     }
 
     private static Task StartCasoAsync(Escenario e, string titulo) =>
@@ -128,7 +128,7 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
 
         // Asked again and again, as the launcher does: the robot is still not there, so the dispatcher does not wait for it.
         for (var i = 0; i < 3; i++) await lanzador.TrabajoAsync(e.ApiKey, default);
-        await lanzador.ReportarAsync(e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.SinTrabajo, 0, 1), default);
+        await lanzador.ReportarAsync(e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.SinTrabajo, 0), default);
 
         var antes = await RobotEnLaColaAsync(e);
         Assert.False(antes.GetProperty("conectado").GetBoolean());
@@ -150,16 +150,17 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
         Assert.Equal(JsonValueKind.Null, (await RobotEnLaColaAsync(e)).GetProperty("lanzador").ValueKind);
 
         await Lanzador().ReportarAsync(
-            e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.EnEspera, 0, 2, "Esperando hueco: el lanzador ya tiene 2 de 2 robots en marcha."), default);
+            e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.EnEspera, 0, "Esperando hueco: el lanzador ya tiene 2 de 2 robots en marcha."), default);
 
         var lanzador = (await RobotEnLaColaAsync(e)).GetProperty("lanzador");
         Assert.Equal("EnEspera", lanzador.GetProperty("estado").GetString());
         Assert.Equal(0, lanzador.GetProperty("copias").GetInt32());
-        Assert.Equal(2, lanzador.GetProperty("maxCopias").GetInt32());
+        // The replicas are the Despliegue's own.
+        Assert.Equal(1, lanzador.GetProperty("replicas").GetInt32());
         Assert.StartsWith("Esperando hueco", lanzador.GetProperty("detalle").GetString());
 
         // Only the latest word counts.
-        await Lanzador().ReportarAsync(e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.EnMarcha, 1, 2), default);
+        await Lanzador().ReportarAsync(e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.EnMarcha, 1), default);
         lanzador = (await RobotEnLaColaAsync(e)).GetProperty("lanzador");
         Assert.Equal("EnMarcha", lanzador.GetProperty("estado").GetString());
         Assert.Equal(JsonValueKind.Null, lanzador.GetProperty("detalle").ValueKind);
@@ -169,7 +170,7 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
     public async Task ALauncherThatHasGoneQuiet_IsNoLongerShown()
     {
         var e = await CreateEscenarioAsync();
-        await Lanzador().ReportarAsync(e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.EnMarcha, 1, 1), default);
+        await Lanzador().ReportarAsync(e.ApiKey, new EstadoDelLanzadorRequest(EstadosDelLanzador.EnMarcha, 1), default);
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -189,13 +190,13 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
         var http = factory.CreateClient();
         http.DefaultRequestHeaders.Add("X-Api-Key", e.ApiKey);
 
-        var respuesta = await http.PutAsJsonAsync("/api/v1/rpa/lanzador/estado", new EstadoDelLanzadorRequest("Inventado", 0, 1));
+        var respuesta = await http.PutAsJsonAsync("/api/v1/rpa/lanzador/estado", new EstadoDelLanzadorRequest("Inventado", 0));
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
 
         await Assert.ThrowsAsync<ClaveRechazadaException>(() => Lanzador().TrabajoAsync("vrt_no_existe", default));
     }
 
-    // ---- The launcher next to Viriato: robots uploaded to their Despliegue, a shared secret, passes instead of keys ----
+    // ---- The launcher next to Viriato: robots uploaded to their Servicio, a shared secret, passes instead of keys ----
 
     private static byte[] ZipDeRobot(string programa = "Robot", bool conNavegador = true)
     {
@@ -220,8 +221,12 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
         var archivo = new ByteArrayContent(zip);
         archivo.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
         formulario.Add(archivo, "file", nombre);
-        return e.Admin.PostAsync($"/api/v1/despliegues/{e.DespliegueId}/versiones", formulario);
+        return e.Admin.PostAsync($"/api/v1/servicios/{e.ServicioId}/versiones", formulario);
     }
+
+    /// <summary>Tells the launcher to run this Despliegue: with its service's latest version, or held at <paramref name="versionId"/>.</summary>
+    private static Task<HttpResponseMessage> RobotDelDespliegueAsync(Escenario e, bool enElLanzador = true, Guid? versionId = null) =>
+        e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/robot", new { enElLanzador, versionId });
 
     private HttpClient LanzadorJuntoAViriato()
     {
@@ -237,7 +242,7 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
     }
 
     [Fact]
-    public async Task UploadingAZip_IsTheWholeDeployment_AndThePassWorksAsTheRobotsKey()
+    public async Task UploadingAZipToTheService_AndPuttingTheDespliegueInTheLauncher_DeploysIt_AndThePassWorksAsTheRobotsKey()
     {
         var e = await CreateEscenarioAsync();
         Assert.Null(await EnElCatalogoAsync(e));
@@ -248,7 +253,13 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
         Assert.Equal(1, version.GetProperty("numero").GetInt32());
         Assert.Equal("dotnet Bsh.PricesExtractor.dll", version.GetProperty("ejecuta").GetString());
         Assert.True(version.GetProperty("pantalla").GetBoolean());
-        Assert.True(version.GetProperty("actual").GetBoolean());
+        Assert.True(version.GetProperty("ultima").GetBoolean());
+
+        // Uploaded, but this Despliegue may run somewhere else with its key: the launcher leaves it alone until told.
+        Assert.Null(await EnElCatalogoAsync(e));
+        var puesto = await RobotDelDespliegueAsync(e);
+        Assert.Equal(HttpStatusCode.OK, puesto.StatusCode);
+        Assert.True((await puesto.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("enElLanzador").GetBoolean());
 
         var despliegue = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/despliegues/{e.DespliegueId}");
         Assert.Equal(1, despliegue.GetProperty("versionDeRobotNumero").GetInt32());
@@ -277,6 +288,7 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
     {
         var e = await CreateEscenarioAsync();
         Assert.Equal(HttpStatusCode.OK, (await SubirAsync(e, ZipDeRobot("Creador", conNavegador: false))).StatusCode);
+        await RobotDelDespliegueAsync(e);
 
         var carpeta = Path.Combine(factory.CarpetaDelLanzador, "descargados-" + Guid.NewGuid().ToString("N"));
         var catalogo = new CatalogoDeViriato(
@@ -314,20 +326,58 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
         var e = await CreateEscenarioAsync();
         var primera = (await (await SubirAsync(e, ZipDeRobot())).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         var segunda = (await (await SubirAsync(e, ZipDeRobot())).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await RobotDelDespliegueAsync(e);
         Assert.Equal(2, (await EnElCatalogoAsync(e))!.Numero);
 
-        // The one in use cannot be deleted.
-        Assert.Equal(HttpStatusCode.Conflict, (await e.Admin.DeleteAsync($"/api/v1/despliegues/{e.DespliegueId}/versiones/{segunda}")).StatusCode);
+        // The latest, followed by a Despliegue in the launcher, is in use: it cannot be deleted.
+        var versionesUrl = $"/api/v1/servicios/{e.ServicioId}/versiones";
+        Assert.Equal(HttpStatusCode.Conflict, (await e.Admin.DeleteAsync($"{versionesUrl}/{segunda}")).StatusCode);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/version-actual", new { versionId = primera })).StatusCode);
+        // Held at the first one, the launcher goes back; the second is free to go.
+        var fijado = await RobotDelDespliegueAsync(e, versionId: primera);
+        Assert.Equal(primera, (await fijado.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("versionFijadaId").GetGuid());
         Assert.Equal(primera, (await EnElCatalogoAsync(e))!.VersionId);
-        Assert.Equal(HttpStatusCode.NoContent, (await e.Admin.DeleteAsync($"/api/v1/despliegues/{e.DespliegueId}/versiones/{segunda}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await e.Admin.DeleteAsync($"{versionesUrl}/{primera}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await e.Admin.DeleteAsync($"{versionesUrl}/{segunda}")).StatusCode);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/version-actual", new { versionId = (Guid?)null })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await RobotDelDespliegueAsync(e, enElLanzador: false)).StatusCode);
         Assert.Null(await EnElCatalogoAsync(e));
 
-        var versiones = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/despliegues/{e.DespliegueId}/versiones");
+        var versiones = await e.Admin.GetFromJsonAsync<JsonElement>(versionesUrl);
         Assert.Equal(1, versiones.GetArrayLength());
+
+        // A version of another service is no version of this one.
+        var otroServicio = await IdOfAsync(await e.Admin.PostAsJsonAsync("/api/v1/servicios", new { nombre = $"Otro {Guid.NewGuid():N}", descripcion = (string?)null }));
+        Assert.Equal(HttpStatusCode.NotFound, (await e.Admin.DeleteAsync($"/api/v1/servicios/{otroServicio}/versiones/{primera}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await RobotDelDespliegueAsync(e, versionId: Guid.NewGuid())).StatusCode);
+    }
+
+    [Fact]
+    public async Task OneUpload_ReachesEveryDespliegueOfTheService_ThatFollowsTheLatest()
+    {
+        var e = await CreateEscenarioAsync();
+        var otroEquipo = await IdOfAsync(await e.Admin.PostAsJsonAsync("/api/v1/equipos", new { nombre = $"Equipo {Guid.NewGuid():N}", descripcion = (string?)null }));
+        var creado = await e.Admin.PostAsJsonAsync("/api/v1/despliegues", new { equipoId = otroEquipo, servicioId = e.ServicioId, flujoId = e.FlujoId });
+        var cuerpo = await creado.Content.ReadFromJsonAsync<JsonElement>();
+        var otro = e with { EquipoId = otroEquipo, DespliegueId = cuerpo.GetProperty("despliegue").GetProperty("id").GetGuid() };
+
+        var primera = (await (await SubirAsync(e, ZipDeRobot())).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await RobotDelDespliegueAsync(e);
+        await RobotDelDespliegueAsync(otro, versionId: primera);
+
+        await SubirAsync(e, ZipDeRobot());
+        Assert.Equal(2, (await EnElCatalogoAsync(e))!.Numero);
+        Assert.Equal(1, (await EnElCatalogoAsync(otro))!.Numero);
+
+        var versiones = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/servicios/{e.ServicioId}/versiones");
+        Assert.Equal(2, versiones.GetArrayLength());
+        Assert.Single(versiones[0].GetProperty("usadaPor").EnumerateArray());
+        Assert.Single(versiones[1].GetProperty("usadaPor").EnumerateArray());
+
+        // A service whose robot has versions cannot be removed out from under them.
+        await e.Admin.DeleteAsync($"/api/v1/despliegues/{e.DespliegueId}");
+        await e.Admin.DeleteAsync($"/api/v1/despliegues/{otro.DespliegueId}");
+        Assert.Equal(HttpStatusCode.Conflict, (await e.Admin.DeleteAsync($"/api/v1/servicios/{e.ServicioId}")).StatusCode);
     }
 
     [Fact]
@@ -346,6 +396,7 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
     {
         var e = await CreateEscenarioAsync();
         await SubirAsync(e, ZipDeRobot());
+        await RobotDelDespliegueAsync(e);
         var robot = (await EnElCatalogoAsync(e))!;
 
         var anonimo = factory.CreateClient();
@@ -361,4 +412,46 @@ public sealed class LanzadorFlowTests(ViariatoApiFactory factory) : IClassFixtur
         var falso = robot.Clave[..^4] + (robot.Clave.EndsWith("AAAA", StringComparison.Ordinal) ? "BBBB" : "AAAA");
         await Assert.ThrowsAsync<ClaveRechazadaException>(() => Lanzador().TrabajoAsync(falso, default));
     }
+
+    [Fact]
+    public async Task ReplicasMemoryAndTheMachinesCeilings_AreSetInViriato_AndReachTheLauncher()
+    {
+        var e = await CreateEscenarioAsync();
+        await SubirAsync(e, ZipDeRobot());
+        await RobotDelDespliegueAsync(e);
+        var robot = (await EnElCatalogoAsync(e))!;
+        Assert.Equal((1, 2048), (robot.Replicas, robot.MemoriaMaximaMb!.Value));
+
+        // This Despliegue: two replicas, 1500 MB each.
+        var guardado = await e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/lanzador", new { replicas = 2, memoriaMaximaMb = 1500 });
+        Assert.Equal(HttpStatusCode.OK, guardado.StatusCode);
+        Assert.Equal(2, (await guardado.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("replicas").GetInt32());
+        robot = (await EnElCatalogoAsync(e))!;
+        Assert.Equal((2, 1500), (robot.Replicas, robot.MemoriaMaximaMb!.Value));
+
+        // A new version of the robot does not touch them: they are the Despliegue's.
+        await SubirAsync(e, ZipDeRobot());
+        robot = (await EnElCatalogoAsync(e))!;
+        Assert.Equal((2, 2, 1500), (robot.Numero, robot.Replicas, robot.MemoriaMaximaMb!.Value));
+
+        // 0 parks it; the memory back to what the version says.
+        await e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/lanzador", new { replicas = 0, memoriaMaximaMb = (int?)null });
+        robot = (await EnElCatalogoAsync(e))!;
+        Assert.Equal((0, 2048), (robot.Replicas, robot.MemoriaMaximaMb!.Value));
+
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await e.Admin.PutAsJsonAsync($"/api/v1/despliegues/{e.DespliegueId}/lanzador", new { replicas = 99, memoriaMaximaMb = 10 })).StatusCode);
+
+        // The machine: defaults first, then what is saved.
+        var ajustes = await e.Admin.GetFromJsonAsync<AjustesLeidos>("/api/v1/lanzador/ajustes");
+        Assert.NotNull(ajustes);
+        Assert.Equal(HttpStatusCode.OK, (await e.Admin.PutAsJsonAsync("/api/v1/lanzador/ajustes", new { maxRobotsALaVez = 3, maxConNavegador = 2 })).StatusCode);
+        var catalogo = await LanzadorJuntoAViriato().GetFromJsonAsync<CatalogoDelLanzadorDto>("/api/v1/rpa/lanzador/catalogo");
+        Assert.Equal((3, 2), (catalogo!.MaxRobotsALaVez, catalogo.MaxConPantalla));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await e.Admin.PutAsJsonAsync("/api/v1/lanzador/ajustes", new { maxRobotsALaVez = 1, maxConNavegador = 2 })).StatusCode);
+        await e.Admin.PutAsJsonAsync("/api/v1/lanzador/ajustes", new { maxRobotsALaVez = 2, maxConNavegador = 1 });
+    }
+
+    private sealed record AjustesLeidos(int MaxRobotsALaVez, int MaxConNavegador);
 }

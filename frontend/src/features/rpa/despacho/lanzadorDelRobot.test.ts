@@ -5,7 +5,7 @@ import { avisoDePendiente, lanzadorEnPantalla } from './lanzadorDelRobot'
 const lanzador = (cambios: Partial<LanzadorDelRobotDto> = {}): LanzadorDelRobotDto => ({
   estado: 'SinTrabajo',
   copias: 0,
-  maxCopias: 1,
+  replicas: 1,
   detalle: null,
   vistoEn: '2026-11-11T10:00:00Z',
   ...cambios,
@@ -18,7 +18,7 @@ describe('lanzadorEnPantalla', () => {
 
   it('shows a running robot, and how many copies only when it may have several', () => {
     expect(lanzadorEnPantalla(lanzador({ estado: 'EnMarcha', copias: 1 })).texto).toBe('En marcha')
-    expect(lanzadorEnPantalla(lanzador({ estado: 'EnMarcha', copias: 2, maxCopias: 3 }))).toMatchObject({
+    expect(lanzadorEnPantalla(lanzador({ estado: 'EnMarcha', copias: 2, replicas: 3 }))).toMatchObject({
       tono: 'success',
       texto: '2 de 3 copias en marcha',
       enMarcha: true,
@@ -27,7 +27,7 @@ describe('lanzadorEnPantalla', () => {
 
   it('keeps the reason a running robot does not run more copies', () => {
     const detalle = 'Esperando hueco: el lanzador ya tiene 2 de 2 robots en marcha.'
-    expect(lanzadorEnPantalla(lanzador({ estado: 'EnMarcha', copias: 1, maxCopias: 2, detalle })).detalle).toBe(detalle)
+    expect(lanzadorEnPantalla(lanzador({ estado: 'EnMarcha', copias: 1, replicas: 2, detalle })).detalle).toBe(detalle)
   })
 
   it('warns when it waits and says why', () => {

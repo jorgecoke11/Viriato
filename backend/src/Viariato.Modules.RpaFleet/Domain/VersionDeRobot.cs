@@ -1,17 +1,18 @@
 namespace Viariato.Modules.RpaFleet.Domain;
 
 /// <summary>
-/// One upload of a robot's program (the zip of its <c>dotnet publish</c>) to a Despliegue. The launcher that runs next to Viriato
-/// downloads the Despliegue's current one and runs it; the others stay so it can go back with a click. How to run it is worked out
+/// One upload of a robot's program (the zip of its <c>dotnet publish</c>) to its Servicio: the program is what the service is, so
+/// every Despliegue of it shares the same versions. The launcher that runs next to Viriato runs, for each Despliegue it starts, the
+/// latest one or the one that Despliegue is held at; the others stay so it can go back with a click. How to run it is worked out
 /// from the zip when it is uploaded (<see cref="Lanzador.PaqueteDeRobot"/>), so nobody has to describe it.
 /// </summary>
 public sealed class VersionDeRobot
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
 
-    public Guid DespliegueId { get; set; }
+    public Guid ServicioId { get; set; }
 
-    /// <summary>1, 2, 3… within its Despliegue, for people.</summary>
+    /// <summary>1, 2, 3… within its Servicio, for people. The highest is the latest.</summary>
     public int Numero { get; set; }
 
     /// <summary>The name of the file that was uploaded.</summary>
@@ -35,8 +36,6 @@ public sealed class VersionDeRobot
     public bool Pantalla { get; set; }
 
     public int? MemoriaMaximaMb { get; set; }
-
-    public int MaxCopias { get; set; } = 1;
 
     /// <summary>Extra environment variables from the zip's <c>robot.json</c>, as JSON; null when it has none.</summary>
     public string? EntornoJson { get; set; }

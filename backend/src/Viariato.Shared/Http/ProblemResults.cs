@@ -40,4 +40,8 @@ public static class ProblemResults
             .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
         return Results.ValidationProblem(errors);
     }
+
+    /// <summary>One field is wrong, and this is why, in words for whoever filled it in.</summary>
+    public static IResult ValidationProblem(string campo, string mensaje) =>
+        Results.ValidationProblem(new Dictionary<string, string[]> { [campo] = [mensaje] });
 }

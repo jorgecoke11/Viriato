@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Text.RegularExpressions;
 
 namespace Viriato.Rpa.Lanzador;
 
@@ -41,10 +40,7 @@ public interface IArrancadorDeRobots
 /// <summary>What a robot's process is given: where Viriato is, its key, when to leave, and a place of its own.</summary>
 public static class EntornoDelRobot
 {
-    private static readonly Regex Variable = new(@"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", RegexOptions.Compiled);
-
-    /// <param name="variable">Reads an environment variable of the launcher.</param>
-    public static Dictionary<string, string> Construir(ArranqueDeRobot arranque, string carpetaTemporal, Func<string, string?> variable)
+    public static Dictionary<string, string> Construir(ArranqueDeRobot arranque, string carpetaTemporal)
     {
         var o = arranque.Opciones;
         var entorno = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -72,7 +68,7 @@ public static class EntornoDelRobot
 
         foreach (var (clave, valorCrudo) in arranque.Robot.Entorno)
         {
-            var valor = Variable.Replace(valorCrudo ?? string.Empty, m => variable(m.Groups[1].Value) ?? string.Empty);
+            var valor = valorCrudo ?? string.Empty;
             foreach (var (marca, por) in sustituciones) valor = valor.Replace(marca, por, StringComparison.OrdinalIgnoreCase);
             entorno[clave] = valor;
         }
@@ -87,7 +83,7 @@ public static class EntornoDelRobot
 /// Starts each copy as a process of its own, in its own session (so it and whatever it starts — a browser, the live view — can
 /// be stopped and measured together), with a temporary folder of its own and, if it needs a screen, a virtual one of its own.
 /// </summary>
-public sealed class ArrancadorDeProcesos(Func<string, string?> variable) : IArrancadorDeRobots
+public sealed class ArrancadorDeProcesos : IArrancadorDeRobots
 {
     private const string Setsid = "/usr/bin/setsid";
 
@@ -100,7 +96,7 @@ public sealed class ArrancadorDeProcesos(Func<string, string?> variable) : IArra
         var carpeta = Path.Combine(arranque.Opciones.CarpetaTemporal, $"{seguro}-{id}");
         Directory.CreateDirectory(carpeta);
 
-        var entorno = EntornoDelRobot.Construir(arranque, carpeta, variable);
+        var entorno = EntornoDelRobot.Construir(arranque, carpeta);
         var auxiliares = new List<Process>();
         try
         {
@@ -120,10 +116,10 @@ public sealed class ArrancadorDeProcesos(Func<string, string?> variable) : IArra
             if (conSesion) inicio.ArgumentList.Add(robot.Comando);
             foreach (var argumento in robot.Argumentos) inicio.ArgumentList.Add(argumento);
 
-            // A robot never sees another robot's key.
-            foreach (var otra in arranque.Opciones.Robots.Select(r => r.ClaveEnv).Where(c => !string.IsNullOrWhiteSpace(c)))
+            // A robot never sees the launcher's own settings (where the secret shared with Viriato is, above all).
+            foreach (var propia in inicio.Environment.Keys.Where(k => k.StartsWith("LANZADOR_", StringComparison.Ordinal)).ToList())
             {
-                inicio.Environment.Remove(otra);
+                inicio.Environment.Remove(propia);
             }
 
             foreach (var (clave, valor) in entorno) inicio.Environment[clave] = valor;

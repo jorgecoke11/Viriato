@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown, Minus, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Popover } from '../../components/ui/Popover'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as casosApi from './api'
 import { describirPrioridad, NIVELES_DE_PRIORIDAD, PRIORIDAD_MAXIMA, PRIORIDAD_MINIMA, validarPrioridad, type TonoDePrioridad } from './prioridad'
@@ -111,7 +111,7 @@ function PanelDePrioridad({
       showToast('success', 'Prioridad actualizada.')
       close()
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo cambiar la prioridad.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo cambiar la prioridad.')),
   })
 
   const mover = (delta: number) => {

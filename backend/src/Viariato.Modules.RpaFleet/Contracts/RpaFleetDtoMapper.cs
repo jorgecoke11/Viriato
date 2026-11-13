@@ -8,7 +8,8 @@ public static class RpaFleetDtoMapper
         equipo.Id, equipo.Nombre, equipo.Descripcion, equipo.Activo, equipo.CreatedAt, equipo.UpdatedAt);
 
     public static ServicioDto ToDto(this Servicio servicio) => new(
-        servicio.Id, servicio.Nombre, servicio.Descripcion, servicio.Activo, servicio.MaxEjecucionesGlobales, servicio.TiempoMaximoMinutos, servicio.CreatedAt, servicio.UpdatedAt);
+        servicio.Id, servicio.Nombre, servicio.Descripcion, servicio.Activo, servicio.MaxEjecucionesGlobales, servicio.TiempoMaximoMinutos, servicio.CreatedAt, servicio.UpdatedAt,
+        servicio.UltimaVersion?.Numero);
 
     public static DespliegueDto ToDto(this Despliegue despliegue) => new(
         despliegue.Id,
@@ -25,9 +26,13 @@ public static class RpaFleetDtoMapper
         despliegue.LastUsedAt,
         despliegue.VistaEnDirecto.ToString(),
         despliegue.GrabacionDeVideo.ToString(),
-        despliegue.VersionDeRobot?.Numero);
+        despliegue.VersionQueCorre?.Numero,
+        despliegue.Replicas,
+        despliegue.MemoriaMaximaMb,
+        despliegue.EnElLanzador,
+        despliegue.VersionDeRobotId);
 
-    public static VersionDeRobotDto ToDto(this VersionDeRobot version, Guid? actualId) => new(
+    public static VersionDeRobotDto ToDto(this VersionDeRobot version, bool ultima, IReadOnlyList<string> usadaPor) => new(
         version.Id,
         version.Numero,
         version.NombreArchivo,
@@ -35,10 +40,10 @@ public static class RpaFleetDtoMapper
         string.Join(' ', new[] { version.Comando }.Concat(version.Argumentos)),
         version.Pantalla,
         version.MemoriaMaximaMb,
-        version.MaxCopias,
         version.SubidaPor,
         version.CreatedAt,
-        version.Id == actualId);
+        ultima,
+        usadaPor);
 
     /// <summary>What the robot of this Despliegue is told to do with its screen (GET /rpa/despliegue).</summary>
     public static Viariato.ApiContracts.PantallaDelRobotDto ToPantallaDto(this Despliegue despliegue) => new(

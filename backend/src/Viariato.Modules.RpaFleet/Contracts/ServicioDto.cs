@@ -8,7 +8,8 @@ public sealed record ServicioDto(
     int? MaxEjecucionesGlobales,
     int? TiempoMaximoMinutos,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int? UltimaVersion = null);
 
 public sealed record CreateServicioRequest(
     string Nombre, string? Descripcion, int? MaxEjecucionesGlobales = null, int? TiempoMaximoMinutos = null);

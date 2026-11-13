@@ -26,7 +26,7 @@ export function lanzadorEnPantalla(lanzador: LanzadorDelRobotDto): LanzadorEnPan
     case 'EnMarcha':
       return {
         tono: 'success',
-        texto: lanzador.maxCopias > 1 ? `${lanzador.copias} de ${copias(lanzador.maxCopias)} en marcha` : 'En marcha',
+        texto: lanzador.replicas > 1 ? `${lanzador.copias} de ${copias(lanzador.replicas)} en marcha` : 'En marcha',
         detalle,
         enMarcha: true,
       }

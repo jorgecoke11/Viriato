@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { Modal } from '../../components/ui/Modal'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import { FlujoPasosEditor } from './FlujoPasosEditor'
 import * as flujosApi from './api'
@@ -40,7 +40,7 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
       setNotas('')
       setEditingVersionId(version.id)
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear la versión.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo crear la versión.')),
   })
 
   const publicarMutation = useMutation({
@@ -51,7 +51,7 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
       setPendingPublicar(null)
       showToast('success', 'Versión publicada.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo publicar la versión.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo publicar la versión.')),
   })
 
   const archivarMutation = useMutation({
@@ -61,7 +61,7 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
       setPendingArchivar(null)
       showToast('success', 'Versión archivada.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo archivar la versión.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo archivar la versión.')),
   })
 
   const versiones = [...(versionesQuery.data ?? [])].sort((a, b) => b.numeroVersion - a.numeroVersion)

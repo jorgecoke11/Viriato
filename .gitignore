@@ -24,4 +24,4 @@ ops/arranque/desplegado.json
 *.log
 
 ## Lanzador de robots: el catálogo y los robots de cada PC
-ops/lanzador/robots/
+ops/lanzador/

@@ -13,6 +13,7 @@ using Viariato.Modules.Casos.Domain;
 using Viariato.Modules.Flujos.Domain;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Domain;
+using Viariato.Modules.RpaFleet.Persistence;
 using Viariato.Modules.RpaFleet.Lanzador;
 using RpaLanzadorOptions = Viariato.Modules.RpaFleet.Lanzador.LanzadorOptions;
 using Viariato.Shared.Http;
@@ -58,18 +59,21 @@ internal static class LanzadorEndpoints
     }
 
     /// <summary>
-    /// Which robots the launcher next to Viriato runs: every Despliegue with a robot version uploaded (on an active machine, of an
-    /// active service), how to run it, and a fresh pass for it. Read every round.
+    /// Which robots the launcher next to Viriato runs: every Despliegue it is told to run whose service has a robot version uploaded
+    /// (on an active machine, of an active service), with the latest version or the one it is held at, how to run it, and a fresh
+    /// pass for it. Read every round.
     /// </summary>
     private static async Task<IResult> GetCatalogoAsync(
         AppDbContext db, SecretoDelLanzador secreto, IOptions<RpaLanzadorOptions> opciones, CancellationToken ct)
     {
         var o = opciones.Value;
-        var despliegues = await db.Set<Despliegue>().AsNoTracking()
-            .Include(d => d.Servicio).Include(d => d.Equipo).Include(d => d.VersionDeRobot)
-            .Where(d => d.VersionDeRobotId != null && d.Servicio!.Activo && d.Equipo!.Activo)
-            .OrderBy(d => d.CreatedAt)
-            .ToListAsync(ct);
+        var ajustes = await db.Set<AjustesDelLanzador>().AsNoTracking().FirstOrDefaultAsync(ct) ?? new AjustesDelLanzador();
+        var despliegues = (await db.Set<Despliegue>().AsNoTracking().ConSuRobot()
+                .Where(d => d.EnElLanzador && d.Servicio!.Activo && d.Equipo!.Activo)
+                .OrderBy(d => d.CreatedAt)
+                .ToListAsync(ct))
+            .Where(d => d.VersionQueCorre is not null)
+            .ToList();
 
         var flujoIds = despliegues.Select(d => d.FlujoId).Distinct().ToList();
         var flujos = await db.Set<Flujo>().AsNoTracking().Where(f => flujoIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id, f => f.Nombre, ct);
@@ -78,7 +82,7 @@ internal static class LanzadorEndpoints
 
         var robots = despliegues.Select(d =>
         {
-            var v = d.VersionDeRobot!;
+            var v = d.VersionQueCorre!;
             var nombre = vecesPorServicio[d.ServicioId] > 1
                 ? $"{d.Servicio!.Nombre} · {flujos.GetValueOrDefault(d.FlujoId, d.FlujoId.ToString("N")[..8])}"
                 : d.Servicio!.Nombre;
@@ -91,7 +95,7 @@ internal static class LanzadorEndpoints
 
             return new RobotDelCatalogoDto(
                 d.Id, nombre, secreto.EmitirPase(d.Id), v.Id, v.Numero, v.Sha256, v.Raiz, v.Comando, v.Argumentos, v.Pantalla,
-                v.MemoriaMaximaMb, v.MaxCopias, entorno);
+                d.MemoriaMaximaMb ?? v.MemoriaMaximaMb, d.Replicas, entorno);
         }).ToList();
 
         // Still two with the same name (same service and process on two machines): the machine tells them apart.
@@ -101,7 +105,7 @@ internal static class LanzadorEndpoints
             ? r with { Nombre = $"{r.Nombre} ({despliegues.First(d => d.Id == r.DespliegueId).Equipo!.Nombre})" }
             : r).ToList();
 
-        return Results.Ok(new CatalogoDelLanzadorDto(Math.Max(1, o.MaxRobotsALaVez), Math.Max(0, o.MaxConPantalla), robots));
+        return Results.Ok(new CatalogoDelLanzadorDto(Math.Max(1, ajustes.MaxRobotsALaVez), Math.Max(0, ajustes.MaxConNavegador), robots));
     }
 
     /// <summary>The zip of a robot version, for the launcher to unpack and run.</summary>
@@ -157,7 +161,6 @@ internal static class LanzadorEndpoints
         }
 
         if (request.Copias < 0) errores["copias"] = ["No puede ser negativo."];
-        if (request.MaxCopias < 0) errores["maxCopias"] = ["No puede ser negativo."];
         if (errores.Count > 0) return Results.ValidationProblem(errores);
 
         var detalle = string.IsNullOrWhiteSpace(request.Detalle) ? null : request.Detalle.Trim();
@@ -169,7 +172,6 @@ internal static class LanzadorEndpoints
             .ExecuteUpdateAsync(s => s
                 .SetProperty(d => d.LanzadorEstado, request.Estado)
                 .SetProperty(d => d.LanzadorCopias, request.Copias)
-                .SetProperty(d => d.LanzadorMaxCopias, request.MaxCopias)
                 .SetProperty(d => d.LanzadorDetalle, detalle)
                 .SetProperty(d => d.LanzadorVistoEn, ahora), ct);
 

@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { tamanoLegible } from './versionesDelRobot'
+import { numeroOpcional, tamanoLegible } from './versionesDelRobot'
+
+describe('numeroOpcional', () => {
+  it('reads empty as "what the version says"', () => {
+    expect(numeroOpcional('')).toBeNull()
+    expect(numeroOpcional('   ')).toBeNull()
+  })
+
+  it('reads whole numbers, and flags anything else', () => {
+    expect(numeroOpcional(' 2 ')).toBe(2)
+    expect(numeroOpcional('0')).toBe(0)
+    expect(numeroOpcional('1.5')).toBeNaN()
+    expect(numeroOpcional('dos')).toBeNaN()
+  })
+})
 
 describe('tamanoLegible', () => {
   it('says KB below a megabyte, never 0', () => {

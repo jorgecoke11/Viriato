@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { CrudPage } from '../../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../../components/crud/types'
 import { Button } from '../../../components/ui/Button'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import type { UserDto } from '../../auth/types'
 import { useAuth } from '../../auth/useAuth'
@@ -56,7 +56,7 @@ export function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-users-crud'] })
       showToast('success', 'Rol asignado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo asignar el rol.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo asignar el rol.')),
   })
 
   const removeMutation = useMutation({
@@ -65,7 +65,7 @@ export function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-users-crud'] })
       showToast('success', 'Rol retirado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo quitar el rol.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo quitar el rol.')),
   })
 
   if (!can('users.manage')) {
@@ -202,7 +202,7 @@ function UserProcesosCell({ userId, allFlujos }: { userId: string; allFlujos: fl
       invalidate()
       showToast('success', 'Proceso asignado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo asignar el proceso.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo asignar el proceso.')),
   })
 
   const removeMutation = useMutation({
@@ -211,7 +211,7 @@ function UserProcesosCell({ userId, allFlujos }: { userId: string; allFlujos: fl
       invalidate()
       showToast('success', 'Proceso retirado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo quitar el proceso.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo quitar el proceso.')),
   })
 
   if (assignedQuery.isLoading) {

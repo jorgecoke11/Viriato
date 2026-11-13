@@ -12,9 +12,8 @@ public sealed record TrabajoDelDespliegueDto(bool Encendido, int Pendientes, int
 /// say what is started and, when something is not, why.</summary>
 /// <param name="Estado">One of <see cref="EstadosDelLanzador"/>.</param>
 /// <param name="Copias">Copies of the robot running on the launcher right now.</param>
-/// <param name="MaxCopias">The most the launcher will run of it at once.</param>
 /// <param name="Detalle">The reason, in words for a person (why it waits, what failed). Optional.</param>
-public sealed record EstadoDelLanzadorRequest(string Estado, int Copias, int MaxCopias, string? Detalle = null);
+public sealed record EstadoDelLanzadorRequest(string Estado, int Copias, string? Detalle = null);
 
 /// <summary>The situations a launcher reports a robot in.</summary>
 public static class EstadosDelLanzador
@@ -57,7 +56,7 @@ public sealed record CatalogoDelLanzadorDto(int MaxRobotsALaVez, int MaxConPanta
 /// <param name="Argumentos">Its arguments, relative to <paramref name="Raiz"/>, e.g. <c>["Bsh.PricesExtractor.dll"]</c>.</param>
 /// <param name="Pantalla">It drives a browser: it gets a virtual screen of its own.</param>
 /// <param name="MemoriaMaximaMb">A copy using more than this is stopped. Null: no limit.</param>
-/// <param name="MaxCopias">Copies of it that may run at once.</param>
+/// <param name="Replicas">Copies of it that may run at once: its Despliegue's replicas (0 = parked).</param>
 /// <param name="Entorno">Extra settings for the robot (environment variables, <c>Seccion__Clave</c>).</param>
 public sealed record RobotDelCatalogoDto(
     Guid DespliegueId,
@@ -71,5 +70,5 @@ public sealed record RobotDelCatalogoDto(
     IReadOnlyList<string> Argumentos,
     bool Pantalla,
     int? MemoriaMaximaMb,
-    int MaxCopias,
+    int Replicas,
     IReadOnlyDictionary<string, string> Entorno);

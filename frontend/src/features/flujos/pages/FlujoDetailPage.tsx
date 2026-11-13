@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Tabs } from '../../../components/ui/Tabs'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { tabPanelVariants } from '../../../lib/motion/variants'
 import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../api'
@@ -231,7 +231,7 @@ function FlujoAlmacenamientoField({ flujo }: { flujo: flujosApi.FlujoDto }) {
       queryClient.invalidateQueries({ queryKey: ['flujo', flujo.id] })
       showToast('success', 'Almacenamiento actualizado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo actualizar el almacenamiento.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo actualizar el almacenamiento.')),
   })
 
   const storageConfigs = storageConfigsQuery.data?.items ?? []

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../components/crud/types'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as flujosApi from './api'
 import type { FlujoTipoCasoDefDto } from './api'
@@ -35,7 +35,7 @@ export function FlujoTiposCasoPanel({ flujoId }: { flujoId: string }) {
       queryClient.invalidateQueries({ queryKey: [`flujo-${flujoId}-tipos-caso`] })
       showToast('success', 'Tipo de caso actualizado.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo actualizar el tipo de caso.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo actualizar el tipo de caso.')),
   })
 
   const columns: CrudColumn<FlujoTipoCasoDefDto>[] = [

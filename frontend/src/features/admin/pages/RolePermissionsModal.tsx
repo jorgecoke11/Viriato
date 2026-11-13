@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Modal } from '../../../components/ui/Modal'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import * as adminApi from '../api'
 import type { RoleDto } from '../api'
@@ -43,7 +43,7 @@ export function RolePermissionsModal({ role, onClose }: { role: RoleDto | null; 
       onClose()
     },
     onError: (err) => {
-      const message = err instanceof ApiError ? err.message : 'No se pudieron guardar los permisos.'
+      const message = mensajeDeError(err, 'No se pudieron guardar los permisos.')
       setError(message)
       showToast('error', message)
     },

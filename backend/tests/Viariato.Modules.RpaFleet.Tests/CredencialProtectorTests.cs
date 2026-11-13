@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
-using Viariato.Modules.RpaFleet.Options;
-using Viariato.Modules.RpaFleet.Security;
+using Viariato.Shared.Options;
+using Viariato.Shared.Seguridad;
 
 namespace Viariato.Modules.RpaFleet.Tests;
 

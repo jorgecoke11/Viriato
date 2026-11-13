@@ -12,10 +12,11 @@ public sealed class AlmacenDeRobots(IOptions<LanzadorOptions> opciones, IOptions
             ? Path.Combine(documentos.Value.LocalPath, "robots")
             : opciones.Value.CarpetaDeRobots);
 
-    /// <summary>Copies the zip in and returns its path relative to the folder.</summary>
-    public async Task<string> GuardarAsync(Guid despliegueId, Guid versionId, Stream zip, CancellationToken ct)
+    /// <summary>Copies the zip in, in its service's folder, and returns its path relative to the folder. (Versions uploaded before
+    /// they belonged to the service sit in their old Despliegue's folder: the path stored with each is what counts.)</summary>
+    public async Task<string> GuardarAsync(Guid servicioId, Guid versionId, Stream zip, CancellationToken ct)
     {
-        var relativa = Path.Combine(despliegueId.ToString("N"), $"{versionId:N}.zip");
+        var relativa = Path.Combine(servicioId.ToString("N"), $"{versionId:N}.zip");
         var ruta = Path.Combine(Carpeta, relativa);
         Directory.CreateDirectory(Path.GetDirectoryName(ruta)!);
         await using var destino = File.Create(ruta);
@@ -34,19 +35,6 @@ public sealed class AlmacenDeRobots(IOptions<LanzadorOptions> opciones, IOptions
         catch (IOException)
         {
             // Best effort: what is left is only disk.
-        }
-    }
-
-    public void BorrarDelDespliegue(Guid despliegueId)
-    {
-        try
-        {
-            var carpeta = Path.Combine(Carpeta, despliegueId.ToString("N"));
-            if (Directory.Exists(carpeta)) Directory.Delete(carpeta, recursive: true);
-        }
-        catch (IOException)
-        {
-            // Best effort.
         }
     }
 

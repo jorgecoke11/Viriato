@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Viariato.Shared.Authorization;
 using Viariato.Shared.Http;
 
 namespace Viariato.Modules.Flujos.Endpoints;
@@ -14,7 +15,7 @@ internal static class FlujosAuthorization
 {
     public static Task<IResult?> RequireClaimAsync(HttpContext http, string permission, CancellationToken ct)
     {
-        var allowed = http.User.HasClaim("perm", permission);
+        var allowed = http.User.TienePermiso(permission);
         return Task.FromResult<IResult?>(allowed ? null : ProblemResults.Forbidden(http, "No tienes permiso para esta acción."));
     }
 }

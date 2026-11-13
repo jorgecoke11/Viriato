@@ -15,11 +15,16 @@ public sealed record DespliegueDto(
     DateTimeOffset? LastUsedAt,
     string VistaEnDirecto,
     string GrabacionDeVideo,
-    int? VersionDeRobotNumero = null);
+    int? VersionDeRobotNumero = null,
+    int Replicas = 1,
+    int? MemoriaMaximaMb = null,
+    bool EnElLanzador = false,
+    Guid? VersionFijadaId = null);
 
-/// <summary>One version of a robot uploaded to a Despliegue (for the launcher next to Viriato).</summary>
-/// <param name="Actual">It is the one the launcher runs.</param>
+/// <summary>One version of a service's robot, uploaded for the launcher next to Viriato.</summary>
+/// <param name="Ultima">It is the latest: what every Despliegue not held at another one runs.</param>
 /// <param name="Ejecuta">How it is run, as worked out from the zip, e.g. <c>dotnet Bsh.PricesExtractor.dll</c>.</param>
+/// <param name="UsadaPor">The machines whose Despliegue the launcher runs with it, e.g. <c>Equipo 1</c>.</param>
 public sealed record VersionDeRobotDto(
     Guid Id,
     int Numero,
@@ -28,13 +33,23 @@ public sealed record VersionDeRobotDto(
     string Ejecuta,
     bool Pantalla,
     int? MemoriaMaximaMb,
-    int MaxCopias,
     string? SubidaPor,
     DateTimeOffset CreatedAt,
-    bool Actual);
+    bool Ultima,
+    IReadOnlyList<string> UsadaPor);
 
-/// <param name="VersionId">The version the launcher runs from now on; null for it to stop running this Despliegue.</param>
-public sealed record UsarVersionDeRobotRequest(Guid? VersionId);
+/// <summary>Whether the launcher next to Viriato runs this Despliegue's robot, and with which of its service's versions.</summary>
+/// <param name="EnElLanzador">False leaves the robot to run somewhere else, with its key.</param>
+/// <param name="VersionId">The version to hold it at; null follows the latest one uploaded.</param>
+public sealed record RobotDelDespliegueRequest(bool EnElLanzador, Guid? VersionId);
+
+/// <summary>How the launcher runs this Despliegue's robot.</summary>
+/// <param name="Replicas">Copies at once when it has work; 0 parks it.</param>
+/// <param name="MemoriaMaximaMb">Ceiling of each copy; null = what its version says (2048 MB with a browser, none without).</param>
+public sealed record RobotEnElLanzadorRequest(int Replicas, int? MemoriaMaximaMb);
+
+/// <summary>How much the launcher next to Viriato may run at once on its machine.</summary>
+public sealed record AjustesDelLanzadorDto(int MaxRobotsALaVez, int MaxConNavegador);
 
 /// <summary>Returned only once, right after creating/regenerating a Despliegue's key — never
 /// retrievable again afterwards.</summary>

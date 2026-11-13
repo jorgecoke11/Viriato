@@ -1,8 +1,13 @@
+import { Package } from 'lucide-react'
+import { useState } from 'react'
 import { CrudPage } from '../../../components/crud/CrudPage'
 import type { CrudColumn, CrudFormConfig } from '../../../components/crud/types'
 import * as rpaApi from '../api'
 import type { ServicioDto } from '../api'
 import { ActivoBadge } from '../../../components/ui/ActivoBadge'
+import { Badge } from '../../../components/ui/Badge'
+import { Button } from '../../../components/ui/Button'
+import { VersionesDelServicioModal } from '../VersionesDelServicio'
 
 interface ServicioFormValues {
   [key: string]: string | boolean
@@ -40,7 +45,7 @@ const camposDeLimites: CrudFormConfig<ServicioDto, ServicioFormValues, rpaApi.Cr
   },
 ]
 
-const columns: CrudColumn<ServicioDto>[] = [
+const columnasFijas: CrudColumn<ServicioDto>[] = [
   { key: 'nombre', label: 'Nombre', render: (s) => s.nombre },
   { key: 'descripcion', label: 'Descripción', render: (s) => s.descripcion ?? '—' },
   {
@@ -98,23 +103,44 @@ const form: CrudFormConfig<ServicioDto, ServicioFormValues, rpaApi.CreateServici
 }
 
 export function ServiciosPage() {
+  const [robotDe, setRobotDe] = useState<ServicioDto | null>(null)
+
+  const columns: CrudColumn<ServicioDto>[] = [
+    ...columnasFijas.slice(0, 2),
+    {
+      key: 'robot',
+      label: 'Robot',
+      render: (s) => (
+        <Button type="button" size="sm" variant="secondary" onClick={() => setRobotDe(s)}>
+          <Package size={15} />
+          {s.ultimaVersion === null ? 'Subir' : 'Versiones'}
+          {s.ultimaVersion !== null && <Badge tone="brand">v{s.ultimaVersion}</Badge>}
+        </Button>
+      ),
+    },
+    ...columnasFijas.slice(2),
+  ]
+
   return (
-    <CrudPage<ServicioDto, ServicioFormValues, rpaApi.CreateServicioInput, rpaApi.UpdateServicioInput>
-      title="Servicios"
-      resourceKey="servicios-crud"
-      getId={(servicio) => servicio.id}
-      columns={columns}
-      form={form}
-      filters={{ mode: 'general', placeholder: 'Nombre del servicio…' }}
-      api={{
-        list: rpaApi.listServicios,
-        create: rpaApi.createServicio,
-        update: rpaApi.updateServicio,
-        remove: rpaApi.deleteServicio,
-      }}
-      deleteConfirm={{
-        message: '¿Seguro que quieres eliminar este servicio? Esta acción no se puede deshacer.',
-      }}
-    />
+    <>
+      <CrudPage<ServicioDto, ServicioFormValues, rpaApi.CreateServicioInput, rpaApi.UpdateServicioInput>
+        title="Servicios"
+        resourceKey="servicios-crud"
+        getId={(servicio) => servicio.id}
+        columns={columns}
+        form={form}
+        filters={{ mode: 'general', placeholder: 'Nombre del servicio…' }}
+        api={{
+          list: rpaApi.listServicios,
+          create: rpaApi.createServicio,
+          update: rpaApi.updateServicio,
+          remove: rpaApi.deleteServicio,
+        }}
+        deleteConfirm={{
+          message: '¿Seguro que quieres eliminar este servicio? Esta acción no se puede deshacer.',
+        }}
+      />
+      <VersionesDelServicioModal servicio={robotDe} onClose={() => setRobotDe(null)} />
+    </>
   )
 }

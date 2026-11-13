@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as flujosApi from '../flujos/api'
 
@@ -50,7 +50,7 @@ export function ParametrosDelProcesoModal({
       showToast('success', cambiados.length === 1 ? 'Parámetro guardado.' : 'Parámetros guardados.')
       alCerrar()
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudieron guardar los parámetros.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudieron guardar los parámetros.')),
   })
 
   return (

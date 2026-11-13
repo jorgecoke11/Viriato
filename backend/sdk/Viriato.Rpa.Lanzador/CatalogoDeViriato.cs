@@ -39,7 +39,7 @@ public sealed class CatalogoDeViriato(
         {
             Avisar(ex is ProblemaDelCatalogo ? ex.Message : $"No se pudo leer el catálogo de Viriato: {ex.Message}");
             // What runs keeps being looked after with what was known; nothing new is asked of Viriato's robots meanwhile.
-            return _ultimo ?? new CatalogoLeido(Opciones([]), new Dictionary<string, string>(), [_ultimoAviso!], ProblemasYaContados: true);
+            return _ultimo ?? new CatalogoLeido(Opciones([]), new Dictionary<string, string>(), [_ultimoAviso!]);
         }
 
         Avisar(null);
@@ -56,7 +56,7 @@ public sealed class CatalogoDeViriato(
                 Comando = robot.Comando,
                 Argumentos = [.. robot.Argumentos],
                 Directorio = carpeta,
-                MaxCopias = robot.MaxCopias,
+                Replicas = robot.Replicas,
                 Pantalla = robot.Pantalla,
                 MemoriaMaximaMb = robot.MemoriaMaximaMb,
                 Entorno = new Dictionary<string, string>(robot.Entorno),

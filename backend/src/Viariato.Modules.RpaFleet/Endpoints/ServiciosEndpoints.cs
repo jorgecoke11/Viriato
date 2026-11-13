@@ -16,6 +16,8 @@ internal static class ServiciosEndpoints
         {
             Id = s => s.Id,
             ToDto = s => s.ToDto(),
+            // For the number of its robot's latest version.
+            Include = query => query.Include(s => s.Versiones),
             Search = (query, term) => query.Where(s => s.Nombre.ToLower().Contains(term.ToLower())),
             Create = request => new Servicio
             {
@@ -53,6 +55,9 @@ internal static class ServiciosEndpoints
             {
                 var enUso = await ctx.Db.Set<Despliegue>().AnyAsync(d => d.ServicioId == ctx.Entity.Id, ct);
                 if (enUso) return ProblemResults.Conflict(ctx.Http, "No se puede eliminar un servicio con despliegues.");
+
+                var conVersiones = await ctx.Db.Set<VersionDeRobot>().AnyAsync(v => v.ServicioId == ctx.Entity.Id, ct);
+                if (conVersiones) return ProblemResults.Conflict(ctx.Http, "No se puede eliminar un servicio con versiones del robot: bórralas antes.");
 
                 var conCredenciales = await ctx.Db.Set<Credencial>().AnyAsync(c => c.ServicioId == ctx.Entity.Id, ct);
                 return conCredenciales ? ProblemResults.Conflict(ctx.Http, "No se puede eliminar un servicio con credenciales asociadas.") : null;

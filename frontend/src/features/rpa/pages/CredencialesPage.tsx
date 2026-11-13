@@ -10,7 +10,7 @@ import { PageHeader } from '../../../components/ui/PageHeader'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import { useListaPaginada } from '../../../lib/useListaPaginada'
 import * as rpaApi from '../api'
@@ -76,7 +76,7 @@ export function CredencialesPage() {
       showToast('success', esNueva ? 'Credencial creada.' : 'Credencial actualizada.')
       cerrar()
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo guardar la credencial.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo guardar la credencial.')),
   })
 
   const deleteMutation = useMutation({
@@ -86,7 +86,7 @@ export function CredencialesPage() {
       setPendingDelete(null)
       showToast('success', 'Credencial eliminada.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo eliminar la credencial.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo eliminar la credencial.')),
   })
 
   // An inactive servicio is not offered for new assignments, but a credential already tied to one keeps showing it.

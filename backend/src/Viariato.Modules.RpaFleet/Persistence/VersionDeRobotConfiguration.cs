@@ -19,12 +19,12 @@ public sealed class VersionDeRobotConfiguration : IEntityTypeConfiguration<Versi
         builder.Property(v => v.EntornoJson).HasColumnType("jsonb");
         builder.Property(v => v.SubidaPor).HasMaxLength(256);
 
-        // Its versions go with the Despliegue.
-        builder.HasOne<Despliegue>()
-            .WithMany()
-            .HasForeignKey(v => v.DespliegueId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // A service with versions cannot be removed (the endpoint refuses), so its zips are never orphaned on disk.
+        builder.HasOne<Servicio>()
+            .WithMany(s => s.Versiones)
+            .HasForeignKey(v => v.ServicioId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(v => new { v.DespliegueId, v.Numero }).IsUnique();
+        builder.HasIndex(v => new { v.ServicioId, v.Numero }).IsUnique();
     }
 }

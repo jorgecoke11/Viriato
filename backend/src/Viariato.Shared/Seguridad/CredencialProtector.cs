@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
-using Viariato.Modules.RpaFleet.Options;
+using Viariato.Shared.Options;
 
-namespace Viariato.Modules.RpaFleet.Security;
+namespace Viariato.Shared.Seguridad;
 
 /// <summary>Encrypts and decrypts the secret part of a credential — and of anything else that keeps a secret bound to its id
 /// (the Conexiones module uses it for the passwords of its accounts).</summary>

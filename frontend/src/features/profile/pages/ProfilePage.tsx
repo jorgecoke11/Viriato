@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Input } from '../../../components/ui/Input'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import { useAuth } from '../../auth/useAuth'
 import type { UserDto } from '../../auth/types'
@@ -44,7 +44,7 @@ function ProfileForm({
       onSaved(updated)
       showToast('success', 'Cambios guardados.')
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'No se pudieron guardar los cambios.'
+      const message = mensajeDeError(err, 'No se pudieron guardar los cambios.')
       setError(message)
       showToast('error', message)
     } finally {
@@ -93,7 +93,7 @@ function PasswordForm() {
       setNewPassword('')
       showToast('success', 'Contraseña actualizada. Tus otras sesiones se han cerrado.')
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'No se pudo cambiar la contraseña.'
+      const message = mensajeDeError(err, 'No se pudo cambiar la contraseña.')
       setError(message)
       showToast('error', message)
     } finally {

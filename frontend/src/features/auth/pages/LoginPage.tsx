@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useAuth } from '../useAuth'
 import { AuthShell } from './AuthShell'
 
@@ -29,7 +29,7 @@ export function LoginPage() {
       await login(email, password)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo iniciar sesión.')
+      setError(mensajeDeError(err, 'No se pudo iniciar sesión.'))
     } finally {
       setSubmitting(false)
     }

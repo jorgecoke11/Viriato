@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, Download, Tags, Upload, User } from 'lucide-react'
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
+import { BotonSubirArchivo } from '../../components/ui/BotonSubirArchivo'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { FileTypeIcon } from '../../components/ui/FileTypeIcon'
 import { Skeleton } from '../../components/ui/Skeleton'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as casosApi from './api'
 import type { DocumentoDto, TipoDocumentoDto } from './api'
@@ -28,14 +29,8 @@ export function CasoDocumentos({ casoId, resaltarId }: { casoId: string; resalta
       queryClient.invalidateQueries({ queryKey: ['caso-documentos', casoId] })
       showToast('success', 'Documento subido.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo subir el documento.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo subir el documento.')),
   })
-
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (file) uploadMutation.mutate(file)
-  }
 
   const documentos = documentosQuery.data ?? []
   const tipos = tiposQuery.data?.items.filter((t) => t.activo) ?? []
@@ -44,11 +39,7 @@ export function CasoDocumentos({ casoId, resaltarId }: { casoId: string; resalta
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-gray-500">Los archivos que se suben al caso y los que generan sus pasos.</p>
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:brightness-110 aria-disabled:pointer-events-none aria-disabled:opacity-50">
-          <Upload size={15} aria-hidden="true" />
-          {uploadMutation.isPending ? 'Subiendo…' : 'Subir documento'}
-          <input type="file" className="hidden" onChange={handleFileChange} disabled={uploadMutation.isPending} />
-        </label>
+        <BotonSubirArchivo texto="Subir documento" subiendo={uploadMutation.isPending} alElegir={(file) => uploadMutation.mutate(file)} />
       </div>
 
       {documentosQuery.isLoading && (
@@ -109,7 +100,7 @@ function DocumentoCard({
       setHasta('')
       showToast('success', 'Clasificación añadida.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo añadir la clasificación.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo añadir la clasificación.')),
   })
 
   const removeMutation = useMutation({
@@ -118,7 +109,7 @@ function DocumentoCard({
       invalidate()
       showToast('success', 'Clasificación eliminada.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo eliminar la clasificación.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo eliminar la clasificación.')),
   })
 
   async function handleDownload() {

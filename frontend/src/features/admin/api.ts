@@ -1,4 +1,5 @@
 import { apiFetch } from '../../lib/apiClient'
+import { buildQuery } from '../../lib/consulta'
 import type { PagedResult } from '../../lib/types'
 import type { UserDto } from '../auth/types'
 import type { FlujoDto } from '../flujos/api'
@@ -48,15 +49,6 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
   displayName?: string
   isActive?: boolean
-}
-
-const buildQuery = (params: Record<string, string | undefined>) => {
-  const search = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value) search.set(key, value)
-  }
-  const query = search.toString()
-  return query ? `?${query}` : ''
 }
 
 // The hand-written /users endpoint reads "search"; the generic Crud kit backing /roles and
