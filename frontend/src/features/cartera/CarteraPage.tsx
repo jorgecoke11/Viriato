@@ -9,12 +9,11 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { StatCard } from '../../components/ui/StatCard'
+import { fechaHora } from '../../lib/fechas'
 import { AprendizajeSection } from './AprendizajeSection'
 import * as api from './api'
 import type { MovimientoDto, PosicionDto } from './api'
 import { formatCantidad, formatConSigno, formatDolares, formatEuros, formatPorcentaje } from './formato'
-
-const fecha = (iso: string) => new Date(iso).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
 
 const columnasDePosiciones: ColumnaDeTabla<PosicionDto>[] = [
   { clave: 'valor', titulo: 'Valor', celda: (p) => <span className="font-semibold text-gray-900">{p.ticker}</span> },
@@ -24,7 +23,7 @@ const columnasDePosiciones: ColumnaDeTabla<PosicionDto>[] = [
     clave: 'precio',
     titulo: 'Precio actual',
     celda: (p) => (
-      <span className="num" title={p.precioEsElCoste ? 'Todavía no hay precio: se valora a su coste.' : p.precioDe ? `Visto ${fecha(p.precioDe)}` : undefined}>
+      <span className="num" title={p.precioEsElCoste ? 'Todavía no hay precio: se valora a su coste.' : p.precioDe ? `Visto ${fechaHora(p.precioDe)}` : undefined}>
         {formatDolares(p.precioActualUsd)}
         {p.precioEsElCoste && <span className="ml-1 text-xs text-gray-400">(coste)</span>}
       </span>
@@ -46,7 +45,7 @@ const columnasDePosiciones: ColumnaDeTabla<PosicionDto>[] = [
 ]
 
 const columnasDeMovimientos: ColumnaDeTabla<MovimientoDto>[] = [
-  { clave: 'fecha', titulo: 'Fecha', celda: (m) => <span className="num text-gray-600">{fecha(m.fecha)}</span> },
+  { clave: 'fecha', titulo: 'Fecha', celda: (m) => <span className="num text-gray-600">{fechaHora(m.fecha)}</span> },
   { clave: 'lado', titulo: 'Operación', celda: (m) => <Badge tone={m.lado === 'Compra' ? 'brand' : 'neutral'}>{m.lado}</Badge> },
   { clave: 'valor', titulo: 'Valor', celda: (m) => <span className="font-semibold text-gray-900">{m.ticker}</span> },
   { clave: 'cantidad', titulo: 'Cantidad', celda: (m) => <span className="num">{formatCantidad(m.cantidad)}</span>, className: 'text-right' },

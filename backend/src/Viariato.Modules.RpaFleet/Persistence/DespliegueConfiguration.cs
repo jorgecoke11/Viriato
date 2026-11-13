@@ -20,6 +20,9 @@ public sealed class DespliegueConfiguration : IEntityTypeConfiguration<Despliegu
             .HasDefaultValue(CalidadVistaEnDirecto.Baja).HasSentinel((CalidadVistaEnDirecto)(-1));
         builder.Property(d => d.GrabacionDeVideo).HasConversion<string>().HasMaxLength(20).HasDefaultValue(GrabacionDeVideo.SegunRobot);
 
+        // Existing Despliegues get 1; the sentinel makes EF always write the real value (0 = parked is a valid one).
+        builder.Property(d => d.Replicas).HasDefaultValue(1).HasSentinel(-1);
+
         builder.Property(d => d.LanzadorEstado).HasMaxLength(20);
         builder.Property(d => d.LanzadorDetalle).HasMaxLength(500);
 
@@ -33,7 +36,7 @@ public sealed class DespliegueConfiguration : IEntityTypeConfiguration<Despliegu
             .HasForeignKey(d => d.ServicioId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // The version it runs; removing a version that is in use is refused by the endpoint, the database just forgets it.
+        // The version it is held at; removing a version that is in use is refused by the endpoint, the database just forgets it.
         builder.HasOne(d => d.VersionDeRobot)
             .WithMany()
             .HasForeignKey(d => d.VersionDeRobotId)

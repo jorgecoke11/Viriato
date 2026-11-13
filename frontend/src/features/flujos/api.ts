@@ -1,4 +1,5 @@
 import { apiFetch } from '../../lib/apiClient'
+import { buildQuery } from '../../lib/consulta'
 import type { PagedResult } from '../../lib/types'
 
 export interface FlujoDto {
@@ -168,15 +169,6 @@ export interface AgenteDefinicionDto {
   descripcion: string | null
   modelo: string
   activo: boolean
-}
-
-const buildQuery = (params: Record<string, string | undefined>) => {
-  const search = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value) search.set(key, value)
-  }
-  const query = search.toString()
-  return query ? `?${query}` : ''
 }
 
 export const listFlujos = (filters: Record<string, string> = {}) =>

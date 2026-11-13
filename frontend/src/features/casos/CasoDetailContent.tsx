@@ -7,7 +7,7 @@ import { Card } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Tabs } from '../../components/ui/Tabs'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { usePulso } from '../../lib/usePulso'
 import { tabPanelVariants } from '../../lib/motion/variants'
 import { useToast } from '../../lib/toast/useToast'
@@ -126,7 +126,7 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
     queryClient.invalidateQueries({ queryKey: ['caso-ejecuciones', casoId] })
     queryClient.invalidateQueries({ queryKey: ['caso-ejecucion', casoId] })
   }
-  const onError = (err: unknown) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo completar la acción.')
+  const onError = (err: unknown) => showToast('error', mensajeDeError(err, 'No se pudo completar la acción.'))
   const onSuccessWith = (mensaje: string) => () => {
     invalidate()
     showToast('success', mensaje)

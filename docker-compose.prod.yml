@@ -73,8 +73,6 @@ services:
       # lanzador lo lee: nadie lo escribe ni lo copia. Los robots que se suben en cada despliegue se guardan en /data/storage/robots.
       Lanzador__ArchivoSecreto: /secretos/lanzador
       Lanzador__UrlPublica: ${PUBLIC_URL:-https://${DOMAIN}}
-      Lanzador__MaxRobotsALaVez: ${LANZADOR_MAX_ROBOTS:-2}
-      Lanzador__MaxConPantalla: ${LANZADOR_MAX_CON_NAVEGADOR:-1}
     volumes:
       # Carpeta normal del PC (no un volumen interno de Docker) para poder verla y copiarla.
       - ${STORAGE_HOST_PATH:?define STORAGE_HOST_PATH en .env}:/data/storage
@@ -108,9 +106,8 @@ services:
     shm_size: 1gb
     tmpfs:
       - /tmp:exec,mode=1777,size=1g
-    # El tope de TODO lo que corre aquí: el lanzador y los robots que tenga arrancados a la vez.
-    mem_limit: ${LANZADOR_MEMORIA:-3g}
-    cpus: ${LANZADOR_CPUS:-2}
+    # Sin tope de memoria ni CPU del contenedor: cuántos robots corren a la vez y cuánta memoria puede usar cada uno se decide en
+    # Viriato (RPA → Despliegues → «Lanzador» y «Versiones del robot»), y el lanzador para la copia que se pasa.
     depends_on:
       - api
     restart: unless-stopped

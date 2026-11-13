@@ -143,3 +143,8 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
 
   return response.blob()
 }
+
+/** What to tell a person when a call failed: the API's own words when it gave some, or else what the screen says went wrong. */
+export function mensajeDeError(err: unknown, porDefecto: string): string {
+  return err instanceof ApiError ? err.message : porDefecto
+}

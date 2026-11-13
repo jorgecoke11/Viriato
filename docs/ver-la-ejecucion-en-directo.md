@@ -29,7 +29,7 @@ Tres cosas, todas desde el caso en Viriato:
 
 ## Quién decide la vista y el vídeo: la plataforma, por despliegue
 
-Si un robot se ve en directo, con qué calidad, y si graba vídeo **no lo decide cada robot**: se elige en **Despliegues → Pantalla del robot**
+Si un robot se ve en directo, con qué calidad, y si graba vídeo **no lo decide cada robot**: se elige en **Despliegues → (el despliegue) → Vista en directo**
 (el icono del monitor de cada fila). La tabla muestra la calidad de cada uno y un icono de cámara si el vídeo está forzado.
 
 | Vista | Qué es | Imagen cada | Calidad / compresión del visor |

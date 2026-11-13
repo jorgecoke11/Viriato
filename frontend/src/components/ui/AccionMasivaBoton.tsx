@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { AccionMasiva, ResultadoMasivo } from '../../lib/accionesMasivas'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import { Button } from './Button'
 import { ConfirmAction } from './ConfirmAction'
@@ -46,7 +46,7 @@ export function AccionMasivaBoton({
         showToast('success', accion.mensajeDeExito(resultado))
         terminar(resultado)
       } catch (err) {
-        showToast('error', err instanceof ApiError ? err.message : 'No se pudo completar la acción.')
+        showToast('error', mensajeDeError(err, 'No se pudo completar la acción.'))
       } finally {
         setEjecutando(false)
       }

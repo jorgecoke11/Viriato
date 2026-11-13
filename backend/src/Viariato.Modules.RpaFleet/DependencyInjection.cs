@@ -6,9 +6,7 @@ using Viariato.Infrastructure;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Contracts;
 using Viariato.Modules.RpaFleet.Lanzador;
-using Viariato.Modules.RpaFleet.Options;
 using Viariato.Modules.RpaFleet.Persistence;
-using Viariato.Modules.RpaFleet.Security;
 using Viariato.Modules.RpaFleet.Validation;
 
 namespace Viariato.Modules.RpaFleet;
@@ -30,13 +28,6 @@ public static class DependencyInjection
         services.AddSingleton<IValidator<SavePlantillaDespachoRequest>, SavePlantillaDespachoRequestValidator>();
         services.AddSingleton<CreateCredencialRequestValidator>();
         services.AddSingleton<UpdateCredencialRequestValidator>();
-
-        // Fails the API at startup, not at the first credential saved, if the master key is missing or malformed.
-        services.AddOptions<CredencialesOptions>()
-            .Bind(configuration.GetSection(CredencialesOptions.SectionName))
-            .Validate(o => CredencialesOptions.EsClaveValida(o.ClaveCifrado), CredencialesOptions.MensajeClaveInvalida)
-            .ValidateOnStart();
-        services.AddSingleton<ICredencialProtector, AesGcmCredencialProtector>();
 
         // The launcher next to Viriato: the secret it shares with it (created at startup, so the launcher finds it) and where the
         // robots it runs are kept.

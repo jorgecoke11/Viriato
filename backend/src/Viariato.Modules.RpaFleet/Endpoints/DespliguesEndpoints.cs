@@ -6,6 +6,7 @@ using Viariato.Infrastructure;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Contracts;
 using Viariato.Modules.RpaFleet.Domain;
+using Viariato.Modules.RpaFleet.Persistence;
 using Viariato.Modules.RpaFleet.Validation;
 using Viariato.Shared;
 using Viariato.Shared.Authorization;
@@ -38,7 +39,7 @@ internal static class DespliguesEndpoints
         var currentPageSize = pageSize is null or < 1 or > 100 ? 20 : pageSize.Value;
 
         var query = db.Set<Despliegue>().AsNoTracking()
-            .Include(d => d.Equipo).Include(d => d.Servicio).Include(d => d.VersionDeRobot)
+            .ConSuRobot()
             .OrderByDescending(d => d.CreatedAt);
 
         var total = await query.CountAsync(ct);
@@ -50,7 +51,7 @@ internal static class DespliguesEndpoints
     private static async Task<IResult> GetAsync(Guid id, AppDbContext db, HttpContext http, CancellationToken ct)
     {
         var despliegue = await db.Set<Despliegue>().AsNoTracking()
-            .Include(d => d.Equipo).Include(d => d.Servicio).Include(d => d.VersionDeRobot)
+            .ConSuRobot()
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
         return despliegue is null ? ProblemResults.NotFound(http, "Despliegue no encontrado.") : Results.Ok(despliegue.ToDto());
@@ -92,7 +93,7 @@ internal static class DespliguesEndpoints
         db.Add(despliegue);
         await db.SaveChangesAsync(ct);
 
-        var creado = await db.Set<Despliegue>().Include(d => d.Equipo).Include(d => d.Servicio).Include(d => d.VersionDeRobot).FirstAsync(d => d.Id == despliegue.Id, ct);
+        var creado = await db.Set<Despliegue>().ConSuRobot().FirstAsync(d => d.Id == despliegue.Id, ct);
         return Results.Ok(new DespliegueConApiKeyDto(creado.ToDto(), rawKey));
     }
 
@@ -102,7 +103,7 @@ internal static class DespliguesEndpoints
         var validation = validator.Validate(request);
         if (!validation.IsValid) return ProblemResults.ValidationProblem(validation);
 
-        var despliegue = await db.Set<Despliegue>().Include(d => d.Equipo).Include(d => d.Servicio).Include(d => d.VersionDeRobot).FirstOrDefaultAsync(d => d.Id == id, ct);
+        var despliegue = await db.Set<Despliegue>().ConSuRobot().FirstOrDefaultAsync(d => d.Id == id, ct);
         if (despliegue is null) return ProblemResults.NotFound(http, "Despliegue no encontrado.");
 
         if (request.Encendido is not null) despliegue.Encendido = request.Encendido.Value;
@@ -118,7 +119,7 @@ internal static class DespliguesEndpoints
 
     private static async Task<IResult> RegenerarClaveAsync(Guid id, AppDbContext db, HttpContext http, CancellationToken ct)
     {
-        var despliegue = await db.Set<Despliegue>().Include(d => d.Equipo).Include(d => d.Servicio).Include(d => d.VersionDeRobot).FirstOrDefaultAsync(d => d.Id == id, ct);
+        var despliegue = await db.Set<Despliegue>().ConSuRobot().FirstOrDefaultAsync(d => d.Id == id, ct);
         if (despliegue is null) return ProblemResults.NotFound(http, "Despliegue no encontrado.");
 
         var (rawKey, hash, prefix) = ApiKeyGenerator.Generate();
@@ -130,17 +131,14 @@ internal static class DespliguesEndpoints
         return Results.Ok(new DespliegueConApiKeyDto(despliegue.ToDto(), rawKey));
     }
 
-    private static async Task<IResult> DeleteAsync(
-        Guid id, AppDbContext db, Lanzador.AlmacenDeRobots almacen, HttpContext http, CancellationToken ct)
+    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext db, HttpContext http, CancellationToken ct)
     {
         var despliegue = await db.Set<Despliegue>().FirstOrDefaultAsync(d => d.Id == id, ct);
         if (despliegue is null) return ProblemResults.NotFound(http, "Despliegue no encontrado.");
 
-        // Its versions go with it (cascade); their zips, here.
-        despliegue.VersionDeRobotId = null;
+        // The robot's versions are its service's: they stay for the service's other Despliegues.
         db.Remove(despliegue);
         await db.SaveChangesAsync(ct);
-        almacen.BorrarDelDespliegue(id);
         return Results.NoContent();
     }
 }

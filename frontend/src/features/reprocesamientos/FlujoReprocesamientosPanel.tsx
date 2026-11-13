@@ -4,11 +4,10 @@ import { Link } from 'react-router-dom'
 import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudField, CrudFormConfig } from '../../components/crud/types'
 import { Badge } from '../../components/ui/Badge'
+import { fechaHora } from '../../lib/fechas'
 import * as flujosApi from '../flujos/api'
 import * as api from './api'
 import type { GuardarReglaDeReprocesamientoRequest, ReglaDeReprocesamientoDto, ReprocesamientoProgramadoDto, ValoresDeRegla } from './api'
-
-const fechaHora = (iso: string) => new Date(iso).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
 
 const TONO_DE_ESTADO = { Pendiente: 'warning', Hecho: 'success', Fallido: 'danger', Descartado: 'neutral' } as const
 

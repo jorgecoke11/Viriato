@@ -6,7 +6,7 @@ namespace Viariato.Modules.RpaFleet.Lanzador;
 
 /// <summary>How to run a robot, worked out from its zip.</summary>
 public sealed record ComoSeEjecuta(
-    string Raiz, string Comando, IReadOnlyList<string> Argumentos, bool Pantalla, int? MemoriaMaximaMb, int MaxCopias,
+    string Raiz, string Comando, IReadOnlyList<string> Argumentos, bool Pantalla, int? MemoriaMaximaMb,
     IReadOnlyDictionary<string, string> Entorno);
 
 /// <summary>
@@ -17,7 +17,8 @@ public sealed record ComoSeEjecuta(
 /// <item>It drives a browser if it carries Selenium or Playwright: it gets a virtual screen and a memory ceiling.</item>
 /// </list>
 /// A robot that is not like that (another language, several programs, settings of its own) says so in a <c>robot.json</c> at the
-/// root of the zip: <c>{"comando", "argumentos", "pantalla", "memoriaMaximaMb", "maxCopias", "entorno"}</c>, every field optional.
+/// root of the zip: <c>{"comando", "argumentos", "pantalla", "memoriaMaximaMb", "entorno"}</c>, every field optional. How many replicas
+/// run is not the robot's business: it is set on its Despliegue.
 /// </summary>
 public static class PaqueteDeRobot
 {
@@ -35,7 +36,6 @@ public static class PaqueteDeRobot
         public List<string>? Argumentos { get; set; }
         public bool? Pantalla { get; set; }
         public int? MemoriaMaximaMb { get; set; }
-        public int? MaxCopias { get; set; }
         public Dictionary<string, string>? Entorno { get; set; }
     }
 
@@ -43,7 +43,6 @@ public static class PaqueteDeRobot
     {
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
-        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
 
     /// <summary>How to run it, or the reason it cannot be, in words for whoever uploaded it.</summary>
@@ -120,13 +119,12 @@ public static class PaqueteDeRobot
                 argumentos = [dll];
             }
 
-            if (manifiesto.MaxCopias is < 0) return (null, $"«maxCopias» del {Manifiesto} no puede ser negativo.");
             if (manifiesto.MemoriaMaximaMb is <= 0) return (null, $"«memoriaMaximaMb» del {Manifiesto} debe ser mayor que 0.");
 
             var pantalla = manifiesto.Pantalla ?? DeNavegador.Any(enLaRaiz.ContainsKey);
             var memoria = manifiesto.MemoriaMaximaMb ?? (pantalla ? MemoriaPorDefectoConPantallaMb : null);
 
-            return (new ComoSeEjecuta(raiz, comando, argumentos, pantalla, memoria, manifiesto.MaxCopias ?? 1,
+            return (new ComoSeEjecuta(raiz, comando, argumentos, pantalla, memoria,
                 manifiesto.Entorno ?? new Dictionary<string, string>()), null);
         }
     }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Viariato.Infrastructure;
 using Viariato.Modules.Users.Domain;
+using Viariato.Shared.Authorization;
 using Viariato.Shared.Options;
 
 namespace Viariato.Modules.Users.Auth;
@@ -58,8 +59,8 @@ public sealed class TokenService(AppDbContext db, IOptions<JwtOptions> jwtOption
             new("name", user.DisplayName),
             new(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         };
-        claims.AddRange(roles.Select(role => new Claim("role", role)));
-        claims.AddRange(permissions.Select(permission => new Claim("perm", permission)));
+        claims.AddRange(roles.Select(role => new Claim(ClaimsDelUsuario.Rol, role)));
+        claims.AddRange(permissions.Select(permission => new Claim(ClaimsDelUsuario.Permiso, permission)));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.SigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

@@ -728,16 +728,15 @@ internal static class CasosEndpoints
         var implementacion = acciones.FirstOrDefault(a => string.Equals(a.Id, accion, StringComparison.OrdinalIgnoreCase));
         if (implementacion is null) return ProblemResults.NotFound(http, $"La acción «{accion}» no existe.");
 
-        // The same rule the permission policies apply (a "perm" claim), without needing a policy per action.
-        if (!http.User.HasClaim("perm", implementacion.Permiso))
+        // Checked here rather than with a policy, since each action names its own permission.
+        if (!http.User.TienePermiso(implementacion.Permiso))
         {
             return ProblemResults.Forbidden(http, "No tienes permiso para esta acción.");
         }
 
         if (implementacion.ValidarParametros(request.Parametros) is { } problema)
         {
-            return ProblemResults.ValidationProblem(new FluentValidation.Results.ValidationResult(
-                [new FluentValidation.Results.ValidationFailure(nameof(request.Parametros), problema)]));
+            return ProblemResults.ValidationProblem(nameof(request.Parametros), problema);
         }
 
         return Results.Ok(await ejecutor.EjecutarAsync(implementacion, request.Ids, request.Parametros, http.User.GetUserId(), ct));

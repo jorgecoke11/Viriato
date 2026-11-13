@@ -6,7 +6,7 @@ import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudField, CrudFormConfig } from '../../components/crud/types'
 import { Badge } from '../../components/ui/Badge'
 import { IconButton } from '../../components/ui/IconButton'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as conexionesApi from '../conexiones/api'
 import * as flujosApi from '../flujos/api'
@@ -121,7 +121,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
       if (r.enviado) showToast('success', `Prueba enviada a ${r.destinatarios.join(', ')}: «${r.asunto}».`)
       else showToast('error', r.error ?? 'No se pudo enviar la prueba.')
     } catch (error) {
-      showToast('error', error instanceof ApiError ? error.message : 'No se pudo enviar la prueba.')
+      showToast('error', mensajeDeError(error, 'No se pudo enviar la prueba.'))
     } finally {
       setOcupado(null)
     }
@@ -134,7 +134,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
       showToast('info', 'Vuelve a la cola: sale en unos segundos.')
       await queryClient.invalidateQueries({ queryKey: [`flujo-${flujoId}-envios`] })
     } catch (error) {
-      showToast('error', error instanceof ApiError ? error.message : 'No se pudo reintentar.')
+      showToast('error', mensajeDeError(error, 'No se pudo reintentar.'))
     } finally {
       setOcupado(null)
     }

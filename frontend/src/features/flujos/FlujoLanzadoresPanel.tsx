@@ -6,6 +6,7 @@ import type { CrudColumn, CrudField, CrudFormConfig } from '../../components/cru
 import { erroresDeListaDeDatos } from '../../components/schema-form/comprobar'
 import { ListaDeDatosConFormulario } from '../../components/schema-form/ListaDeDatosConFormulario'
 import { Badge } from '../../components/ui/Badge'
+import { fechaHora } from '../../lib/fechas'
 import * as flujosApi from './api'
 import type { LanzadorDeCasoDto } from './api'
 
@@ -27,8 +28,6 @@ const ZONAS = ['Europe/Madrid', 'America/New_York', 'America/Chicago', 'America/
 
 const AYUDA_CRON =
   'Una expresión cron de cinco campos por línea: minuto hora día-del-mes mes día-de-la-semana. Ejemplos: «0 10 * * 1-5» (laborables a las 10:00), «*/15 * * * *» (cada 15 minutos), «30 8 1 * *» (el día 1 de cada mes a las 8:30). Si escribes varias líneas, se lanza cuando cualquiera coincide.'
-
-const fechaHora = (iso: string) => new Date(iso).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
 
 function aSolicitud(values: LanzadorFormValues): flujosApi.GuardarLanzadorDeCasoRequest {
   return {

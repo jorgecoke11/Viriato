@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as casosApi from './api'
 import type { CasoListItemDto, CreadorDisponibleDto } from './api'
@@ -37,7 +37,7 @@ export function NuevoCasoDesdeCreador({
       for (const clave of ['casos', 'casos-resumen', 'cola-equipo']) void queryClient.invalidateQueries({ queryKey: [clave] })
       alCrear(caso)
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo crear el caso.')),
   })
 
   function enviar(e: React.FormEvent) {

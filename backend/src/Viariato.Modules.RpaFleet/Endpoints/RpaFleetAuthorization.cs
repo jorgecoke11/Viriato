@@ -11,7 +11,7 @@ internal static class RpaFleetAuthorization
 {
     public static Task<IResult?> RequireManageAsync(HttpContext http, CancellationToken ct)
     {
-        var allowed = http.User.HasClaim("perm", Permissions.RpaManage);
+        var allowed = http.User.TienePermiso(Permissions.RpaManage);
         return Task.FromResult<IResult?>(allowed ? null : ProblemResults.Forbidden(http, "No tienes permiso para gestionar la flota de RPA."));
     }
 }

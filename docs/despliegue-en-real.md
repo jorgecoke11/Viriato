@@ -74,11 +74,11 @@ En la plataforma: *RPA → Equipos, Servicios, Despliegues* (un despliegue por r
 cada servicio.
 
 **Los robots no hace falta instalarlos en el servidor.** Viriato trae el **lanzador**, un contenedor que arranca cada robot solo mientras
-tiene trabajo. Para desplegar un robot, súbelo: *RPA → Despliegues → Versiones del robot → Subir versión*, con el `.zip` de su
+tiene trabajo. Para desplegar un robot, súbelo: *RPA → Servicios → Versiones* (y, la primera vez, *Despliegues → Robot → Lo arranca el lanzador*), con el `.zip` de su
 `dotnet publish`. Sin claves ni `.env`. Ver [lanzador-de-robots.md](lanzador-de-robots.md).
 
-Un robot que corre **en otra máquina** usa `Viriato:BaseUrl = <PUBLIC_URL>` y `Viriato:ApiKey = <la clave del despliegue>`, o un
-lanzador propio con su `robots.json` (mismo documento).
+Un robot que corre **en otra máquina** (sin el lanzador) usa `Viriato:BaseUrl = <PUBLIC_URL>` y `Viriato:ApiKey = <la clave del
+despliegue>`.
 
 ## 5 · Día a día
 

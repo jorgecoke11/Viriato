@@ -2257,6 +2257,30 @@ namespace Viariato.Infrastructure.Migrations
                     b.ToTable("reglas", "notificaciones");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.AjustesDelLanzador", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("MaxConNavegador")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_con_navegador");
+
+                    b.Property<int>("MaxRobotsALaVez")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_robots_a_la_vez");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ajustes_del_lanzador");
+
+                    b.ToTable("ajustes_del_lanzador", "rpafleet");
+                });
+
             modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.Credencial", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2342,6 +2366,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool>("EnElLanzador")
+                        .HasColumnType("boolean")
+                        .HasColumnName("en_el_lanzador");
+
                     b.Property<bool>("Encendido")
                         .HasColumnType("boolean")
                         .HasColumnName("encendido");
@@ -2380,10 +2408,6 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("lanzador_estado");
 
-                    b.Property<int?>("LanzadorMaxCopias")
-                        .HasColumnType("integer")
-                        .HasColumnName("lanzador_max_copias");
-
                     b.Property<DateTimeOffset?>("LanzadorVistoEn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("lanzador_visto_en");
@@ -2391,6 +2415,16 @@ namespace Viariato.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("LastUsedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_used_at");
+
+                    b.Property<int?>("MemoriaMaximaMb")
+                        .HasColumnType("integer")
+                        .HasColumnName("memoria_maxima_mb");
+
+                    b.Property<int>("Replicas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("replicas");
 
                     b.Property<Guid>("ServicioId")
                         .HasColumnType("uuid")
@@ -2688,17 +2722,9 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid>("DespliegueId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("despliegue_id");
-
                     b.Property<string>("EntornoJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("entorno_json");
-
-                    b.Property<int>("MaxCopias")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_copias");
 
                     b.Property<int?>("MemoriaMaximaMb")
                         .HasColumnType("integer")
@@ -2730,6 +2756,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("ruta");
 
+                    b.Property<Guid>("ServicioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("servicio_id");
+
                     b.Property<string>("Sha256")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -2748,9 +2778,9 @@ namespace Viariato.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_versiones_de_robot");
 
-                    b.HasIndex("DespliegueId", "Numero")
+                    b.HasIndex("ServicioId", "Numero")
                         .IsUnique()
-                        .HasDatabaseName("ix_versiones_de_robot_despliegue_id_numero");
+                        .HasDatabaseName("ix_versiones_de_robot_servicio_id_numero");
 
                     b.ToTable("versiones_de_robot", "rpafleet");
                 });
@@ -3656,12 +3686,12 @@ namespace Viariato.Infrastructure.Migrations
 
             modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.VersionDeRobot", b =>
                 {
-                    b.HasOne("Viariato.Modules.RpaFleet.Domain.Despliegue", null)
-                        .WithMany()
-                        .HasForeignKey("DespliegueId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                    b.HasOne("Viariato.Modules.RpaFleet.Domain.Servicio", null)
+                        .WithMany("Versiones")
+                        .HasForeignKey("ServicioId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_versiones_de_robot_despliegues_despliegue_id");
+                        .HasConstraintName("fk_versiones_de_robot_servicios_servicio_id");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Users.Domain.RefreshToken", b =>
@@ -3747,6 +3777,11 @@ namespace Viariato.Infrastructure.Migrations
             modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.PlantillaDespacho", b =>
                 {
                     b.Navigation("Servicios");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.Servicio", b =>
+                {
+                    b.Navigation("Versiones");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Users.Domain.Permission", b =>

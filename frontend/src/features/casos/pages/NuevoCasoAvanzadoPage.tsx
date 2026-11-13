@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Input } from '../../../components/ui/Input'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import { useToast } from '../../../lib/toast/useToast'
 import * as flujosApi from '../../flujos/api'
 import * as rpaApi from '../../rpa/api'
@@ -84,7 +84,7 @@ export function NuevoCasoAvanzadoPage() {
       showToast('success', `Se ha creado el caso «${caso.titulo}» correctamente.`)
       navigate(`/casos/${caso.id}`)
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo crear el caso.')),
   })
 
 

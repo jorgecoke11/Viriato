@@ -24,6 +24,12 @@ public sealed class Servicio
     /// (or died without a trace) cannot hold its machine's slot for ever.</summary>
     public int? TiempoMaximoMinutos { get; set; }
 
+    /// <summary>Its program, as uploaded: the launcher next to Viriato runs one of these for each Despliegue it starts.</summary>
+    public List<VersionDeRobot> Versiones { get; set; } = [];
+
+    /// <summary>The highest-numbered version, or null with none uploaded. Needs <see cref="Versiones"/> loaded.</summary>
+    public VersionDeRobot? UltimaVersion => Versiones.MaxBy(v => v.Numero);
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

@@ -62,7 +62,7 @@ public sealed record RobotDelEquipoDto(
 
 /// <param name="Estado">One of <c>EstadosDelLanzador</c>: SinTrabajo, EnMarcha, EnEspera, Apagado or Fallo.</param>
 /// <param name="Detalle">Why, in words: what it is waiting for, or what failed.</param>
-public sealed record LanzadorDelRobotDto(string Estado, int Copias, int MaxCopias, string? Detalle, DateTimeOffset VistoEn);
+public sealed record LanzadorDelRobotDto(string Estado, int Copias, int Replicas, string? Detalle, DateTimeOffset VistoEn);
 
 /// <summary>
 /// What a machine is doing and what is waiting for it, in the order it will be served: the answer to "who goes
@@ -85,7 +85,7 @@ internal static class DespachoColaEndpoints
 
     private static LanzadorDelRobotDto? LanzadorDe(Despliegue d, DateTimeOffset ahora) =>
         d is { LanzadorEstado: { } estado, LanzadorVistoEn: { } visto } && ahora - visto <= VigenciaDelLanzador
-            ? new LanzadorDelRobotDto(estado, d.LanzadorCopias ?? 0, d.LanzadorMaxCopias ?? 0, d.LanzadorDetalle, visto)
+            ? new LanzadorDelRobotDto(estado, d.LanzadorCopias ?? 0, d.Replicas, d.LanzadorDetalle, visto)
             : null;
 
     private static async Task<IResult> GetColaAsync(

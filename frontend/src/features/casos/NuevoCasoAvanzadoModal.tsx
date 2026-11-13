@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as flujosApi from '../flujos/api'
 import * as rpaApi from '../rpa/api'
@@ -108,7 +108,7 @@ export function NuevoCasoAvanzadoModal({
       for (const clave of ['casos', 'casos-resumen', 'cola-equipo']) void queryClient.invalidateQueries({ queryKey: [clave] })
       onClose()
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo crear el caso.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo crear el caso.')),
   })
 
   // Each type can have its own form, so changing it starts the data over.

@@ -1,9 +1,9 @@
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Viariato.ApiContracts;
+using Viariato.Shared.Seguridad;
 
 namespace Viariato.Modules.RpaFleet.Lanzador;
 
@@ -13,8 +13,8 @@ namespace Viariato.Modules.RpaFleet.Lanzador;
 /// The secret lives in a file (<see cref="LanzadorOptions.ArchivoSecreto"/>) on a volume only the Api and the launcher mount: it
 /// is created here the first time, so nobody types or copies it. With it the launcher reads its catalogue and downloads robots.
 ///
-/// A pass is what a robot started by the launcher uses as its key: <c>rpl_{despliegue}_{caduca}_{firma}</c>, signed with the
-/// secret. Nothing is stored: it is checked by recomputing the signature. It stops working when it expires, when the Despliegue
+/// A pass is what a robot started by the launcher uses as its key: a <see cref="PaseFirmado"/> (<c>rpl_{despliegue}.{caduca}.{firma}</c>)
+/// made with the secret. Nothing is stored: it is checked by signing it again. It stops working when it expires, when the Despliegue
 /// is deleted, or when the secret changes (delete the file and restart the Api to void every pass at once).
 /// </summary>
 public sealed class SecretoDelLanzador(IOptions<LanzadorOptions> opciones, TimeProvider reloj)
@@ -64,35 +64,14 @@ public sealed class SecretoDelLanzador(IOptions<LanzadorOptions> opciones, TimeP
         && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(enviado), Secreto());
 
     /// <summary>A pass for a robot of this Despliegue, valid for <see cref="LanzadorOptions.DiasDelPase"/> days.</summary>
-    public string EmitirPase(Guid despliegueId)
-    {
-        var caduca = reloj.GetUtcNow().AddDays(Math.Max(1, opciones.Value.DiasDelPase)).ToUnixTimeSeconds();
-        var cuerpo = $"{despliegueId:N}_{caduca.ToString(CultureInfo.InvariantCulture)}";
-        return $"{RpaHeaders.PrefijoDePase}{cuerpo}_{Firma(cuerpo)}";
-    }
+    public string EmitirPase(Guid despliegueId) =>
+        PaseFirmado.Emitir(Secreto(), Proposito, despliegueId, reloj.GetUtcNow().AddDays(Math.Max(1, opciones.Value.DiasDelPase)), RpaHeaders.PrefijoDePase);
 
     /// <summary>The Despliegue a pass belongs to, or null if it is not a valid pass (forged, expired, or of another secret).</summary>
-    public Guid? ValidarPase(string pase)
-    {
-        if (!Disponible || !pase.StartsWith(RpaHeaders.PrefijoDePase, StringComparison.Ordinal)) return null;
+    public Guid? ValidarPase(string pase) =>
+        Disponible ? PaseFirmado.Validar(Secreto(), Proposito, pase, reloj.GetUtcNow(), RpaHeaders.PrefijoDePase) : null;
 
-        // The signature is base64url and may itself contain '_': only the first two are separators.
-        var partes = pase[RpaHeaders.PrefijoDePase.Length..].Split('_', 3);
-        if (partes.Length != 3
-            || !Guid.TryParseExact(partes[0], "N", out var despliegueId)
-            || !long.TryParse(partes[1], NumberStyles.None, CultureInfo.InvariantCulture, out var caduca))
-        {
-            return null;
-        }
-
-        var esperada = Encoding.ASCII.GetBytes(Firma($"{partes[0]}_{partes[1]}"));
-        if (!CryptographicOperations.FixedTimeEquals(esperada, Encoding.ASCII.GetBytes(partes[2]))) return null;
-
-        return reloj.GetUtcNow().ToUnixTimeSeconds() < caduca ? despliegueId : null;
-    }
-
-    // "pase:" keeps a signature from ever being mistaken for anything else made with the same secret.
-    private string Firma(string cuerpo) => Base64Url(HMACSHA256.HashData(Secreto(), Encoding.UTF8.GetBytes("pase:" + cuerpo)));
+    private const string Proposito = "viriato:robot-del-lanzador";
 
     private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
 }

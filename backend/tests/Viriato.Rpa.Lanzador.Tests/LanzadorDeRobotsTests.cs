@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Viariato.ApiContracts;
 using Viriato.Rpa.Lanzador;
@@ -8,11 +7,14 @@ namespace Viriato.Rpa.Lanzador.Tests;
 
 public sealed class LanzadorDeRobotsTests
 {
-    private sealed class OpcionesFijas(LanzadorOptions valor) : IOptionsMonitor<LanzadorOptions>
+    /// <summary>Viriato's catalogue, as it would hand it: the robots, and a pass for each ("k-" + its name).</summary>
+    private sealed class CatalogoFijo(LanzadorOptions opciones) : ICatalogoDelLanzador
     {
-        public LanzadorOptions CurrentValue => valor;
-        public LanzadorOptions Get(string? name) => valor;
-        public IDisposable? OnChange(Action<LanzadorOptions, string?> listener) => null;
+        /// <summary>What the catalogue says is wrong (Viriato not answering yet, its secret not there yet).</summary>
+        public List<string> Problemas { get; } = [];
+
+        public Task<CatalogoLeido> LeerAsync(bool nadaEnMarcha, CancellationToken ct) =>
+            Task.FromResult(new CatalogoLeido(opciones, opciones.Robots.ToDictionary(r => r.Nombre, r => "k-" + r.Nombre), Problemas));
     }
 
     /// <summary>Viriato as the launcher sees it: what each key's robot has, and what was reported about it.</summary>
@@ -76,10 +78,11 @@ public sealed class LanzadorDeRobotsTests
     }
 
     private sealed record Montaje(
-        LanzadorDeRobots Lanzador, ViriatoFalso Viriato, ArrancadorFalso Arrancador, FakeTimeProvider Reloj, LanzadorOptions Opciones);
+        LanzadorDeRobots Lanzador, ViriatoFalso Viriato, ArrancadorFalso Arrancador, FakeTimeProvider Reloj, LanzadorOptions Opciones,
+        CatalogoFijo Catalogo);
 
-    private static RobotOptions Robot(string nombre, int maxCopias = 1, bool pantalla = false, int? memoria = null) =>
-        new() { Nombre = nombre, ClaveEnv = "CLAVE_" + nombre, Comando = "dotnet", MaxCopias = maxCopias, Pantalla = pantalla, MemoriaMaximaMb = memoria };
+    private static RobotOptions Robot(string nombre, int replicas = 1, bool pantalla = false, int? memoria = null) =>
+        new() { Nombre = nombre, Comando = "dotnet", Replicas = replicas, Pantalla = pantalla, MemoriaMaximaMb = memoria };
 
     private static TrabajoDelDespliegueDto Trabajo(int pendientes = 0, int enEjecucion = 0, bool encendido = true) => new(encendido, pendientes, enEjecucion, false);
 
@@ -91,11 +94,9 @@ public sealed class LanzadorDeRobotsTests
         foreach (var robot in robots) viriato.Trabajo["k-" + robot.Nombre] = Trabajo();
         var arrancador = new ArrancadorFalso();
         var reloj = new FakeTimeProvider(new DateTimeOffset(2026, 11, 11, 10, 0, 0, TimeSpan.Zero));
-        // Each robot's key is in its own variable; the launcher never sees it anywhere else.
-        string? Variable(string nombre) => nombre.StartsWith("CLAVE_", StringComparison.Ordinal) ? "k-" + nombre["CLAVE_".Length..] : null;
-
-        var lanzador = new LanzadorDeRobots(new OpcionesFijas(opciones), viriato, arrancador, Variable, reloj, NullLogger<LanzadorDeRobots>.Instance);
-        return new Montaje(lanzador, viriato, arrancador, reloj, opciones);
+        var catalogo = new CatalogoFijo(opciones);
+        var lanzador = new LanzadorDeRobots(catalogo, viriato, arrancador, reloj, NullLogger<LanzadorDeRobots>.Instance);
+        return new Montaje(lanzador, viriato, arrancador, reloj, opciones, catalogo);
     }
 
     [Fact]
@@ -106,7 +107,7 @@ public sealed class LanzadorDeRobotsTests
         await m.Lanzador.CicloAsync(default);
 
         Assert.Empty(m.Arrancador.Arrancadas);
-        Assert.Equal(new EstadoDelLanzadorRequest(EstadosDelLanzador.SinTrabajo, 0, 1), m.Viriato.Reportado["k-extractor"]);
+        Assert.Equal(new EstadoDelLanzadorRequest(EstadosDelLanzador.SinTrabajo, 0), m.Viriato.Reportado["k-extractor"]);
     }
 
     [Fact]
@@ -349,9 +350,10 @@ public sealed class LanzadorDeRobotsTests
     }
 
     [Fact]
-    public async Task AnInvalidCatalogue_StartsNothing()
+    public async Task WhileTheCatalogueCannotBeRead_NothingStarts()
     {
-        var m = Montar(o => o.ViriatoUrl = "", Robot("extractor"));
+        var m = Montar(null, Robot("extractor"));
+        m.Catalogo.Problemas.Add("Esperando el secreto que crea la API de Viriato al arrancar.");
         m.Viriato.Trabajo["k-extractor"] = Trabajo(pendientes: 1);
 
         await m.Lanzador.CicloAsync(default);
@@ -387,9 +389,9 @@ public sealed class ArrancadorDeProcesosTests : IDisposable
 
     private ArranqueDeRobot Arranque(string script, LanzadorOptions? opciones = null)
     {
-        var robot = new RobotOptions { Nombre = "prueba", ClaveEnv = "CLAVE_PRUEBA", Comando = "/bin/sh", Argumentos = ["-c", script], Entorno = { ["Propio"] = "valor" } };
+        var robot = new RobotOptions { Nombre = "prueba", Comando = "/bin/sh", Argumentos = ["-c", script], Entorno = { ["Propio"] = "valor" } };
         var o = opciones ?? new LanzadorOptions { ViriatoUrl = "http://viriato.test", CarpetaTemporal = _carpeta };
-        o.Robots = [robot, new RobotOptions { Nombre = "otro", ClaveEnv = "CLAVE_DE_OTRO_ROBOT", Comando = "x" }];
+        o.Robots = [robot];
         return new ArranqueDeRobot(robot, "clave-de-prueba", null, o);
     }
 
@@ -407,7 +409,7 @@ public sealed class ArrancadorDeProcesosTests : IDisposable
         var salida = Path.Combine(Path.GetTempPath(), $"lanzador-salida-{Guid.NewGuid():N}.txt");
         try
         {
-            var arrancador = new ArrancadorDeProcesos(_ => null);
+            var arrancador = new ArrancadorDeProcesos();
             var copia = arrancador.Arrancar(Arranque($"echo \"$Viriato__ApiKey|$Viriato__BaseUrl|$Worker__SalirSinTrabajo|$Propio|$TMPDIR\" > '{salida}'; exit 3"));
 
             await EsperarAsync(() => !copia.Vivo);
@@ -429,14 +431,14 @@ public sealed class ArrancadorDeProcesosTests : IDisposable
     }
 
     [Fact]
-    public async Task ARobotNeverSeesAnotherRobotsKey()
+    public async Task ARobotNeverSeesTheLaunchersOwnSettings_WhereTheSharedSecretIs()
     {
         if (OperatingSystem.IsWindows()) return;
         var salida = Path.Combine(Path.GetTempPath(), $"lanzador-salida-{Guid.NewGuid():N}.txt");
-        Environment.SetEnvironmentVariable("CLAVE_DE_OTRO_ROBOT", "secreto-ajeno");
+        Environment.SetEnvironmentVariable("LANZADOR_SECRETO", "/secretos/lanzador");
         try
         {
-            var copia = new ArrancadorDeProcesos(Environment.GetEnvironmentVariable).Arrancar(Arranque($"echo \"[$CLAVE_DE_OTRO_ROBOT]\" > '{salida}'"));
+            var copia = new ArrancadorDeProcesos().Arrancar(Arranque($"echo \"[$LANZADOR_SECRETO]\" > '{salida}'"));
 
             await EsperarAsync(() => !copia.Vivo);
             copia.Limpiar();
@@ -445,7 +447,7 @@ public sealed class ArrancadorDeProcesosTests : IDisposable
         }
         finally
         {
-            Environment.SetEnvironmentVariable("CLAVE_DE_OTRO_ROBOT", null);
+            Environment.SetEnvironmentVariable("LANZADOR_SECRETO", null);
             File.Delete(salida);
         }
     }
@@ -454,7 +456,7 @@ public sealed class ArrancadorDeProcesosTests : IDisposable
     public async Task ARunningRobot_IsStoppedWhenTold()
     {
         if (OperatingSystem.IsWindows()) return;
-        var copia = new ArrancadorDeProcesos(_ => null).Arrancar(Arranque("sleep 300"));
+        var copia = new ArrancadorDeProcesos().Arrancar(Arranque("sleep 300"));
         Assert.True(copia.Vivo);
 
         await copia.PararAsync(TimeSpan.FromSeconds(5));
@@ -468,7 +470,7 @@ public sealed class ArrancadorDeProcesosTests : IDisposable
         var arranque = Arranque("true");
         arranque.Robot.Comando = "/no/existe/robot";
 
-        var ex = Assert.Throws<InvalidOperationException>(() => new ArrancadorDeProcesos(_ => null).Arrancar(arranque));
+        var ex = Assert.Throws<InvalidOperationException>(() => new ArrancadorDeProcesos().Arrancar(arranque));
 
         Assert.Contains("/no/existe/robot", ex.Message);
         Assert.False(Directory.Exists(_carpeta) && Directory.EnumerateDirectories(_carpeta).Any());

@@ -8,7 +8,7 @@ using Viariato.ApiContracts;
 using Viariato.Infrastructure;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Domain;
-using Viariato.Modules.RpaFleet.Security;
+using Viariato.Shared.Seguridad;
 using Viariato.Shared.Http;
 
 namespace Viariato.Modules.RpaFleet.Endpoints;

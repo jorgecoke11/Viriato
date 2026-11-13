@@ -17,12 +17,6 @@ public sealed class LanzadorOptions
     /// <summary>Where uploaded robots are kept. Empty: a <c>robots</c> folder in the documents' storage (so the backup takes them).</summary>
     public string CarpetaDeRobots { get; set; } = string.Empty;
 
-    /// <summary>Copies of any robot the launcher may run at once.</summary>
-    public int MaxRobotsALaVez { get; set; } = 2;
-
-    /// <summary>Of those, how many with a browser (they are the heavy ones).</summary>
-    public int MaxConPantalla { get; set; } = 1;
-
     /// <summary>The address people open Viriato at (PUBLIC_URL): a robot with a browser is told where its live view is seen from.</summary>
     public string? UrlPublica { get; set; }
 

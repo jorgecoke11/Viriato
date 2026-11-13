@@ -6,12 +6,11 @@ import type { CrudColumn } from '../../components/crud/types'
 import { IconButton } from '../../components/ui/IconButton'
 import { Modal } from '../../components/ui/Modal'
 import { VisorDeDatos } from '../../components/ui/VisorDeDatos'
+import { fechaHora } from '../../lib/fechas'
 import * as flujosApi from './api'
 import type { DatoDeProcesoResumenDto } from './api'
 
 const LIMITE = 64 * 1024
-
-const fechaHora = (iso: string) => new Date(iso).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
 
 function tamano(bytes: number) {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 })} KB`

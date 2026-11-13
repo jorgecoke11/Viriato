@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Viariato.Infrastructure;
 using Viariato.Modules.RpaFleet.Contracts;
 using Viariato.Modules.RpaFleet.Domain;
-using Viariato.Modules.RpaFleet.Security;
+using Viariato.Shared.Seguridad;
 using Viariato.Modules.RpaFleet.Validation;
 using Viariato.Shared;
 using Viariato.Shared.Authorization;

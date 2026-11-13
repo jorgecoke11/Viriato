@@ -91,8 +91,8 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
-            NameClaimType = "sub",
-            RoleClaimType = "role",
+            NameClaimType = ClaimsDelUsuario.Id,
+            RoleClaimType = ClaimsDelUsuario.Rol,
         };
     });
 
@@ -100,7 +100,7 @@ builder.Services.AddAuthorization(options =>
 {
     foreach (var permission in Permissions.All)
     {
-        options.AddPolicy(permission, policy => policy.RequireClaim("perm", permission));
+        options.AddPolicy(permission, policy => policy.RequireClaim(ClaimsDelUsuario.Permiso, permission));
     }
 });
 builder.Services.AddProblemDetails();

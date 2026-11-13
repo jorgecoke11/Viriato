@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import type { ColumnaDeTabla } from '../../../components/ui/DataTable'
 import { ListaDeDatos } from '../../../components/ui/ListaDeDatos'
-import { ApiError } from '../../../lib/apiClient'
+import { mensajeDeError } from '../../../lib/apiClient'
 import type { ConsultaDeLista } from '../../../lib/lista'
 import { useToast } from '../../../lib/toast/useToast'
 import { useListaPaginada } from '../../../lib/useListaPaginada'
@@ -60,7 +60,7 @@ export function CompaniesPage() {
       setLastSyncTrabajoId(response.trabajoId)
       showToast('success', 'Sincronización iniciada.')
     },
-    onError: (err) => showToast('error', err instanceof ApiError ? err.message : 'No se pudo iniciar la sincronización.'),
+    onError: (err) => showToast('error', mensajeDeError(err, 'No se pudo iniciar la sincronización.')),
   })
 
   return (

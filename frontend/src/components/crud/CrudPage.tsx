@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Inbox, Plus } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import type { AccionMasiva } from '../../lib/accionesMasivas'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { filtrosActivos } from '../../lib/lista'
 import { useToast } from '../../lib/toast/useToast'
 import { useListaPaginada } from '../../lib/useListaPaginada'
@@ -96,7 +96,7 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
       showToast('success', 'Creado correctamente.')
     },
     onError: (err) => {
-      const message = err instanceof ApiError ? err.message : 'No se pudo guardar.'
+      const message = mensajeDeError(err, 'No se pudo guardar.')
       setFormError(message)
       showToast('error', message)
     },
@@ -111,7 +111,7 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
       showToast('success', 'Guardado correctamente.')
     },
     onError: (err) => {
-      const message = err instanceof ApiError ? err.message : 'No se pudo guardar.'
+      const message = mensajeDeError(err, 'No se pudo guardar.')
       setFormError(message)
       showToast('error', message)
     },
@@ -125,7 +125,7 @@ export function CrudPage<T, TFormValues extends Record<string, string | boolean>
       showToast('success', deleteConfirm?.successMessage ?? 'Eliminado correctamente.')
     },
     onError: (err) => {
-      showToast('error', err instanceof ApiError ? err.message : 'No se pudo eliminar.')
+      showToast('error', mensajeDeError(err, 'No se pudo eliminar.'))
       setPendingDelete(null)
     },
   })

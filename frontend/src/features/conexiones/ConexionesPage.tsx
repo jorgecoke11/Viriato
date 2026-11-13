@@ -5,7 +5,7 @@ import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudField, CrudFormConfig } from '../../components/crud/types'
 import { Badge } from '../../components/ui/Badge'
 import { IconButton } from '../../components/ui/IconButton'
-import { ApiError } from '../../lib/apiClient'
+import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as conexionesApi from './api'
 import type { ConexionDto, GuardarConexionRequest, TipoDeConexionDto } from './api'
@@ -84,7 +84,7 @@ export function ConexionesPage() {
       if (resultado.enviado) showToast('success', `Prueba enviada a ${resultado.destinatario}.`)
       else showToast('error', resultado.error ?? 'No se pudo enviar la prueba.')
     } catch (error) {
-      showToast('error', error instanceof ApiError ? error.message : 'No se pudo enviar la prueba.')
+      showToast('error', mensajeDeError(error, 'No se pudo enviar la prueba.'))
     } finally {
       setProbando(null)
     }

@@ -59,18 +59,31 @@ public sealed class Despliegue
     /// <summary>Copies of the robot the launcher had running when it last reported.</summary>
     public int? LanzadorCopias { get; set; }
 
-    /// <summary>The most copies the launcher will run at once.</summary>
-    public int? LanzadorMaxCopias { get; set; }
-
     /// <summary>Why it is in that state, in words (why it waits, what failed).</summary>
     public string? LanzadorDetalle { get; set; }
 
     /// <summary>When the launcher last reported. Old = the launcher itself is gone, and so is whatever it said.</summary>
     public DateTimeOffset? LanzadorVistoEn { get; set; }
 
-    /// <summary>The version of the robot the launcher next to Viriato runs for this Despliegue. Null — the default — means that
-    /// launcher leaves it alone: the robot runs somewhere else, with its own key.</summary>
+    /// <summary>Whether the launcher next to Viriato runs this Despliegue's robot (with its service's program). False — the
+    /// default — means that launcher leaves it alone: the robot runs somewhere else, with its own key.</summary>
+    public bool EnElLanzador { get; set; }
+
+    /// <summary>The version of its service's program it is held at. Null — the default — follows the latest one uploaded.</summary>
     public Guid? VersionDeRobotId { get; set; }
 
     public VersionDeRobot? VersionDeRobot { get; set; }
+
+    /// <summary>The version the launcher runs for it: the one it is held at, or its service's latest; null with none uploaded or
+    /// when the launcher does not run it. Needs <see cref="Servicio"/> and its versions loaded.</summary>
+    public VersionDeRobot? VersionQueCorre => !EnElLanzador || Servicio is null
+        ? null
+        : VersionDeRobotId is { } fijada ? Servicio.Versiones.FirstOrDefault(v => v.Id == fijada) : Servicio.UltimaVersion;
+
+    /// <summary>Replicas: copies of its robot the launcher may run at once when it has work. Set here, never by the robot's code;
+    /// 0 parks it.</summary>
+    public int Replicas { get; set; } = 1;
+
+    /// <summary>A copy of its robot using more memory than this is stopped. Null: what its version says (2048 MB with a browser).</summary>
+    public int? MemoriaMaximaMb { get; set; }
 }
