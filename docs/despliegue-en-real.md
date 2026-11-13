@@ -70,23 +70,21 @@ Entra en la dirección pública con el administrador del `.env`.
 
 ## 4 · Dar de alta robots
 
-En la plataforma: *RPA → Equipos, Servicios, Despliegues* (un despliegue por robot; al crearlo se muestra **una sola vez** su clave).
-Cada robot usa `Viriato:BaseUrl = <PUBLIC_URL>` y `Viriato:ApiKey = <su clave>`. Para más capacidad, **más copias** con la misma clave
-(ver [despachador-esquema.md](despachador-esquema.md)). Pon siempre un **tiempo máximo** en cada servicio.
+En la plataforma: *RPA → Equipos, Servicios, Despliegues* (un despliegue por robot y proceso). Pon siempre un **tiempo máximo** en
+cada servicio.
 
-**Para no tener un contenedor encendido por robot** (cada uno con su navegador), está el lanzador: un solo contenedor que arranca
-cada robot solo mientras tiene trabajo. Ver [lanzador-de-robots.md](lanzador-de-robots.md).
+**Los robots no hace falta instalarlos en el servidor.** Viriato trae el **lanzador**, un contenedor que arranca cada robot solo mientras
+tiene trabajo. Para desplegar un robot, súbelo: *RPA → Despliegues → Versiones del robot → Subir versión*, con el `.zip` de su
+`dotnet publish`. Sin claves ni `.env`. Ver [lanzador-de-robots.md](lanzador-de-robots.md).
 
-**Los robots de BSH ya vienen en contenedores** (repositorio `bsh_p01_prices_extractor`: `docker compose up -d --build`, con su propio
-`.env` de claves). En el mismo PC, `VIRIATO_URL=http://host.docker.internal:8080` si usas el compose de desarrollo, o la dirección
-pública de arriba. El extractor lleva Microsoft Edge y una pantalla virtual; el creador es solo .NET. Para construirlos hace falta el token de
-GitHub Packages (`read:packages`) en `GITHUB_PACKAGES_TOKEN`; no queda dentro de la imagen. Detalle en el README de ese repositorio.
+Un robot que corre **en otra máquina** usa `Viriato:BaseUrl = <PUBLIC_URL>` y `Viriato:ApiKey = <la clave del despliegue>`, o un
+lanzador propio con su `robots.json` (mismo documento).
 
 ## 5 · Día a día
 
 | Tarea | Comando |
 |---|---|
-| Actualizar a una versión nueva | Doble clic en «Actualizar Viriato» en el escritorio ([arranque-automatico.md](arranque-automatico.md)): trae lo último y redespliega lo que cambió, robots incluidos. A mano: `git pull` y `docker compose -f docker-compose.prod.yml --profile tunnel up -d --build`. La base se actualiza sola al arrancar la API. |
+| Actualizar a una versión nueva | Doble clic en «Actualizar Viriato» en el escritorio ([arranque-automatico.md](arranque-automatico.md)): trae lo último y redespliega lo que cambió, el lanzador de robots incluido. Un robot nuevo no se despliega aquí: se sube en Viriato. A mano: `git pull` y `docker compose -f docker-compose.prod.yml --profile tunnel up -d --build`. La base se actualiza sola al arrancar la API. |
 | Ver registros | `docker compose -f docker-compose.prod.yml logs -f api` |
 | Copia de seguridad ahora | `docker compose -f docker-compose.prod.yml run --rm backup now` |
 | Parar todo | `docker compose -f docker-compose.prod.yml --profile tunnel down` (sin `-v`: **no borra** los datos) |

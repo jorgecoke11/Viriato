@@ -95,7 +95,9 @@ public sealed class ArrancadorDeProcesos(Func<string, string?> variable) : IArra
     {
         var robot = arranque.Robot;
         var id = Guid.NewGuid().ToString("N")[..8];
-        var carpeta = Path.Combine(arranque.Opciones.CarpetaTemporal, $"{robot.Nombre}-{id}");
+        // The name is a person's (a service's name, from Viriato): only what is safe in a folder name.
+        var seguro = new string(robot.Nombre.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '-').ToArray());
+        var carpeta = Path.Combine(arranque.Opciones.CarpetaTemporal, $"{seguro}-{id}");
         Directory.CreateDirectory(carpeta);
 
         var entorno = EntornoDelRobot.Construir(arranque, carpeta, variable);

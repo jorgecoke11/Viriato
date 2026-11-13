@@ -1,9 +1,11 @@
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Viariato.Infrastructure;
 using Viariato.Modules.RpaFleet.Auth;
 using Viariato.Modules.RpaFleet.Contracts;
+using Viariato.Modules.RpaFleet.Lanzador;
 using Viariato.Modules.RpaFleet.Options;
 using Viariato.Modules.RpaFleet.Persistence;
 using Viariato.Modules.RpaFleet.Security;
@@ -35,6 +37,14 @@ public static class DependencyInjection
             .Validate(o => CredencialesOptions.EsClaveValida(o.ClaveCifrado), CredencialesOptions.MensajeClaveInvalida)
             .ValidateOnStart();
         services.AddSingleton<ICredencialProtector, AesGcmCredencialProtector>();
+
+        // The launcher next to Viriato: the secret it shares with it (created at startup, so the launcher finds it) and where the
+        // robots it runs are kept.
+        services.AddOptions<LanzadorOptions>().Bind(configuration.GetSection(LanzadorOptions.SectionName));
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<SecretoDelLanzador>();
+        services.AddSingleton<AlmacenDeRobots>();
+        services.AddHostedService<CrearSecretoDelLanzador>();
 
         return services;
     }

@@ -69,13 +69,53 @@ services:
       # Raíz por defecto de los archivos. Cada proceso puede apuntar a otra ruta (siempre
       # dentro de /data/storage o de otro volumen montado aquí) desde la pantalla Almacenamiento.
       DocumentStorage__LocalPath: /data/storage
+      # El lanzador de robots que va junto a Viriato (servicio "lanzador", más abajo). La API crea este secreto la primera vez y el
+      # lanzador lo lee: nadie lo escribe ni lo copia. Los robots que se suben en cada despliegue se guardan en /data/storage/robots.
+      Lanzador__ArchivoSecreto: /secretos/lanzador
+      Lanzador__UrlPublica: ${PUBLIC_URL:-https://${DOMAIN}}
+      Lanzador__MaxRobotsALaVez: ${LANZADOR_MAX_ROBOTS:-2}
+      Lanzador__MaxConPantalla: ${LANZADOR_MAX_CON_NAVEGADOR:-1}
     volumes:
       # Carpeta normal del PC (no un volumen interno de Docker) para poder verla y copiarla.
       - ${STORAGE_HOST_PATH:?define STORAGE_HOST_PATH en .env}:/data/storage
+      - lanzador_secreto:/secretos
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+
+  # El lanzador de robots: un contenedor para todos los robots, cada uno arrancado solo mientras tiene trabajo. No se configura aquí:
+  # los robots se suben en Viriato (RPA → Despliegues → «Versiones del robot») y el lanzador los descarga. Ver docs/lanzador-de-robots.md.
+  # Lleva Edge y una pantalla virtual por robot con navegador (imagen de ~3 GB, solo linux/amd64).
+  lanzador:
+    build:
+      context: ./backend
+      dockerfile: sdk/Viriato.Rpa.Lanzador/Dockerfile
+      target: navegador
+    platform: linux/amd64
+    environment:
+      VIRIATO_URL: http://api:8080
+      LANZADOR_SECRETO: /secretos/lanzador
+      LANZADOR_ROBOTS: /var/lib/lanzador/robots
+    volumes:
+      - lanzador_secreto:/secretos:ro
+      # Los robots descargados, para no bajarlos de nuevo en cada reinicio.
+      - lanzador_robots:/var/lib/lanzador/robots
+      - lanzador_selenium:/home/robot/.cache/selenium
+    # Recoge los procesos que dejan los robots al terminar (un navegador, la vista en directo).
+    init: true
+    # Edge necesita memoria compartida de verdad, y /tmp limpio en cada arranque (pantallas virtuales, perfiles, descargas, vídeo).
+    shm_size: 1gb
+    tmpfs:
+      - /tmp:exec,mode=1777,size=1g
+    # El tope de TODO lo que corre aquí: el lanzador y los robots que tenga arrancados a la vez.
+    mem_limit: ${LANZADOR_MEMORIA:-3g}
+    cpus: ${LANZADOR_CPUS:-2}
+    depends_on:
+      - api
+    restart: unless-stopped
+    # Al parar, cada robot termina (o da por fallido) lo que tiene entre manos.
+    stop_grace_period: 2m
 
   # Copia diaria de Postgres + archivos; sube a SFTP (p. ej. el hosting de Hostinger) si SFTP_HOST está definido.
   backup:
@@ -108,7 +148,8 @@ services:
       DOMAIN: ${DOMAIN}
       CADDY_EMAIL: ${CADDY_EMAIL}
       # Dónde está la pantalla del robot que se sirve en /vista/ (ver docs/ver-la-ejecucion-en-directo.md).
-      VISTA_UPSTREAM: ${VISTA_UPSTREAM:-extractor:6080}
+      # Por defecto, la del primer robot con navegador del lanzador.
+      VISTA_UPSTREAM: ${VISTA_UPSTREAM:-lanzador:6080}
     ports:
       # Con Cloudflare Tunnel el túnel llega a "web" por la red de Docker: estos puertos del PC solo sirven para probar en local.
       # Si Windows no deja usar el 80 (error "socket no permitido por sus permisos"), pon HTTP_PORT=8088 en el .env.
@@ -136,12 +177,15 @@ services:
     restart: unless-stopped
 
 networks:
-  # Nombre fijo, sea cual sea el nombre del proyecto (la carpeta o -p): los robots del mismo PC se unen a esta red para que "web"
-  # sirva la pantalla del extractor en /vista/ (ver docs/ver-la-ejecucion-en-directo.md). Cambiarlo solo recrea los contenedores.
+  # Nombre fijo, sea cual sea el nombre del proyecto (la carpeta o -p): los robots sueltos del mismo PC pueden unirse a esta red para
+  # llegar a la API por dentro (ver docs/ver-la-ejecucion-en-directo.md). Cambiarlo solo recrea los contenedores.
   default:
     name: viriato
 
 volumes:
+  lanzador_secreto:
+  lanzador_robots:
+  lanzador_selenium:
   postgres_data:
   minio_data:
   caddy_data:

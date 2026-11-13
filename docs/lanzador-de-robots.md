@@ -3,9 +3,11 @@
 Hasta ahora cada robot era un contenedor siempre encendido que preguntaba «¿tienes algo para mí?» cada pocos segundos. Con un
 robot ligero no importa; con uno que lleva Edge y una pantalla virtual, cada robot ocupa memoria todo el día para trabajar un rato.
 
-El **lanzador** es **un solo contenedor por máquina**. Los robots viven como programas en una carpeta del servidor y **no están
-arrancados**: el lanzador mira en Viriato qué robots tienen trabajo esperando, arranca el que toca como un proceso, y el robot se
-apaga solo cuando vacía su cola.
+El **lanzador** es **un solo contenedor por máquina**. Los robots **no están arrancados**: el lanzador mira en Viriato qué robots
+tienen trabajo esperando, arranca el que toca como un proceso, y el robot se apaga solo cuando vacía su cola.
+
+**En el servidor de Viriato el lanzador ya viene con Viriato** (`docker-compose.prod.yml`) y **no se configura nada**: los robots se
+suben en Viriato y él los descarga. Ni `.env`, ni claves, ni carpetas. Ver [Desplegar un robot](#desplegar-un-robot-subir-su-zip).
 
 ```
   Viriato (API) ── decide qué caso le toca a quién, como siempre (docs/despachador-esquema.md)
@@ -18,6 +20,43 @@ apaga solo cuando vacía su cola.
         ├─ bsh-extractor    proceso + Edge + su pantalla virtual, solo mientras tiene casos
         └─ …                en reposo no corre ninguno
 ```
+
+## Desplegar un robot: subir su .zip
+
+1. Publica el robot y comprímelo. Vale el `.zip` de la carpeta o de lo que hay dentro:
+
+   ```powershell
+   dotnet publish src\Bsh.PricesExtractor -c Release -o publicado\bsh-extractor
+   Compress-Archive publicado\bsh-extractor\* bsh-extractor.zip
+   ```
+
+2. En Viriato, *RPA → Despliegues*, en la fila del robot, el botón **Versiones del robot** (el paquete) → **Subir versión**.
+
+Ya está. En la siguiente ronda (unos segundos) el lanzador descarga esa versión, comprueba que es lo que se subió y la usa la próxima
+copia que arranque; la que esté trabajando termina con la que tenía. Cada subida es una versión nueva (1, 2, 3…): **Usar esta** vuelve
+a una anterior, y **Dejar de arrancarlo aquí** hace que el lanzador deje en paz ese despliegue (porque el robot corre en otra máquina,
+con su clave). La columna *Robot* de la lista dice qué versión corre (o «Fuera»).
+
+**Cómo sabe ejecutarlo.** Lo deduce del `.zip` al subirlo (si no puede, no lo acepta y dice por qué):
+
+| Mira | Deduce |
+|---|---|
+| El `*.runtimeconfig.json` que hay arriba del todo | Se ejecuta con `dotnet Nombre.dll`. |
+| Si lleva `Viriato.Rpa.Client.Selenium.dll`, `WebDriver.dll` o `Microsoft.Playwright.dll` | Abre un navegador: le da su pantalla virtual y un tope de memoria de 2048 MB. |
+| Un `robot.json` arriba del todo (opcional) | Lo que no se puede deducir: `{"comando", "argumentos", "pantalla", "memoriaMaximaMb", "maxCopias", "entorno"}`, todo opcional. Para un robot que no es .NET, que tiene varios programas o que necesita ajustes propios. |
+
+**Las claves.** El lanzador no usa la clave del despliegue. La API de Viriato crea al arrancar un secreto en un volumen que solo montan
+ella y el lanzador (`lanzador_secreto`); con él, el lanzador lee su catálogo y recibe para cada robot un **pase** firmado
+(`rpl_…`, válido 7 días, se renueva en cada ronda) que el robot usa como clave. Nadie lo escribe ni lo copia. Para anular todos los pases
+a la vez: borra ese volumen y reinicia la API y el lanzador. Quien controle Docker en el servidor puede leer el secreto, igual que ya
+puede leer el `.env` de Viriato y la base de datos: no se abre ninguna puerta nueva.
+
+**Lo demás que el robot necesita** lo pone Viriato: dónde se ve su pantalla (`Vista__UrlPublica`, a partir de `PUBLIC_URL`), y la
+vista en directo y el vídeo, en *Pantalla del robot* del despliegue, como siempre. Los topes de la máquina (2 robots a la vez, 1 con
+navegador) se cambian, si algún día hace falta, con `LANZADOR_MAX_ROBOTS` y `LANZADOR_MAX_CON_NAVEGADOR` en el `.env` de Viriato; la
+memoria del contenedor entero, con `LANZADOR_MEMORIA` (3g) y `LANZADOR_CPUS` (2).
+
+Los zips se guardan en `STORAGE_HOST_PATH/robots`, así que la copia de cada noche se los lleva.
 
 ## Qué decide y qué no
 
@@ -62,15 +101,16 @@ El lanzador arranca cada copia como un proceso aparte, en su propia sesión, con
 
 | Variable | Valor |
 |---|---|
-| `Viriato__BaseUrl`, `Viriato__ApiKey` | Dónde está Viriato y la clave **de ese robot** (nunca la de otro: se quitan de su entorno). |
+| `Viriato__BaseUrl`, `Viriato__ApiKey` | Dónde está Viriato y la clave **de ese robot**: su pase, junto a Viriato; en otra máquina, la de su variable (nunca la de otro: se quitan de su entorno). |
 | `Worker__SalirSinTrabajo` | `00:00:30` (lo de `salirSinTrabajoSegundos`): con `Viriato.Rpa.Client` **0.12+** el robot se apaga solo. |
 | `TMPDIR` | Una carpeta temporal propia, que se borra cuando la copia termina. |
 | `DISPLAY`, `VistaEnDirecto__PuertoWeb`, `VistaEnDirecto__PuertoVnc` | Solo con `"pantalla": true`: **una pantalla virtual propia** (Xvfb + openbox) y sus puertos. La primera copia con pantalla usa `:99` y el 6080; la segunda, `:100` y el 6081. Dos navegadores nunca comparten pantalla. |
 | Lo de `"entorno"` | Los ajustes propios del robot. Un valor puede usar `${VARIABLE}` (del lanzador) y `{puertoWeb}`, `{puertoVnc}`, `{pantalla}`. |
 
-## El catálogo (`robots.json`)
+## En otra máquina: el catálogo (`robots.json`)
 
-Está en la carpeta de robots del servidor, junto a una subcarpeta por robot. **No lleva secretos**: cada robot nombra la variable
+Solo para un lanzador en una máquina **que no es la de Viriato** (allí no llega el secreto). Está en la carpeta de robots de esa
+máquina, junto a una subcarpeta por robot. **No lleva secretos**: cada robot nombra la variable
 de entorno donde está su clave. Se relee solo cuando cambia: añadir un robot no necesita reiniciar el lanzador.
 
 ```json
@@ -123,9 +163,10 @@ de entorno donde está su clave. Se relee solo cuando cambia: añadir un robot n
 Si el catálogo tiene un error (un robot sin clave, un nombre repetido…), el lanzador lo lista todo en su registro y **no arranca
 nada** hasta que se corrija.
 
-## Ponerlo en marcha
+## Ponerlo en marcha en otra máquina
 
-Todo está en `ops/lanzador/`.
+En el servidor de Viriato no hay nada que poner en marcha: viene con `docker-compose.prod.yml` y lo arranca «Actualizar Viriato». En
+otra máquina, todo está en `ops/lanzador/`:
 
 ```powershell
 cd ops\lanzador
@@ -133,26 +174,16 @@ Copy-Item .env.example .env                        # las claves de los robots y 
 mkdir robots ; Copy-Item robots.example.json robots\robots.json
 ```
 
-1. **Publica cada robot en su carpeta** (una vez, y cada vez que cambie). Para los de BSH, desde su repositorio, con el token de
-   GitHub Packages en `GITHUB_PACKAGES_TOKEN`:
-
-   ```powershell
-   dotnet publish src\Bsh.CasesCreator   -c Release -o <ROBOTS_DIR>\bsh-creador
-   dotnet publish src\Bsh.PricesExtractor -c Release -o <ROBOTS_DIR>\bsh-extractor
-   ```
-
+1. **Publica cada robot en su carpeta** (`dotnet publish … -o <ROBOTS_DIR>\<robot>`), una vez y cada vez que cambie.
 2. **Elige la imagen** en `.env`: `LANZADOR_IMAGEN=ligero` (solo .NET, ~320 MB) o `navegador` (además Edge, Xvfb, openbox,
    x11vnc/noVNC y ffmpeg, ~3 GB en disco; solo `linux/amd64`). Con algún robot de `"pantalla": true` hace falta `navegador`.
-3. **Pon las claves** en `.env` (una variable por robot, la de su `claveEnv`) y `VIRIATO_URL`.
-4. `docker compose up -d --build` y `docker compose logs -f`. **En el servidor de Viriato**, súmale la red de Viriato:
-   `docker compose -f docker-compose.yml -f docker-compose.red-viriato.yml up -d --build`. Así los robots llegan a la API por
-   dentro (`http://api:8080`) y la vista en directo pública (`/vista/`) sigue funcionando: el lanzador responde en esa red con el
-   nombre `extractor`, el que usaba el contenedor suelto. Pon `VISTA_URL_PUBLICA=https://<tu dominio>/vista/vnc.html?path=vista/websockify`.
+3. **Pon las claves** en `.env` (una variable por robot, la de su `claveEnv`) y `VIRIATO_URL` (la dirección pública de Viriato).
+4. `docker compose up -d --build` y `docker compose logs -f`.
 
 `LANZADOR_MEMORIA` y `LANZADOR_CPUS` son el tope **del contenedor entero**: el lanzador más los robots que tenga arrancados a la
 vez. Con `maxConPantalla: 1`, el tope real de memoria es un navegador, no uno por robot.
 
-**No arranques a la vez el lanzador y los contenedores sueltos de los mismos robots**: serían dos copias con la misma clave.
+**No arranques a la vez el lanzador y los contenedores sueltos de los mismos robots**: serían dos copias del mismo robot.
 
 ## Verlo en Viriato
 
@@ -200,7 +231,12 @@ Si el lanzador deja de dar señales 90 segundos, Viriato deja de enseñar lo que
 - Código: `backend/sdk/Viriato.Rpa.Lanzador` (`Planificador` son las reglas, puras y con tests; `LanzadorDeRobots` es la ronda;
   `ArrancadorDeProcesos` arranca, mide y para). Tests: `backend/tests/Viriato.Rpa.Lanzador.Tests` y `LanzadorFlowTests` en los de
   integración.
-- API: `LanzadorEndpoints` (módulo Casos). El estado se guarda en el despliegue (`lanzador_*`, migración `LanzadorDeRobots`).
+- API: `LanzadorEndpoints` (módulo Casos): lo que pregunta con la clave de un robot (`/trabajo`, `/estado`) y, con el secreto,
+  `/catalogo` y `/versiones/{id}/paquete`. El estado se guarda en el despliegue (`lanzador_*`, migración `LanzadorDeRobots`).
+- Junto a Viriato: `SecretoDelLanzador` (el secreto y los pases), `PaqueteDeRobot` (qué se deduce del `.zip`), `AlmacenDeRobots` y
+  `VersionesDeRobotEndpoints` en el módulo RpaFleet (migración `VersionesDeRobot`); en el lanzador, `CatalogoDeViriato` (descarga y
+  desempaqueta cada versión una vez, en `/var/lib/lanzador/robots`) frente a `CatalogoDeArchivo` (`robots.json`). Elige uno u otro la
+  variable `LANZADOR_SECRETO`.
 - Robots: `Worker:SalirSinTrabajo` en `Viriato.Rpa.Client` 0.12.0. Un robot con un cliente anterior funciona, pero no se apaga
   solo: el lanzador lo para cuando Viriato dice que no tiene nada (y si justo entra un caso en ese instante, ese paso falla y se
   reprocesa). Súbelos a 0.12.

@@ -17,4 +17,13 @@ public static class RpaHeaders
     /// robot being connected, or an idle robot that is not running would look like a free copy to the dispatcher.
     /// </summary>
     public const string Lanzador = "X-Viriato-Lanzador";
+
+    /// <summary>
+    /// The shared secret of the launcher that runs next to Viriato (a file both containers read; nobody types it). With it the
+    /// launcher reads its catalogue and downloads robots. It is never handed to a robot: robots get a pass of their own.
+    /// </summary>
+    public const string SecretoDelLanzador = "X-Viriato-Lanzador-Secreto";
+
+    /// <summary>Passes the launcher hands its robots start with this, so they are never mistaken for a Despliegue's own key.</summary>
+    public const string PrefijoDePase = "rpl_";
 }

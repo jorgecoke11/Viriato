@@ -24,7 +24,21 @@ public static class RpaFleetDtoMapper
         despliegue.UpdatedAt,
         despliegue.LastUsedAt,
         despliegue.VistaEnDirecto.ToString(),
-        despliegue.GrabacionDeVideo.ToString());
+        despliegue.GrabacionDeVideo.ToString(),
+        despliegue.VersionDeRobot?.Numero);
+
+    public static VersionDeRobotDto ToDto(this VersionDeRobot version, Guid? actualId) => new(
+        version.Id,
+        version.Numero,
+        version.NombreArchivo,
+        version.TamanoBytes,
+        string.Join(' ', new[] { version.Comando }.Concat(version.Argumentos)),
+        version.Pantalla,
+        version.MemoriaMaximaMb,
+        version.MaxCopias,
+        version.SubidaPor,
+        version.CreatedAt,
+        version.Id == actualId);
 
     /// <summary>What the robot of this Despliegue is told to do with its screen (GET /rpa/despliegue).</summary>
     public static Viariato.ApiContracts.PantallaDelRobotDto ToPantallaDto(this Despliegue despliegue) => new(

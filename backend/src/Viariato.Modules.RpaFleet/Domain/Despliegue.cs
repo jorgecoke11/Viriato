@@ -67,4 +67,10 @@ public sealed class Despliegue
 
     /// <summary>When the launcher last reported. Old = the launcher itself is gone, and so is whatever it said.</summary>
     public DateTimeOffset? LanzadorVistoEn { get; set; }
+
+    /// <summary>The version of the robot the launcher next to Viriato runs for this Despliegue. Null — the default — means that
+    /// launcher leaves it alone: the robot runs somewhere else, with its own key.</summary>
+    public Guid? VersionDeRobotId { get; set; }
+
+    public VersionDeRobot? VersionDeRobot { get; set; }
 }

@@ -18,6 +18,11 @@ public sealed class ViariatoApiFactory : WebApplicationFactory<Program>, IAsyncL
         .WithPassword("viariato_test_password")
         .Build();
 
+    /// <summary>The launcher next to Viriato: its secret and the uploaded robots, in a folder of this factory's own.</summary>
+    public string CarpetaDelLanzador { get; } = Path.Combine(Path.GetTempPath(), "viriato-lanzador-" + Guid.NewGuid().ToString("N"));
+
+    public string ArchivoSecretoDelLanzador => Path.Combine(CarpetaDelLanzador, "secreto");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -47,6 +52,9 @@ public sealed class ViariatoApiFactory : WebApplicationFactory<Program>, IAsyncL
                 // And the postman of the notifications: the tests send one turn by hand.
                 ["Notificaciones:SegundosEntreRondas"] = "3600",
                 ["Notificaciones:UrlPublica"] = "https://viriato.example",
+                ["Lanzador:ArchivoSecreto"] = ArchivoSecretoDelLanzador,
+                ["Lanzador:CarpetaDeRobots"] = Path.Combine(CarpetaDelLanzador, "subidos"),
+                ["Lanzador:UrlPublica"] = "https://viriato.example",
             });
         });
     }
@@ -57,5 +65,6 @@ public sealed class ViariatoApiFactory : WebApplicationFactory<Program>, IAsyncL
     {
         await _postgres.DisposeAsync();
         await base.DisposeAsync();
+        if (Directory.Exists(CarpetaDelLanzador)) Directory.Delete(CarpetaDelLanzador, recursive: true);
     }
 }

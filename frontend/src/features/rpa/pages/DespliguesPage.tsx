@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Monitor, Plus, RefreshCw, Server, Trash2, Video } from 'lucide-react'
+import { Monitor, Package, Plus, RefreshCw, Server, Trash2, Video } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CrudFormModal } from '../../../components/crud/CrudFormModal'
 import type { CrudField } from '../../../components/crud/types'
@@ -19,6 +19,7 @@ import { useListaPaginada } from '../../../lib/useListaPaginada'
 import * as flujosApi from '../../flujos/api'
 import * as rpaApi from '../api'
 import type { DespliegueConApiKeyDto, DespliegueDto } from '../api'
+import { VersionesDelRobotModal } from '../VersionesDelRobotModal'
 import {
   calidadDeVista,
   calidadesDeVista,
@@ -64,6 +65,7 @@ export function DespliguesPage() {
   const [revelado, setRevelado] = useState<DespliegueConApiKeyDto | null>(null)
   const [pendingDelete, setPendingDelete] = useState<DespliegueDto | null>(null)
   const [pantallaDe, setPantallaDe] = useState<DespliegueDto | null>(null)
+  const [robotDe, setRobotDe] = useState<DespliegueDto | null>(null)
   // Stable while the modal is open: the form re-seeds itself whenever these change.
   const valoresDePantalla = useMemo<ValoresDePantalla>(
     () => ({ vistaEnDirecto: pantallaDe?.vistaEnDirecto ?? 'Baja', grabacionDeVideo: pantallaDe?.grabacionDeVideo ?? 'SegunRobot' }),
@@ -205,6 +207,20 @@ export function DespliguesPage() {
         )
       },
     },
+    {
+      clave: 'robot',
+      titulo: 'Robot',
+      celda: (d) =>
+        d.versionDeRobotNumero !== null ? (
+          <button type="button" className="rounded-md" onClick={() => setRobotDe(d)} title="Lo arranca el lanzador de Viriato">
+            <Badge tone="brand">Versión {d.versionDeRobotNumero}</Badge>
+          </button>
+        ) : (
+          <span className="text-gray-400" title="No lo arranca el lanzador de Viriato: corre en otro sitio, con su clave">
+            Fuera
+          </span>
+        ),
+    },
     { clave: 'clave', titulo: 'Clave', celda: (d) => <span className="font-mono text-xs text-gray-500">{d.apiKeyPrefix}…</span> },
     {
       clave: 'uso',
@@ -216,6 +232,9 @@ export function DespliguesPage() {
       titulo: 'Acciones',
       celda: (d) => (
         <div className="-my-1 flex items-center gap-0.5">
+          <IconButton size="sm" label="Versiones del robot" onClick={() => setRobotDe(d)}>
+            <Package size={16} />
+          </IconButton>
           <IconButton size="sm" label="Pantalla del robot" onClick={() => setPantallaDe(d)}>
             <Monitor size={16} />
           </IconButton>
@@ -261,7 +280,7 @@ export function DespliguesPage() {
             </Button>
           ),
         }}
-        anchoMinimo="980px"
+        anchoMinimo="1080px"
       />
 
       <Modal
@@ -368,7 +387,8 @@ export function DespliguesPage() {
         }
       >
         <p className="mb-3 text-sm text-gray-600">
-          Copia esta clave ahora — no se puede volver a mostrar. Configúrala en el equipo donde corra este servicio.
+          Copia esta clave ahora — no se puede volver a mostrar. Solo hace falta para un robot que corre en otra máquina: si lo
+          arranca el lanzador de Viriato (subiendo su versión), no se usa.
         </p>
         <code className="block break-all rounded-lg bg-gray-100 p-3 text-xs text-gray-800">{revelado?.apiKey}</code>
       </Modal>
@@ -393,6 +413,8 @@ export function DespliguesPage() {
           pantallaMutation.reset()
         }}
       />
+
+      <VersionesDelRobotModal despliegue={robotDe} onClose={() => setRobotDe(null)} />
 
       <ConfirmDialog
         open={pendingDelete !== null}
