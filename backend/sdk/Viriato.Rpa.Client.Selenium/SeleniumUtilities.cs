@@ -26,7 +26,12 @@ public sealed class SeleniumUtilities(NavegadorOptions opciones) : IDisposable
 
     public bool Abierto => _driver is not null;
 
-    public void StartDriver()
+    /// <summary>Opens Edge.</summary>
+    /// <param name="ignorarErroresDeCertificado">Accept a site whose certificate is not valid (expired, self-signed…) instead of
+    /// stopping at Edge's privacy error. Off by default, and meant to come from a process parameter so it can be switched off in
+    /// Viriato the moment the site fixes its certificate: with it on, whatever is typed (a password) travels over a connection
+    /// nobody verified.</param>
+    public void StartDriver(bool ignorarErroresDeCertificado = false)
     {
         var descargas = opciones.CarpetaDescargasEfectiva();
         Directory.CreateDirectory(descargas);
@@ -34,6 +39,7 @@ public sealed class SeleniumUtilities(NavegadorOptions opciones) : IDisposable
         var edge = new EdgeOptions();
         edge.AddUserProfilePreference("download.default_directory", descargas);
         edge.AddUserProfilePreference("download.prompt_for_download", false);
+        if (ignorarErroresDeCertificado) edge.AcceptInsecureCertificates = true;
 
         try
         {
