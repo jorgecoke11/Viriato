@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Viriato.Rpa.Client.Selenium</RootNamespace>
     <PackageId>Viriato.Rpa.Client.Selenium</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Viriato</Authors>
     <RepositoryUrl>https://github.com/jorgecoke11/Viriato</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
