@@ -1,7 +1,8 @@
-import { ChevronsLeft, ChevronsRight, LogOut, Settings, Workflow } from 'lucide-react'
+import { ChevronsLeft, ChevronsRight, LogOut, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../features/auth/useAuth'
+import { Logo } from '../../lib/brand/Logo'
 import { ThemeToggle } from '../../lib/theme/ThemeToggle'
 import { VersionBadge } from '../../lib/version/VersionBadge'
 import { EnlaceDeMenu, EnlaceDeMenuCompacto } from './EnlaceDeMenu'
@@ -41,9 +42,9 @@ export function SidebarContent({
           to="/"
           onClick={onNavigate}
           aria-label="Viariato"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white"
+          className="flex h-10 w-10 shrink-0"
         >
-          <Workflow size={20} />
+          <Logo className="h-10 w-10" />
         </Link>
         {!collapsed && (
           <Link to="/" onClick={onNavigate} className="min-w-0 flex-1 leading-tight">

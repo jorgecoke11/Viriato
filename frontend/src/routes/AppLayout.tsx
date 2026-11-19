@@ -3,6 +3,7 @@ import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
+import { Logo } from '../lib/brand/Logo'
 import { spring } from '../lib/motion/tokens'
 import { fadeVariants, pageVariants, slideInRightVariants } from '../lib/motion/variants'
 import { SidebarContent } from './sidebar/SidebarContent'
@@ -94,6 +95,7 @@ export function AppLayout() {
           >
             <Menu size={20} />
           </button>
+          <Logo className="h-7 w-7 rounded-md" />
           <span className="text-sm font-semibold tracking-tight text-gray-900">Viariato</span>
         </header>
 
