@@ -20,6 +20,7 @@ import { CancelarEjecucion } from './CancelarEjecucion'
 import { CasoDocumentos } from './CasoDocumentos'
 import { CasoEjecuciones } from './CasoEjecuciones'
 import { CasoEtiquetas } from './CasoEtiquetas'
+import { FamiliasDelCaso } from '../familias/FamiliasDelCaso'
 import { CasoProgreso } from './CasoProgreso'
 import { CasoTimelineUnificado } from './CasoTimelineUnificado'
 import { DatosDelCasoCard } from './DatosDelCasoCard'
@@ -240,6 +241,7 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
               {flujoNombre ?? 'Proceso'}
               {versionQuery.data && <span> · versión {versionQuery.data.numeroVersion}</span>}
             </p>
+            <FamiliasDelCaso casoId={caso.id} />
           </div>
 
           {(puedeGestionar || puedeCancelar) && activo && (

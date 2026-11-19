@@ -47,6 +47,7 @@ public sealed class EnvioDeNotificacionConfiguration : IEntityTypeConfiguration<
 
         builder.HasOne<ReglaDeNotificacion>().WithMany().HasForeignKey(e => e.ReglaId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<Caso>().WithMany().HasForeignKey(e => e.CasoId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Familia>().WithMany().HasForeignKey(e => e.FamiliaId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<Conexion>().WithMany().HasForeignKey(e => e.ConexionId).OnDelete(DeleteBehavior.Restrict);
 
         // What the postman looks at on every turn.

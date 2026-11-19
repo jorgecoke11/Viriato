@@ -37,6 +37,7 @@ internal sealed class DisparadorDeNotificaciones(IOptions<NotificacionesOptions>
             .Select(e => (Evento: e, Hecho: QueDispara(e)))
             .Where(h => h.Hecho is not null)
             .ToList();
+        await EncolarDeFamiliasAsync(db, ct);
         if (hechos.Count == 0) return;
 
         foreach (var (evento, hecho) in hechos)
@@ -65,6 +66,55 @@ internal sealed class DisparadorDeNotificaciones(IOptions<NotificacionesOptions>
                     ReglaId = regla.Id,
                     ReglaNombre = regla.Nombre,
                     CasoId = caso.Id,
+                    ConexionId = regla.ConexionId,
+                    Destinatarios = [.. regla.Destinatarios],
+                    Asunto = asunto,
+                    Cuerpo = cuerpo,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    ProximoIntentoAt = DateTimeOffset.UtcNow,
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// A family that ended leaves «Terminada» in its own history (the family finisher writes it): the rules listening for families of its
+    /// type queue their notice, in that same save, written with the family.
+    /// </summary>
+    private async Task EncolarDeFamiliasAsync(DbContext db, CancellationToken ct)
+    {
+        var terminadas = db.ChangeTracker.Entries<FamiliaEvento>()
+            .Where(e => e.State == EntityState.Added && e.Entity.Accion == FamiliaEventoAccion.Terminada)
+            .Select(e => e.Entity)
+            .ToList();
+
+        foreach (var evento in terminadas)
+        {
+            var familia = db.ChangeTracker.Entries<Familia>().Select(e => e.Entity).FirstOrDefault(f => f.Id == evento.FamiliaId)
+                ?? await db.Set<Familia>().AsNoTracking().FirstOrDefaultAsync(f => f.Id == evento.FamiliaId, ct);
+            if (familia is null) continue;
+
+            var tipo = familia.Tipo?.Nombre
+                ?? await db.Set<TipoDeFamilia>().AsNoTracking().Where(t => t.Id == familia.TipoDeFamiliaId).Select(t => t.Nombre).FirstAsync(ct);
+            var reglas = await db.Set<ReglaDeNotificacion>().AsNoTracking()
+                .Where(r => r.Activa && r.FlujoId == familia.FlujoId && r.Disparador == DisparadorDeNotificacion.FamiliaTerminada
+                    && (r.Codigo == null || r.Codigo == tipo))
+                .ToListAsync(ct);
+            if (reglas.Count == 0) continue;
+
+            var proceso = await db.Set<Flujo>().AsNoTracking().Where(f => f.Id == familia.FlujoId).Select(f => f.Nombre).FirstOrDefaultAsync(ct) ?? string.Empty;
+            // {datos.total}, {datos.completados}… are the family's end, as its history line says it.
+            var contexto = new ContextoDelAviso(
+                familia.Id, familia.Nombre, proceso, tipo, "Terminada", evento.OccurredAt, evento.DetalleJson, null, $"familias/{familia.Id}");
+            foreach (var regla in reglas)
+            {
+                var (asunto, cuerpo) = RedaccionDeAvisos.Redactar(regla.Asunto, regla.Cuerpo, contexto, opciones.Value);
+                db.Add(new EnvioDeNotificacion
+                {
+                    FlujoId = familia.FlujoId,
+                    ReglaId = regla.Id,
+                    ReglaNombre = regla.Nombre,
+                    FamiliaId = familia.Id,
                     ConexionId = regla.ConexionId,
                     Destinatarios = [.. regla.Destinatarios],
                     Asunto = asunto,

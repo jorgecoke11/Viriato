@@ -14,7 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
-  Wallet, Plug } from 'lucide-react'
+  Wallet, Plug, Layers } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 export interface NavLinkNode {
@@ -55,6 +55,7 @@ export const navTree: NavNode[] = [
     children: [
       { type: 'link', to: '/casos', label: 'Panel', icon: <LayoutDashboard size={18} />, end: true },
       { type: 'link', to: '/casos/lista', label: 'Listado', icon: <List size={18} /> },
+      { type: 'link', to: '/familias', label: 'Familias', icon: <Layers size={18} /> },
     ],
   },
   { type: 'link', to: '/mercados', label: 'Mercados', icon: <LineChart size={18} /> },

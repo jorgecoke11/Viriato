@@ -260,6 +260,8 @@ export interface ListCasosFilters {
   flujoId?: string
   /** Several processes, separated by commas. */
   flujoIds?: string
+  /** Only the Casos of this family. */
+  familiaId?: string
   search?: string
   desde?: string
   hasta?: string

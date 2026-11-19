@@ -123,4 +123,26 @@ public interface IRpaClient
     /// what was there.</summary>
     Task GuardarDatoAsync(string clave, object valor, CancellationToken ct = default) =>
         throw new NotSupportedException("Este cliente no tiene almacén (Viriato.Rpa.Client 0.9+).");
+
+    /// <summary>
+    /// Opens a family (a group of cases that end together) of type <c>request.Tipo</c> in the process this Despliegue can create cases in.
+    /// Put cases in it as they are born (<see cref="CrearCasoRobotRequest.Familias"/>) and close it when they are all in
+    /// (<see cref="CerrarFamiliaAsync"/>), unless it has <see cref="CrearFamiliaRobotRequest.ParticipantesEsperados"/>. When every case
+    /// has ended, Viriato ends the family and does what its type says (a closing case, notices). Not idempotent, like CrearCasoAsync.
+    /// (A default body so test doubles written before 0.13 keep compiling.)
+    /// </summary>
+    Task<FamiliaRobotDto> CrearFamiliaAsync(CrearFamiliaRobotRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este cliente no sabe de familias (Viriato.Rpa.Client 0.13+).");
+
+    /// <summary>No more cases join the family; it ends once they have all ended. Closing it twice does nothing.</summary>
+    Task CerrarFamiliaAsync(Guid familiaId, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este cliente no sabe de familias (Viriato.Rpa.Client 0.13+).");
+
+    /// <summary>
+    /// A family with its cases and their data — what the robot of a family's closing case reads (it gets the family's id in its data,
+    /// <c>familia.id</c>). Served for families of this robot's process or of the one it creates cases in, and for those whose closing
+    /// case is of this robot's process.
+    /// </summary>
+    Task<FamiliaRobotDto> ObtenerFamiliaAsync(Guid familiaId, CancellationToken ct = default) =>
+        throw new NotSupportedException("Este cliente no sabe de familias (Viriato.Rpa.Client 0.13+).");
 }

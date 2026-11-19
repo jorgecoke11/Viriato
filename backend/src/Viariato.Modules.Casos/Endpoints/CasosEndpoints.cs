@@ -107,7 +107,7 @@ internal static class CasosEndpoints
     private static async Task<IResult> ListCasosAsync(
         string? estado, string? tipoCasoId, string? estadoNegocioCodigo, bool? finalizado, Guid? flujoId, string? flujoIds, string? search,
         DateTimeOffset? desde, DateTimeOffset? hasta, bool? ventana, string? finalizados, DateTimeOffset? completadoDesde,
-        DateTimeOffset? completadoHasta, bool? activos, int? page, int? pageSize, AppDbContext db, HttpContext http, CancellationToken ct)
+        DateTimeOffset? completadoHasta, bool? activos, Guid? familiaId, int? page, int? pageSize, AppDbContext db, HttpContext http, CancellationToken ct)
     {
         var currentPage = page is null or < 1 ? 1 : page.Value;
         var currentPageSize = pageSize is null or < 1 or > 100 ? 20 : pageSize.Value;
@@ -118,6 +118,7 @@ internal static class CasosEndpoints
             .Where(c => flujosAsignados.Contains(c.FlujoId));
 
         if (flujoId is not null) query = query.Where(c => c.FlujoId == flujoId);
+        if (familiaId is { } familia) query = query.Where(c => db.Set<MiembroDeFamilia>().Any(m => m.FamiliaId == familia && m.CasoId == c.Id));
         // Several processes at once, separated by commas. Whatever is not a process the caller is assigned to is simply not
         // in the list (the query is already limited to theirs), and text that is not an id is ignored.
         var procesos = (flujoIds ?? "")

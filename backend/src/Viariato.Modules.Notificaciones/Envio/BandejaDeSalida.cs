@@ -69,10 +69,35 @@ public sealed class BandejaDeSalida(AppDbContext db, EnviadorDeMensajes enviador
     }
 
     /// <summary>A line in the case's history: who was told what, or that it could not be done.</summary>
-    private void Anotar(EnvioDeNotificacion envio, CasoEventoAccion accion, string? error, DateTimeOffset ahora) =>
+    private void Anotar(EnvioDeNotificacion envio, CasoEventoAccion accion, string? error, DateTimeOffset ahora)
+    {
+        var detalle = error is null
+            ? JsonSerializer.Serialize(new { regla = envio.ReglaNombre, destinatarios = envio.Destinatarios, asunto = envio.Asunto })
+            : JsonSerializer.Serialize(new { regla = envio.ReglaNombre, destinatarios = envio.Destinatarios, asunto = envio.Asunto, error });
+        if (envio.CasoId is null)
+        {
+            // A notice about a family goes in the family's history.
+            if (envio.FamiliaId is { } familiaId)
+            {
+                db.Add(new FamiliaEvento
+                {
+                    FamiliaId = familiaId,
+                    Accion = accion == CasoEventoAccion.NotificacionEnviada ? FamiliaEventoAccion.NotificacionEnviada : FamiliaEventoAccion.NotificacionFallida,
+                    DetalleJson = detalle,
+                    OccurredAt = ahora,
+                });
+            }
+
+            return;
+        }
+
+        AnotarEnElCaso(envio, accion, error, ahora);
+    }
+
+    private void AnotarEnElCaso(EnvioDeNotificacion envio, CasoEventoAccion accion, string? error, DateTimeOffset ahora) =>
         db.Add(new CasoEvento
         {
-            CasoId = envio.CasoId,
+            CasoId = envio.CasoId!.Value,
             Accion = accion,
             DetalleJson = error is null
                 ? JsonSerializer.Serialize(new { regla = envio.ReglaNombre, destinatarios = envio.Destinatarios, asunto = envio.Asunto })

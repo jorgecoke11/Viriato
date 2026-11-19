@@ -124,4 +124,13 @@ public sealed class RpaStepContext
 
     /// <inheritdoc cref="IRpaClient.GuardarDatoAsync"/>
     public Task GuardarDatoAsync(string clave, object valor, CancellationToken ct = default) => _client.GuardarDatoAsync(clave, valor, ct);
+
+    /// <inheritdoc cref="IRpaClient.CrearFamiliaAsync"/>
+    public Task<FamiliaRobotDto> CrearFamiliaAsync(CrearFamiliaRobotRequest request, CancellationToken ct = default) => _client.CrearFamiliaAsync(request, ct);
+
+    /// <inheritdoc cref="IRpaClient.CerrarFamiliaAsync"/>
+    public Task CerrarFamiliaAsync(Guid familiaId, CancellationToken ct = default) => _client.CerrarFamiliaAsync(familiaId, ct);
+
+    /// <inheritdoc cref="IRpaClient.ObtenerFamiliaAsync"/>
+    public Task<FamiliaRobotDto> ObtenerFamiliaAsync(Guid familiaId, CancellationToken ct = default) => _client.ObtenerFamiliaAsync(familiaId, ct);
 }

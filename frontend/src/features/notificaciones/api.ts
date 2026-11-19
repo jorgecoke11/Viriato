@@ -1,7 +1,7 @@
 import { apiFetch } from '../../lib/apiClient'
 import type { PagedResult } from '../../lib/types'
 
-export type Disparador = 'EventoDelRobot' | 'EstadoNegocio' | 'CasoFallido' | 'CasoCompletado'
+export type Disparador = 'EventoDelRobot' | 'EstadoNegocio' | 'CasoFallido' | 'CasoCompletado' | 'FamiliaTerminada'
 
 export interface ReglaDeNotificacionDto {
   id: string
@@ -39,8 +39,10 @@ export interface EnvioDeNotificacionDto {
   id: string
   reglaId: string | null
   reglaNombre: string
-  casoId: string
+  /** Null for a notice about a family (then `familiaId`). */
+  casoId: string | null
   casoTitulo: string
+  familiaId: string | null
   destinatarios: string[]
   asunto: string
   estado: EstadoDeEnvio

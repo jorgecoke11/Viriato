@@ -1007,6 +1007,154 @@ namespace Viariato.Infrastructure.Migrations
                     b.ToTable("evidencias", "casos");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.Familia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("Cancelados")
+                        .HasColumnType("integer")
+                        .HasColumnName("cancelados");
+
+                    b.Property<Guid?>("CasoDeCierreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_de_cierre_id");
+
+                    b.Property<DateTimeOffset?>("CerradaAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cerrada_at");
+
+                    b.Property<int?>("Completados")
+                        .HasColumnType("integer")
+                        .HasColumnName("completados");
+
+                    b.Property<Guid?>("CreadaPorDespliegueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("creada_por_despliegue_id");
+
+                    b.Property<Guid?>("CreadaPorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("creada_por_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado");
+
+                    b.Property<int?>("Fallidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("fallidos");
+
+                    b.Property<Guid>("FlujoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_id");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("NotaDeCierre")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("nota_de_cierre");
+
+                    b.Property<int?>("ParticipantesEsperados")
+                        .HasColumnType("integer")
+                        .HasColumnName("participantes_esperados");
+
+                    b.Property<DateTimeOffset?>("TerminadaAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("terminada_at");
+
+                    b.Property<Guid>("TipoDeFamiliaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tipo_de_familia_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_familias");
+
+                    b.HasIndex("CasoDeCierreId")
+                        .HasDatabaseName("ix_familias_caso_de_cierre_id");
+
+                    b.HasIndex("Estado")
+                        .HasDatabaseName("ix_familias_estado")
+                        .HasFilter("estado <> 'Terminada'");
+
+                    b.HasIndex("TipoDeFamiliaId")
+                        .HasDatabaseName("ix_familias_tipo_de_familia_id");
+
+                    b.HasIndex("FlujoId", "CreatedAt")
+                        .HasDatabaseName("ix_familias_flujo_id_created_at");
+
+                    b.ToTable("familias", "casos");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.FamiliaEvento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("accion");
+
+                    b.Property<string>("DetalleJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("detalle_json");
+
+                    b.Property<Guid>("FamiliaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("familia_id");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_familia_eventos");
+
+                    b.HasIndex("FamiliaId", "OccurredAt")
+                        .HasDatabaseName("ix_familia_eventos_familia_id_occurred_at");
+
+                    b.ToTable("familia_eventos", "casos");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.MiembroDeFamilia", b =>
+                {
+                    b.Property<Guid>("FamiliaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("familia_id");
+
+                    b.Property<Guid>("CasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_id");
+
+                    b.Property<DateTimeOffset>("AnadidoAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("anadido_at");
+
+                    b.HasKey("FamiliaId", "CasoId")
+                        .HasName("pk_familia_miembros");
+
+                    b.HasIndex("CasoId")
+                        .HasDatabaseName("ix_familia_miembros_caso_id");
+
+                    b.ToTable("familia_miembros", "casos");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.ReglaDeReprocesamiento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1272,6 +1420,63 @@ namespace Viariato.Infrastructure.Migrations
                         .HasDatabaseName("ix_rpa_ejecucion_detalles_ejecucion_paso_id");
 
                     b.ToTable("rpa_ejecucion_detalles", "casos");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.TipoDeFamilia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("activo");
+
+                    b.Property<string>("Condicion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("condicion");
+
+                    b.Property<Guid?>("CreadorAlTerminarId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("creador_al_terminar_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<Guid>("FlujoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_id");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tipos_de_familia");
+
+                    b.HasIndex("CreadorAlTerminarId")
+                        .HasDatabaseName("ix_tipos_de_familia_creador_al_terminar_id");
+
+                    b.HasIndex("FlujoId", "Nombre")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tipos_de_familia_flujo_id_nombre");
+
+                    b.ToTable("tipos_de_familia", "casos");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.TipoDocumento", b =>
@@ -2097,7 +2302,7 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("asunto");
 
-                    b.Property<Guid>("CasoId")
+                    b.Property<Guid?>("CasoId")
                         .HasColumnType("uuid")
                         .HasColumnName("caso_id");
 
@@ -2128,6 +2333,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("estado");
+
+                    b.Property<Guid?>("FamiliaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("familia_id");
 
                     b.Property<Guid>("FlujoId")
                         .HasColumnType("uuid")
@@ -2164,6 +2373,9 @@ namespace Viariato.Infrastructure.Migrations
 
                     b.HasIndex("ConexionId")
                         .HasDatabaseName("ix_envios_conexion_id");
+
+                    b.HasIndex("FamiliaId")
+                        .HasDatabaseName("ix_envios_familia_id");
 
                     b.HasIndex("ReglaId")
                         .HasDatabaseName("ix_envios_regla_id");
@@ -3301,6 +3513,58 @@ namespace Viariato.Infrastructure.Migrations
                     b.Navigation("EjecucionPaso");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.Familia", b =>
+                {
+                    b.HasOne("Viariato.Modules.Casos.Domain.Caso", null)
+                        .WithMany()
+                        .HasForeignKey("CasoDeCierreId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_familias_casos_caso_de_cierre_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", null)
+                        .WithMany()
+                        .HasForeignKey("FlujoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_familias_flujos_flujo_id");
+
+                    b.HasOne("Viariato.Modules.Casos.Domain.TipoDeFamilia", "Tipo")
+                        .WithMany()
+                        .HasForeignKey("TipoDeFamiliaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_familias_tipo_de_familia_tipo_de_familia_id");
+
+                    b.Navigation("Tipo");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.FamiliaEvento", b =>
+                {
+                    b.HasOne("Viariato.Modules.Casos.Domain.Familia", null)
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_familia_eventos_familias_familia_id");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.MiembroDeFamilia", b =>
+                {
+                    b.HasOne("Viariato.Modules.Casos.Domain.Caso", null)
+                        .WithMany()
+                        .HasForeignKey("CasoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_familia_miembros_casos_caso_id");
+
+                    b.HasOne("Viariato.Modules.Casos.Domain.Familia", null)
+                        .WithMany("Miembros")
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_familia_miembros_familias_familia_id");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.ReglaDeReprocesamiento", b =>
                 {
                     b.HasOne("Viariato.Modules.Flujos.Domain.FlujoEstadoDef", null)
@@ -3368,6 +3632,22 @@ namespace Viariato.Infrastructure.Migrations
                         .HasConstraintName("fk_rpa_ejecucion_detalles_ejecucion_pasos_ejecucion_paso_id");
 
                     b.Navigation("EjecucionPaso");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.TipoDeFamilia", b =>
+                {
+                    b.HasOne("Viariato.Modules.Flujos.Domain.CreadorDeCaso", null)
+                        .WithMany()
+                        .HasForeignKey("CreadorAlTerminarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tipos_de_familia_creadores_de_caso_creador_al_terminar_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", null)
+                        .WithMany()
+                        .HasForeignKey("FlujoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tipos_de_familia_flujos_flujo_id");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.AsignacionFlujo", b =>
@@ -3552,7 +3832,6 @@ namespace Viariato.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("CasoId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
                         .HasConstraintName("fk_envios_casos_caso_id");
 
                     b.HasOne("Viariato.Modules.Conexiones.Domain.Conexion", null)
@@ -3561,6 +3840,12 @@ namespace Viariato.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_envios_conexiones_conexion_id");
+
+                    b.HasOne("Viariato.Modules.Casos.Domain.Familia", null)
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_envios_familias_familia_id");
 
                     b.HasOne("Viariato.Modules.Notificaciones.Domain.ReglaDeNotificacion", null)
                         .WithMany()
@@ -3762,6 +4047,11 @@ namespace Viariato.Infrastructure.Migrations
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.Ejecucion", b =>
                 {
                     b.Navigation("Pasos");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Casos.Domain.Familia", b =>
+                {
+                    b.Navigation("Miembros");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.Flujo", b =>

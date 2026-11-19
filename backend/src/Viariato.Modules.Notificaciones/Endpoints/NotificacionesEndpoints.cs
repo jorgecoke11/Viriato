@@ -29,8 +29,8 @@ public sealed record GuardarReglaRequest(
     string Asunto, string Cuerpo);
 
 public sealed record EnvioDeNotificacionDto(
-    Guid Id, Guid? ReglaId, string ReglaNombre, Guid CasoId, string CasoTitulo, IReadOnlyList<string> Destinatarios, string Asunto, string Estado,
-    int Intentos, string? UltimoError, DateTimeOffset CreatedAt, DateTimeOffset? EnviadoAt);
+    Guid Id, Guid? ReglaId, string ReglaNombre, Guid? CasoId, string CasoTitulo, IReadOnlyList<string> Destinatarios, string Asunto, string Estado,
+    int Intentos, string? UltimoError, DateTimeOffset CreatedAt, DateTimeOffset? EnviadoAt, Guid? FamiliaId = null);
 
 public sealed record ProbarReglaRequest(string? Destinatario);
 
@@ -133,13 +133,19 @@ internal static partial class NotificacionesEndpoints
 
         var total = await consulta.CountAsync(ct);
         var envios = await consulta.OrderByDescending(e => e.CreatedAt).Skip((pagina - 1) * tamano).Take(tamano)
-            .Join(db.Set<Caso>(), e => e.CasoId, c => c.Id, (e, c) => new { e, c.Titulo })
+            .Select(e => new
+            {
+                e,
+                // A notice is about a case or about a family: the title is whichever it is.
+                Titulo = db.Set<Caso>().Where(c => c.Id == e.CasoId).Select(c => c.Titulo).FirstOrDefault()
+                    ?? db.Set<Familia>().Where(f => f.Id == e.FamiliaId).Select(f => f.Nombre).FirstOrDefault() ?? string.Empty,
+            })
             .ToListAsync(ct);
 
         return Results.Ok(new PagedResult<EnvioDeNotificacionDto>(
             envios.Select(x => new EnvioDeNotificacionDto(
                 x.e.Id, x.e.ReglaId, x.e.ReglaNombre, x.e.CasoId, x.Titulo, x.e.Destinatarios, x.e.Asunto, x.e.Estado.ToString(), x.e.Intentos,
-                x.e.UltimoError, x.e.CreatedAt, x.e.EnviadoAt)).ToList(),
+                x.e.UltimoError, x.e.CreatedAt, x.e.EnviadoAt, x.e.FamiliaId)).ToList(),
             pagina, tamano, total));
     }
 
@@ -181,6 +187,17 @@ internal static partial class NotificacionesEndpoints
             }
         }
 
+        else if (disparador == DisparadorDeNotificacion.FamiliaTerminada)
+        {
+            var codigo = request.Codigo?.Trim();
+            if (!string.IsNullOrEmpty(codigo) && !await db.Set<TipoDeFamilia>().AnyAsync(t => t.FlujoId == flujoId && t.Nombre == codigo, ct))
+            {
+                Error("codigo", "Elige un tipo de familia del proceso, o ninguno para cualquiera.");
+            }
+
+            if (request.TipoCasoId is not null) Error("tipoCasoId", "Un aviso de familia no va por tipo de caso: déjalo vacío.");
+        }
+
         if (request.TipoCasoId is { } tipoId && !await db.Set<FlujoTipoCasoDef>().AnyAsync(t => t.Id == tipoId && t.FlujoId == flujoId, ct))
         {
             Error("tipoCasoId", "Ese tipo de caso no es de este proceso.");
@@ -214,7 +231,12 @@ internal static partial class NotificacionesEndpoints
         regla.Nombre = request.Nombre.Trim();
         regla.Activa = request.Activa;
         regla.Disparador = disparador;
-        regla.Codigo = disparador is DisparadorDeNotificacion.EventoDelRobot or DisparadorDeNotificacion.EstadoNegocio ? request.Codigo!.Trim() : null;
+        regla.Codigo = disparador switch
+        {
+            DisparadorDeNotificacion.EventoDelRobot or DisparadorDeNotificacion.EstadoNegocio => request.Codigo!.Trim(),
+            DisparadorDeNotificacion.FamiliaTerminada => string.IsNullOrWhiteSpace(request.Codigo) ? null : request.Codigo.Trim(),
+            _ => null,
+        };
         regla.TipoCasoId = request.TipoCasoId;
         regla.ConexionId = request.ConexionId;
         regla.Destinatarios = (request.Destinatarios ?? []).Select(d => d.Trim()).Where(d => d.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();

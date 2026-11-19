@@ -17,8 +17,10 @@ public sealed class NotificacionesOptions
 }
 
 /// <summary>What a case looked like when a rule fired: the values a notice can be written with.</summary>
+/// <param name="Ruta">Where {enlace} goes inside Viriato: the case by default; a family's notice points at the family.</param>
 public sealed record ContextoDelAviso(
-    Guid CasoId, string Caso, string Proceso, string? Tipo, string? Estado, DateTimeOffset Cuando, string? DatosJson, string? EventoJson);
+    Guid CasoId, string Caso, string Proceso, string? Tipo, string? Estado, DateTimeOffset Cuando, string? DatosJson, string? EventoJson,
+    string? Ruta = null);
 
 /// <summary>Writes a rule's subject and body for one case (see ReglaDeNotificacion for the placeholders).</summary>
 public static class RedaccionDeAvisos
@@ -41,7 +43,7 @@ public static class RedaccionDeAvisos
             ["estado"] = contexto.Estado ?? string.Empty,
             ["fecha"] = local.ToString("yyyy-MM-dd"),
             ["hora"] = local.ToString("HH:mm"),
-            ["enlace"] = string.IsNullOrWhiteSpace(opciones.UrlPublica) ? string.Empty : $"{opciones.UrlPublica.TrimEnd('/')}/casos/{contexto.CasoId}",
+            ["enlace"] = string.IsNullOrWhiteSpace(opciones.UrlPublica) ? string.Empty : $"{opciones.UrlPublica.TrimEnd('/')}/{contexto.Ruta ?? $"casos/{contexto.CasoId}"}",
         };
         var documentos = new Dictionary<string, string?> { ["datos"] = contexto.DatosJson, ["evento"] = contexto.EventoJson };
 

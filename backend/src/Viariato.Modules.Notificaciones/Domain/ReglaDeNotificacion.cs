@@ -9,6 +9,10 @@ public enum DisparadorDeNotificacion
     EstadoNegocio,
     CasoFallido,
     CasoCompletado,
+    /// <summary>A family of the process ended (every case of it did): <see cref="ReglaDeNotificacion.Codigo"/> is its type's name, or null
+    /// for any type. The notice is written with the family: {caso} is its name, {tipo} its type, {datos.total}, {datos.completados},
+    /// {datos.fallidos} and {datos.cancelados} how its cases ended, and {enlace} opens the family.</summary>
+    FamiliaTerminada,
 }
 
 /// <summary>
@@ -32,7 +36,7 @@ public sealed class ReglaDeNotificacion
 
     public DisparadorDeNotificacion Disparador { get; set; }
 
-    /// <summary>The robot's event or the business state's code; null for the other triggers.</summary>
+    /// <summary>The robot's event, the business state's code or the family type's name; null for the other triggers.</summary>
     public string? Codigo { get; set; }
 
     public Guid ConexionId { get; set; }
