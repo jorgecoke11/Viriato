@@ -20,7 +20,13 @@ public sealed record AperturaDeCaso(Guid? CasoId, string? Error);
 /// </summary>
 public sealed class AbridorDeCasos(AppDbContext db, IEjecucionOrchestrator orquestador)
 {
-    public async Task<AperturaDeCaso> AbrirAsync(Guid creadorId, string? datosDelLanzador, Guid lanzadorId, DateTimeOffset cuando, CancellationToken ct)
+    public Task<AperturaDeCaso> AbrirAsync(Guid creadorId, string? datosDelLanzador, Guid lanzadorId, DateTimeOffset cuando, CancellationToken ct) =>
+        AbrirAsync(creadorId, datosDelLanzador, new Dictionary<string, object?> { ["creadoPorLanzadorId"] = lanzadorId }, cuando, ct);
+
+    /// <summary>The same, for whoever else opens Cases with nobody asking (a family that ended opens its closing case).</summary>
+    /// <param name="origen">Who opened it, as it goes in the «Creado» line of the case's history (e.g. <c>creadoPorFamiliaId</c>).</param>
+    public async Task<AperturaDeCaso> AbrirAsync(
+        Guid creadorId, string? datosDelLanzador, IReadOnlyDictionary<string, object?> origen, DateTimeOffset cuando, CancellationToken ct)
     {
         var creador = await db.Set<CreadorDeCaso>().Include(c => c.Flujo).Include(c => c.TipoCaso).Include(c => c.Formulario)
             .FirstOrDefaultAsync(c => c.Id == creadorId, ct);
@@ -80,7 +86,7 @@ public sealed class AbridorDeCasos(AppDbContext db, IEjecucionOrchestrator orque
         db.Add(new CasoEvento
         {
             CasoId = caso.Id, Accion = CasoEventoAccion.Creado, OccurredAt = ahora,
-            DetalleJson = JsonSerializer.Serialize(new { creadoPorLanzadorId = lanzadorId, creadorId = creador.Id }),
+            DetalleJson = JsonSerializer.Serialize(new Dictionary<string, object?>(origen) { ["creadorId"] = creador.Id }),
         });
         if (estado is not null)
         {

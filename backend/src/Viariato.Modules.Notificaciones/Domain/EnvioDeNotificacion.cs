@@ -26,7 +26,11 @@ public sealed class EnvioDeNotificacion
 
     public required string ReglaNombre { get; set; }
 
-    public Guid CasoId { get; set; }
+    /// <summary>The case it is about; null for a notice about a family.</summary>
+    public Guid? CasoId { get; set; }
+
+    /// <summary>The family it is about (trigger <see cref="DisparadorDeNotificacion.FamiliaTerminada"/>).</summary>
+    public Guid? FamiliaId { get; set; }
 
     public Guid ConexionId { get; set; }
 

@@ -22,6 +22,7 @@ public static class CasosModuleEndpoints
         endpoints.MapAlmacenRobotEndpoints();
         endpoints.MapAlmacenDelProcesoEndpoints();
         endpoints.MapReprocesamientosEndpoints();
+        endpoints.MapFamiliasEndpoints();
 
         return endpoints;
     }

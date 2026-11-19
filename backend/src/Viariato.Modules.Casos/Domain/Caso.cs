@@ -59,4 +59,8 @@ public sealed class Caso
     public DateTimeOffset? CompletedAt { get; set; }
 
     public Guid? CreatedByUserId { get; set; }
+
+    /// <summary>The case whose robot created this one (from one of its steps), if it was so: «creado por». Null for a case a person, a
+    /// launcher or a robot outside any case opened.</summary>
+    public Guid? CasoPadreId { get; set; }
 }

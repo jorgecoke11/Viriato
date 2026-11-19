@@ -23,5 +23,8 @@ public sealed class DespachoOptions
     /// <summary>How often the reprocessor looks for reprocessings whose moment has come. One «right away» runs at most this many seconds late.</summary>
     public int ReprocesamientosSegundos { get; set; } = 10;
 
+    /// <summary>How often the family finisher looks for families to close and end.</summary>
+    public int FamiliasSegundos { get; set; } = 10;
+
     public TimeSpan VentanaConexion => TimeSpan.FromSeconds(Math.Max(1, VentanaConexionSegundos));
 }

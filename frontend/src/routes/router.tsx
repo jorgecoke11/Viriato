@@ -10,6 +10,8 @@ import { DashboardPage } from '../features/casos/pages/DashboardPage'
 import { NuevoCasoAvanzadoPage } from '../features/casos/pages/NuevoCasoAvanzadoPage'
 import { NuevoCasoPage } from '../features/casos/pages/NuevoCasoPage'
 import { TiposDocumentoPage } from '../features/casos/pages/TiposDocumentoPage'
+import { FamiliaDetailPage } from '../features/familias/pages/FamiliaDetailPage'
+import { FamiliasPage } from '../features/familias/pages/FamiliasPage'
 import { FlujoDetailPage } from '../features/flujos/pages/FlujoDetailPage'
 import { FlujosListPage } from '../features/flujos/pages/FlujosListPage'
 import { StorageConfigsPage } from '../features/flujos/pages/StorageConfigsPage'
@@ -198,6 +200,22 @@ export const router = createBrowserRouter([
       },
       // The bulk actions are part of the list now; old links and bookmarks still land there.
       { path: 'casos/acciones-masivas', element: <Navigate to="/casos/lista" replace /> },
+      {
+        path: 'familias',
+        element: (
+          <ProtectedRoute>
+            <FamiliasPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'familias/:id',
+        element: (
+          <ProtectedRoute>
+            <FamiliaDetailPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: 'casos/nuevo',
         element: (

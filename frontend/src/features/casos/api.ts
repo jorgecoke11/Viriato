@@ -132,6 +132,9 @@ export interface CasoDetailDto extends CasoListItemDto {
   datosJson: string | null
   ejecucionActual: EjecucionDto | null
   eventosRecientes: CasoEventoDto[]
+  /** The case whose robot created this one, if any. */
+  casoPadreId?: string | null
+  casoPadreTitulo?: string | null
 }
 
 export interface EjecucionResumenDto {
@@ -260,6 +263,8 @@ export interface ListCasosFilters {
   flujoId?: string
   /** Several processes, separated by commas. */
   flujoIds?: string
+  /** Only the Casos of this family. */
+  familiaId?: string
   search?: string
   desde?: string
   hasta?: string

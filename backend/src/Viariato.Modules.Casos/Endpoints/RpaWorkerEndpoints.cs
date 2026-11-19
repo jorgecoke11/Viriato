@@ -12,6 +12,7 @@ using Viariato.Infrastructure;
 using Viariato.Infrastructure.Trabajos;
 using Viariato.Modules.Casos.Contracts;
 using Viariato.Modules.Casos.Domain;
+using Viariato.Modules.Casos.Familias;
 using Viariato.Modules.Casos.Lanzadores;
 using Viariato.Modules.Casos.Orchestration;
 using Viariato.Modules.Casos.Storage;
@@ -52,6 +53,9 @@ internal static class RpaWorkerEndpoints
         group.MapPost("/pasos/{id:guid}/datos", ActualizarDatosAsync);
         group.MapPost("/pasos/{id:guid}/en-vivo", ReportarEnVivoAsync);
         group.MapPost("/pasos/{id:guid}/notificar", NotificarAsync);
+        group.MapPost("/familias", CrearFamiliaAsync);
+        group.MapPost("/familias/{id:guid}/cerrar", CerrarFamiliaAsync);
+        group.MapGet("/familias/{id:guid}", ObtenerFamiliaAsync);
     }
 
     /// <summary>Whether the robot is switched on and how its screen is handled. With <paramref name="paso"/> — the step the robot is
@@ -109,6 +113,7 @@ internal static class RpaWorkerEndpoints
         ClaimsPrincipal principal,
         AppDbContext db,
         IEjecucionOrchestrator orchestrator,
+        GestorDeFamilias familias,
         HttpContext http,
         CancellationToken ct)
     {
@@ -227,6 +232,35 @@ internal static class RpaWorkerEndpoints
             UpdatedAt = now,
         };
         db.Add(caso);
+
+        // Created from a step of a case this robot is working: that case is its parent, and the families that form by themselves from
+        // that step take it in.
+        if (request.PasoOrigenId is { } pasoOrigenId)
+        {
+            if (await RpaWorkerAuthorization.RequireClaimedStepAsync(db, despliegue.Id, pasoOrigenId, ct) is null)
+            {
+                return ProblemResults.Conflict(http, "El paso desde el que se crea el caso no es uno que esté trabajando este robot.");
+            }
+
+            var pasoOrigen = await db.Set<EjecucionPaso>().AsNoTracking().FirstAsync(p => p.Id == pasoOrigenId, ct);
+            var nombrePaso = await db.Set<FlujoPasoDef>().AsNoTracking().Where(p => p.Id == pasoOrigen.FlujoPasoDefId).Select(p => p.Nombre).FirstAsync(ct);
+            caso.CasoPadreId = pasoOrigen.CasoId;
+            await familias.AnadirALasQueSeFormanSolasAsync(caso, pasoOrigen, nombrePaso, ct);
+        }
+
+        // Its families, in the same save: a case is never born outside the family it was meant for.
+        foreach (var familiaId in (request.Familias ?? []).Distinct())
+        {
+            try
+            {
+                await familias.AnadirAsync(familiaId, [caso.Id], flujoDestinoId, ct);
+            }
+            catch (FamiliaNoValidaException ex)
+            {
+                return ex.NoEncontrada ? ProblemResults.NotFound(http, ex.Message) : ProblemResults.Conflict(http, ex.Message);
+            }
+        }
+
         db.Add(new CasoEvento
         {
             CasoId = caso.Id,
@@ -558,6 +592,81 @@ internal static class RpaWorkerEndpoints
     /// one of the same name (the others stay). Only the step the robot has claimed can do it, on its own Caso. The data of a Caso is what
     /// every robot of the process reads (<c>DatosCasoJson</c>), so this is how a chain of services passes the baton. It is not checked against
     /// the type's form: that form is what a person fills in, and this is what a robot adds afterwards.</summary>
+    /// <summary>A robot opens a family in the process it can create cases in (the same permission: a family is for the cases it makes).</summary>
+    private static async Task<IResult> CrearFamiliaAsync(
+        CrearFamiliaRobotRequest request, ClaimsPrincipal principal, AppDbContext db, GestorDeFamilias familias, HttpContext http, CancellationToken ct)
+    {
+        var despliegue = await db.Set<Despliegue>().AsNoTracking().FirstOrDefaultAsync(d => d.Id == principal.GetDespliegueId(), ct);
+        if (despliegue is null) return ProblemResults.NotFound(http, "Despliegue no encontrado.");
+        if (!despliegue.Encendido) return ProblemResults.Conflict(http, "El despliegue está apagado.");
+        if (despliegue.FlujoDestinoId is not { } flujoDestinoId)
+        {
+            return ProblemResults.Forbidden(http, "Este despliegue no puede crear casos, ni por tanto familias. Indica en Despliegues en qué proceso puede hacerlo.");
+        }
+
+        Familia familia;
+        try
+        {
+            familia = await familias.CrearAsync(
+                flujoDestinoId, request.Tipo ?? string.Empty, request.Nombre ?? string.Empty, request.ParticipantesEsperados, null, despliegue.Id, ct);
+        }
+        catch (FamiliaNoValidaException ex)
+        {
+            return ProblemResults.Conflict(http, ex.Message);
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(FamiliaParaRobot(familia, familia.Tipo!.Nombre, []));
+    }
+
+    private static async Task<IResult> CerrarFamiliaAsync(
+        Guid id, ClaimsPrincipal principal, AppDbContext db, GestorDeFamilias familias, HttpContext http, CancellationToken ct)
+    {
+        var flujoDestinoId = await db.Set<Despliegue>().AsNoTracking()
+            .Where(d => d.Id == principal.GetDespliegueId()).Select(d => d.FlujoDestinoId).FirstOrDefaultAsync(ct);
+        if (flujoDestinoId is null) return ProblemResults.NotFound(http, "Familia no encontrada.");
+
+        try
+        {
+            await familias.CerrarAsync(id, flujoDestinoId, ct);
+        }
+        catch (FamiliaNoValidaException ex)
+        {
+            return ProblemResults.NotFound(http, ex.Message);
+        }
+
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+
+    /// <summary>A family with its cases' data, for the robots of its process, of the process that fills it, and of its closing case's.</summary>
+    private static async Task<IResult> ObtenerFamiliaAsync(Guid id, ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
+    {
+        var flujoId = principal.GetFlujoId();
+        var flujoDestinoId = await db.Set<Despliegue>().AsNoTracking()
+            .Where(d => d.Id == principal.GetDespliegueId()).Select(d => d.FlujoDestinoId).FirstOrDefaultAsync(ct);
+
+        var familia = await db.Set<Familia>().AsNoTracking().Include(f => f.Tipo).FirstOrDefaultAsync(f => f.Id == id, ct);
+        var cierreEsMio = familia?.CasoDeCierreId is { } cierreId
+            && await db.Set<Caso>().AnyAsync(c => c.Id == cierreId && c.FlujoId == flujoId, ct);
+        if (familia is null || (familia.FlujoId != flujoId && familia.FlujoId != flujoDestinoId && !cierreEsMio))
+        {
+            return ProblemResults.NotFound(http, "Familia no encontrada.");
+        }
+
+        var casos = await db.Set<MiembroDeFamilia>().AsNoTracking()
+            .Where(m => m.FamiliaId == id)
+            .Join(db.Set<Caso>(), m => m.CasoId, c => c.Id, (m, c) => c)
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new MiembroDeFamiliaRobotDto(
+                c.Id, c.Titulo, c.Estado.ToString(), c.EstadoNegocioActual != null ? c.EstadoNegocioActual.Codigo : null, c.DatosJson))
+            .ToListAsync(ct);
+        return Results.Ok(FamiliaParaRobot(familia, familia.Tipo!.Nombre, casos));
+    }
+
+    private static FamiliaRobotDto FamiliaParaRobot(Familia f, string tipo, IReadOnlyList<MiembroDeFamiliaRobotDto> casos) =>
+        new(f.Id, f.Nombre, tipo, f.Estado.ToString(), f.ParticipantesEsperados, f.Completados, f.Fallidos, f.Cancelados, casos);
+
     private static async Task<IResult> ActualizarDatosAsync(
         Guid id, ActualizarDatosCasoRobotRequest request, ClaimsPrincipal principal, AppDbContext db, HttpContext http, CancellationToken ct)
     {

@@ -39,6 +39,11 @@ public static class DependencyInjection
         services.AddScoped<Reprocesamientos.ReprocesadorDeCasos>();
         services.AddHostedService<Reprocesamientos.VigilanteDeReprocesamientos>();
 
+        // Families: created and closed by people and robots (the manager), ended by the finisher, apart, so their actions run once.
+        services.AddScoped<Familias.GestorDeFamilias>();
+        services.AddScoped<Familias.TerminadorDeFamilias>();
+        services.AddHostedService<Familias.VigilanteDeFamilias>();
+
         services.AddKeyedScoped<IPasoEjecutor, RpaPasoEjecutor>(TipoPaso.Rpa);
         services.AddKeyedScoped<IPasoEjecutor, AgentePasoEjecutor>(TipoPaso.Agente);
         services.AddKeyedScoped<IPasoEjecutor, ApiPasoEjecutor>(TipoPaso.Api);
@@ -58,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<EjecutorDeAccionesMasivas>();
         services.AddScoped<IAccionMasivaSobreCaso, CancelarCasoAccion>();
         services.AddScoped<IAccionMasivaSobreCaso, ReprocesarCasoAccion>();
+        services.AddScoped<IAccionMasivaSobreCaso, AnadirAFamiliaAccion>();
         services.AddSingleton<ResolverRevisionRequestValidator>();
         services.AddSingleton<IValidator<CreateTipoDocumentoRequest>, CreateTipoDocumentoRequestValidator>();
         services.AddSingleton<IValidator<UpdateTipoDocumentoRequest>, UpdateTipoDocumentoRequestValidator>();

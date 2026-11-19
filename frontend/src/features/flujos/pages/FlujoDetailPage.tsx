@@ -14,6 +14,7 @@ import { FlujoCreadoresPanel } from '../FlujoCreadoresPanel'
 import { FlujoLanzadoresPanel } from '../FlujoLanzadoresPanel'
 import { FlujoNotificacionesPanel } from '../../notificaciones/FlujoNotificacionesPanel'
 import { FlujoReprocesamientosPanel } from '../../reprocesamientos/FlujoReprocesamientosPanel'
+import { FlujoTiposDeFamiliaPanel } from '../../familias/FlujoTiposDeFamiliaPanel'
 import { FlujoEstadosPanel } from '../FlujoEstadosPanel'
 import { FlujoFormulariosPanel } from '../FlujoFormulariosPanel'
 import { FlujoParametrosPanel } from '../FlujoParametrosPanel'
@@ -21,7 +22,7 @@ import { FlujoTiposCasoPanel } from '../FlujoTiposCasoPanel'
 import { FlujoVersionesPanel } from '../FlujoVersionesPanel'
 import { BackLink } from '../../../components/ui/BackLink'
 
-type Tab = 'versiones' | 'estados' | 'tipos' | 'formularios' | 'creadores' | 'lanzadores' | 'notificaciones' | 'reprocesamientos' | 'parametros' | 'almacen'
+type Tab = 'versiones' | 'estados' | 'tipos' | 'formularios' | 'creadores' | 'lanzadores' | 'notificaciones' | 'reprocesamientos' | 'familias' | 'parametros' | 'almacen'
 
 export function FlujoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -58,6 +59,7 @@ export function FlujoDetailPage() {
             { value: 'lanzadores', label: 'Lanzadores' },
             { value: 'notificaciones', label: 'Notificaciones' },
             { value: 'reprocesamientos', label: 'Reprocesamientos' },
+            { value: 'familias', label: 'Familias' },
             { value: 'parametros', label: 'Parámetros' },
             { value: 'almacen', label: 'Almacén' },
           ]}
@@ -174,6 +176,20 @@ export function FlujoDetailPage() {
             >
               <Card className="mt-4">
                 <FlujoReprocesamientosPanel flujoId={flujo.id} />
+              </Card>
+            </motion.div>
+          )}
+
+          {tab === 'familias' && (
+            <motion.div
+              key="familias"
+              variants={tabPanelVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <Card className="mt-4">
+                <FlujoTiposDeFamiliaPanel flujoId={flujo.id} />
               </Card>
             </motion.div>
           )}

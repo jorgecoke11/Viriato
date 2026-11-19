@@ -9,6 +9,7 @@ import { IconButton } from '../../components/ui/IconButton'
 import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
 import * as conexionesApi from '../conexiones/api'
+import * as familiasApi from '../familias/api'
 import * as flujosApi from '../flujos/api'
 import * as api from './api'
 import type { Disparador, EnvioDeNotificacionDto, GuardarReglaRequest, ReglaDeNotificacionDto } from './api'
@@ -20,6 +21,7 @@ interface Valores {
   disparador: string
   evento: string
   estado: string
+  tipoDeFamilia: string
   tipoCasoId: string
   conexionId: string
   destinatarios: string
@@ -32,6 +34,7 @@ const DISPARADORES: { value: Disparador; label: string }[] = [
   { value: 'EstadoNegocio', label: 'El caso llega a un estado de negocio' },
   { value: 'CasoFallido', label: 'El caso falla' },
   { value: 'CasoCompletado', label: 'El caso termina' },
+  { value: 'FamiliaTerminada', label: 'Una familia termina' },
 ]
 
 const AYUDA_PLANTILLA =
@@ -45,8 +48,13 @@ function aSolicitud(v: Valores): GuardarReglaRequest {
     nombre: v.nombre.trim(),
     activa: v.activa,
     disparador,
-    codigo: disparador === 'EventoDelRobot' ? v.evento.trim() : disparador === 'EstadoNegocio' ? v.estado : null,
-    tipoCasoId: v.tipoCasoId || null,
+    codigo:
+      disparador === 'EventoDelRobot' ? v.evento.trim()
+      : disparador === 'EstadoNegocio' ? v.estado
+      : disparador === 'FamiliaTerminada' ? v.tipoDeFamilia || null
+      : null,
+    // A family's notice is not about one type of case.
+    tipoCasoId: disparador === 'FamiliaTerminada' ? null : v.tipoCasoId || null,
     conexionId: v.conexionId,
     destinatarios: api.leerDestinatarios(v.destinatarios),
     asunto: v.asunto,
@@ -67,6 +75,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
   const [ocupado, setOcupado] = useState<string | null>(null)
   const tiposQuery = useQuery({ queryKey: ['flujo-tipos', flujoId], queryFn: () => flujosApi.listFlujoTiposCaso(flujoId) })
   const estadosQuery = useQuery({ queryKey: ['flujo-estados', flujoId], queryFn: () => flujosApi.listFlujoEstados(flujoId) })
+  const familiasQuery = useQuery({ queryKey: ['flujo-tipos-de-familia', flujoId], queryFn: () => familiasApi.listTipos(flujoId) })
   const conexionesQuery = useQuery({ queryKey: ['conexiones-para-enviar'], queryFn: conexionesApi.listConexionesParaEnviar })
   const conexiones = useMemo(() => conexionesQuery.data ?? [], [conexionesQuery.data])
 
@@ -91,9 +100,18 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
         options: [{ value: '', label: 'Elige un estado…' }, ...(estadosQuery.data ?? []).map((e) => ({ value: e.codigo, label: e.display }))],
       },
       {
+        name: 'tipoDeFamilia',
+        label: 'Tipo de familia',
+        type: 'select',
+        visibleWhen: (v) => v.disparador === 'FamiliaTerminada',
+        options: [{ value: '', label: 'Cualquiera' }, ...(familiasQuery.data ?? []).map((t) => ({ value: t.nombre, label: t.nombre }))],
+        helpText: 'En el aviso, {caso} es el nombre de la familia y {datos.total}, {datos.completados}, {datos.fallidos} y {datos.cancelados} cómo acabaron sus casos; {enlace} abre la familia.',
+      },
+      {
         name: 'tipoCasoId',
         label: 'Tipo de caso',
         type: 'select',
+        visibleWhen: (v) => v.disparador !== 'FamiliaTerminada',
         options: [{ value: '', label: 'Cualquiera' }, ...(tiposQuery.data ?? []).map((t) => ({ value: t.id, label: t.nombre }))],
       },
       {
@@ -109,7 +127,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
       { name: 'cuerpo', label: 'Texto', type: 'textarea', rows: 6, required: true },
       { name: 'activa', label: 'Activa', type: 'checkbox' },
     ],
-    [conexiones, estadosQuery.data, tiposQuery.data],
+    [conexiones, estadosQuery.data, tiposQuery.data, familiasQuery.data],
   )
 
   const probar = async (regla: ReglaDeNotificacionDto) => {
@@ -149,7 +167,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
         <span className="flex flex-col">
           <span className="text-sm text-gray-700">{DISPARADORES.find((d) => d.value === r.disparador)?.label}</span>
           {r.codigo && <span className="font-mono text-xs text-gray-500">{r.codigo}</span>}
-          <span className="text-xs text-gray-500">{r.tipoCasoNombre ?? 'Cualquier tipo'}</span>
+          {r.disparador !== 'FamiliaTerminada' && <span className="text-xs text-gray-500">{r.tipoCasoNombre ?? 'Cualquier tipo'}</span>}
         </span>
       ),
     },
@@ -185,7 +203,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
           <span className="text-sm text-gray-900">{e.asunto}</span>
           <span className="text-xs text-gray-500">
             {e.reglaNombre} ·{' '}
-            <Link to={`/casos/${e.casoId}`} className="font-medium text-indigo-600 hover:text-indigo-700">
+            <Link to={e.casoId ? `/casos/${e.casoId}` : `/familias/${e.familiaId}`} className="font-medium text-indigo-600 hover:text-indigo-700">
               {e.casoTitulo}
             </Link>
           </span>
@@ -224,6 +242,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
       disparador: 'EventoDelRobot',
       evento: '',
       estado: '',
+      tipoDeFamilia: '',
       tipoCasoId: '',
       conexionId: conexiones[0]?.id ?? '',
       destinatarios: '',
@@ -236,6 +255,7 @@ export function FlujoNotificacionesPanel({ flujoId }: { flujoId: string }) {
       disparador: r.disparador,
       evento: r.disparador === 'EventoDelRobot' ? (r.codigo ?? '') : '',
       estado: r.disparador === 'EstadoNegocio' ? (r.codigo ?? '') : '',
+      tipoDeFamilia: r.disparador === 'FamiliaTerminada' ? (r.codigo ?? '') : '',
       tipoCasoId: r.tipoCasoId ?? '',
       conexionId: r.conexionId,
       destinatarios: r.destinatarios.join('\n'),

@@ -20,6 +20,9 @@ namespace Viariato.ApiContracts;
 /// <param name="Creador">Name of one of the process's creators of cases, or null for none. It decides what the request leaves out
 /// (type, business state, starting step, title) and gives the Caso its form, against which the data are checked. Without a creator
 /// the data are free-form JSON.</param>
+/// <param name="Familias">Ids of open families of the process the Caso joins as it is born (see <c>CrearFamiliaAsync</c>).</param>
+/// <param name="PasoOrigenId">The step (of a Caso this robot is working) the Caso is created from: that Caso becomes its parent, and the
+/// families that form by themselves from that step take it in. <c>RpaStepContext.CrearCasoAsync</c> fills it in by itself.</param>
 public sealed record CrearCasoRobotRequest(
     string? Titulo,
     string? DatosJson,
@@ -27,4 +30,6 @@ public sealed record CrearCasoRobotRequest(
     string? EstadoNegocioCodigo = null,
     string? PasoInicial = null,
     int Prioridad = 0,
-    string? Creador = null);
+    string? Creador = null,
+    IReadOnlyList<Guid>? Familias = null,
+    Guid? PasoOrigenId = null);

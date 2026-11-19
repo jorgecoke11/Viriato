@@ -147,6 +147,28 @@ public sealed class RpaClient : IRpaClient, IDisposable
         return dato.TryGetProperty("valor", out var valor) ? valor.Clone() : null;
     }
 
+    public async Task<FamiliaRobotDto> CrearFamiliaAsync(CrearFamiliaRobotRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        using var response = await _http.PostAsJsonAsync($"{RpaRoute}/familias", request, ct).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+        return (await response.Content.ReadFromJsonAsync<FamiliaRobotDto>(ct).ConfigureAwait(false))!;
+    }
+
+    public async Task CerrarFamiliaAsync(Guid familiaId, CancellationToken ct = default)
+    {
+        using var response = await _http.PostAsync($"{RpaRoute}/familias/{familiaId}/cerrar", content: null, ct).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+    }
+
+    public async Task<FamiliaRobotDto> ObtenerFamiliaAsync(Guid familiaId, CancellationToken ct = default)
+    {
+        using var response = await _http.GetAsync($"{RpaRoute}/familias/{familiaId}", ct).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+        return (await response.Content.ReadFromJsonAsync<FamiliaRobotDto>(ct).ConfigureAwait(false))!;
+    }
+
     public async Task GuardarDatoAsync(string clave, object valor, CancellationToken ct = default)
     {
         using var response = await _http.PutAsJsonAsync($"{RpaRoute}/almacen/{Uri.EscapeDataString(clave)}", valor, ct).ConfigureAwait(false);

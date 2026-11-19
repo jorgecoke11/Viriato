@@ -32,7 +32,9 @@ public sealed record CasoDetailDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? CompletedAt,
     EjecucionDto? EjecucionActual,
-    IReadOnlyList<CasoEventoDto> EventosRecientes);
+    IReadOnlyList<CasoEventoDto> EventosRecientes,
+    Guid? CasoPadreId = null,
+    string? CasoPadreTitulo = null);
 
 /// <param name="FormularioId">The form the data are written with (one of the process's): they are checked against it now and whenever
 /// they are edited. Null: free-form JSON.</param>

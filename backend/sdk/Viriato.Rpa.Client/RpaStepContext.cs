@@ -37,9 +37,15 @@ public sealed class RpaStepContext
     public Task<CredencialRobotDto> ObtenerCredencialAsync(string nombre, CancellationToken ct = default) =>
         _client.ObtenerCredencialAsync(nombre, ct);
 
-    /// <inheritdoc cref="IRpaClient.CrearCasoAsync"/>
-    public Task<CasoCreadoDto> CrearCasoAsync(CrearCasoRobotRequest request, CancellationToken ct = default) =>
-        _client.CrearCasoAsync(request, ct);
+    /// <summary>
+    /// <see cref="IRpaClient.CrearCasoAsync"/> from this step: the new Caso is a child of this step's Caso, and joins the families the
+    /// process forms by themselves from this step (e.g. one per brand of what a case creator creates), with nothing else to do here.
+    /// </summary>
+    public Task<CasoCreadoDto> CrearCasoAsync(CrearCasoRobotRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return _client.CrearCasoAsync(request with { PasoOrigenId = request.PasoOrigenId ?? Ejecucion.EjecucionPasoId }, ct);
+    }
 
     /// <inheritdoc cref="IRpaClient.AgregarEvidenciaAsync"/>
     public Task AgregarEvidenciaAsync(
@@ -124,4 +130,13 @@ public sealed class RpaStepContext
 
     /// <inheritdoc cref="IRpaClient.GuardarDatoAsync"/>
     public Task GuardarDatoAsync(string clave, object valor, CancellationToken ct = default) => _client.GuardarDatoAsync(clave, valor, ct);
+
+    /// <inheritdoc cref="IRpaClient.CrearFamiliaAsync"/>
+    public Task<FamiliaRobotDto> CrearFamiliaAsync(CrearFamiliaRobotRequest request, CancellationToken ct = default) => _client.CrearFamiliaAsync(request, ct);
+
+    /// <inheritdoc cref="IRpaClient.CerrarFamiliaAsync"/>
+    public Task CerrarFamiliaAsync(Guid familiaId, CancellationToken ct = default) => _client.CerrarFamiliaAsync(familiaId, ct);
+
+    /// <inheritdoc cref="IRpaClient.ObtenerFamiliaAsync"/>
+    public Task<FamiliaRobotDto> ObtenerFamiliaAsync(Guid familiaId, CancellationToken ct = default) => _client.ObtenerFamiliaAsync(familiaId, ct);
 }

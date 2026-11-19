@@ -12,6 +12,7 @@ Todas se montan con las mismas piezas:
 - Formularios: [formularios.md](formularios.md)
 - Tablas genéricas: [tablas-genericas.md](tablas-genericas.md)
 - Almacén del proceso y notificaciones: [notificaciones.md](notificaciones.md)
+- Familias (casos que acaban juntos y un caso de cierre): [familias.md](familias.md)
 
 Esfuerzo:
 - 🟢 fácil: APIs públicas, sin webs difíciles.
