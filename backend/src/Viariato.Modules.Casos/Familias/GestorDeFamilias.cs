@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Viariato.Infrastructure;
 using Viariato.Modules.Casos.Domain;
+using Viariato.Modules.Flujos.Domain;
 
 namespace Viariato.Modules.Casos.Familias;
 
@@ -112,6 +113,67 @@ public sealed class GestorDeFamilias(AppDbContext db)
             DetalleJson = JsonSerializer.Serialize(new { miembros, automatica = false }),
             OccurredAt = ahora,
         });
+    }
+
+    /// <summary>
+    /// A robot working <paramref name="pasoOrigen"/> of a case has just created <paramref name="caso"/> (not saved yet): it goes into the
+    /// families that form by themselves from that step — its parent case's open family of each such type of the new case's process (one
+    /// per case type if the type says so), created with the first case. Each family follows the step's latest attempt, which is what
+    /// closes it when it ends well (<see cref="TerminadorDeFamilias"/>).
+    /// </summary>
+    public async Task AnadirALasQueSeFormanSolasAsync(Caso caso, EjecucionPaso pasoOrigen, string nombrePaso, CancellationToken ct)
+    {
+        var tipos = await db.Set<TipoDeFamilia>()
+            .Where(t => t.FlujoId == caso.FlujoId && t.Activo && t.PasoQueLaForma != null && t.PasoQueLaForma.ToLower() == nombrePaso.ToLower())
+            .ToListAsync(ct);
+        if (tipos.Count == 0) return;
+
+        var padre = await db.Set<Caso>().AsNoTracking().Where(c => c.Id == pasoOrigen.CasoId).Select(c => c.Titulo).FirstAsync(ct);
+        var ahora = DateTimeOffset.UtcNow;
+        foreach (var tipo in tipos)
+        {
+            var tipoCasoId = tipo.UnaPorTipoDeCaso ? caso.TipoCasoId : null;
+            var familia = db.ChangeTracker.Entries<Familia>().Select(e => e.Entity)
+                    .FirstOrDefault(f => f.Estado == EstadoDeFamilia.Abierta && f.CasoOrigenId == pasoOrigen.CasoId && f.TipoDeFamiliaId == tipo.Id && f.TipoCasoId == tipoCasoId)
+                ?? await db.Set<Familia>()
+                    .Where(f => f.Estado == EstadoDeFamilia.Abierta && f.CasoOrigenId == pasoOrigen.CasoId && f.TipoDeFamiliaId == tipo.Id && f.TipoCasoId == tipoCasoId)
+                    .OrderByDescending(f => f.CreatedAt)
+                    .FirstOrDefaultAsync(ct);
+
+            if (familia is null)
+            {
+                var nombre = padre;
+                if (tipo.UnaPorTipoDeCaso)
+                {
+                    var tipoCaso = tipoCasoId is { } id
+                        ? await db.Set<FlujoTipoCasoDef>().AsNoTracking().Where(t => t.Id == id).Select(t => t.Nombre).FirstOrDefaultAsync(ct)
+                        : null;
+                    nombre = $"{padre} · {tipoCaso ?? "sin tipo"}";
+                }
+
+                familia = new Familia
+                {
+                    FlujoId = caso.FlujoId,
+                    TipoDeFamiliaId = tipo.Id,
+                    Tipo = tipo,
+                    Nombre = nombre.Length > 200 ? nombre[..200] : nombre,
+                    CasoOrigenId = pasoOrigen.CasoId,
+                    TipoCasoId = tipoCasoId,
+                    CreatedAt = ahora,
+                };
+                db.Add(familia);
+                db.Add(new FamiliaEvento
+                {
+                    FamiliaId = familia.Id,
+                    Accion = FamiliaEventoAccion.Creada,
+                    DetalleJson = JsonSerializer.Serialize(new { tipo = tipo.Nombre, casoOrigenId = pasoOrigen.CasoId, paso = nombrePaso }),
+                    OccurredAt = ahora,
+                });
+            }
+
+            familia.PasoOrigenId = pasoOrigen.Id;
+            db.Add(new MiembroDeFamilia { FamiliaId = familia.Id, CasoId = caso.Id, AnadidoAt = ahora });
+        }
     }
 
     private IEnumerable<Guid> EnEsteGuardado(Guid familiaId) =>

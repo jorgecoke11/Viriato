@@ -15,9 +15,14 @@ namespace Viariato.Modules.Casos.Endpoints;
 
 public sealed record TipoDeFamiliaDto(
     Guid Id, Guid FlujoId, string Nombre, string? Descripcion, bool Activo, Guid? CreadorAlTerminarId, string? CreadorAlTerminarNombre,
-    string? CreadorAlTerminarProceso, string Condicion, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+    string? CreadorAlTerminarProceso, string Condicion, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, string? PasoQueLaForma = null,
+    bool UnaPorTipoDeCaso = false);
 
-public sealed record GuardarTipoDeFamiliaRequest(string Nombre, string? Descripcion, bool Activo, Guid? CreadorAlTerminarId, string? Condicion);
+/// <param name="PasoQueLaForma">Name of a step of the process: its families form by themselves with the cases a case creates from that
+/// step. Null: robots or people create them.</param>
+public sealed record GuardarTipoDeFamiliaRequest(
+    string Nombre, string? Descripcion, bool Activo, Guid? CreadorAlTerminarId, string? Condicion, string? PasoQueLaForma = null,
+    bool UnaPorTipoDeCaso = false);
 
 /// <summary>A family in a list: its progress so far (how many of its members have ended) and, once ended, how they ended.</summary>
 public sealed record FamiliaDto(
@@ -126,6 +131,13 @@ internal static class FamiliasEndpoints
             Error("condicion", "La condición es Siempre o SoloSiTodosBien.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.PasoQueLaForma))
+        {
+            var paso = request.PasoQueLaForma.Trim();
+            var existe = await db.Set<FlujoPasoDef>().AnyAsync(p => p.Nombre == paso && db.Set<FlujoVersion>().Any(v => v.Id == p.FlujoVersionId && v.FlujoId == flujoId), ct);
+            if (!existe) Error("pasoQueLaForma", "Ese paso no es de este proceso.");
+        }
+
         if (request.CreadorAlTerminarId is { } creadorId && !await db.Set<CreadorDeCaso>().AnyAsync(c => c.Id == creadorId, ct))
         {
             Error("creadorAlTerminarId", "Ese creador de casos no existe.");
@@ -141,6 +153,8 @@ internal static class FamiliasEndpoints
         tipo.Activo = request.Activo;
         tipo.CreadorAlTerminarId = request.CreadorAlTerminarId;
         tipo.Condicion = Enum.TryParse<CondicionDeCierre>(request.Condicion, true, out var condicion) ? condicion : CondicionDeCierre.Siempre;
+        tipo.PasoQueLaForma = string.IsNullOrWhiteSpace(request.PasoQueLaForma) ? null : request.PasoQueLaForma.Trim();
+        tipo.UnaPorTipoDeCaso = tipo.PasoQueLaForma is not null && request.UnaPorTipoDeCaso;
         tipo.UpdatedAt = ahora;
     }
 
@@ -153,7 +167,7 @@ internal static class FamiliasEndpoints
         {
             var creador = t.CreadorAlTerminarId is { } cid && creadores.TryGetValue(cid, out var c) ? c : null;
             return new TipoDeFamiliaDto(t.Id, t.FlujoId, t.Nombre, t.Descripcion, t.Activo, t.CreadorAlTerminarId, creador?.Nombre, creador?.Proceso,
-                t.Condicion.ToString(), t.CreatedAt, t.UpdatedAt);
+                t.Condicion.ToString(), t.CreatedAt, t.UpdatedAt, t.PasoQueLaForma, t.UnaPorTipoDeCaso);
         }).ToList();
     }
 

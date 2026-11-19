@@ -14,6 +14,9 @@ export interface TipoDeFamiliaDto {
   creadorAlTerminarNombre: string | null
   creadorAlTerminarProceso: string | null
   condicion: CondicionDeCierre
+  /** Its families form by themselves with the cases a case creates from this step; null: robots or people create them. */
+  pasoQueLaForma: string | null
+  unaPorTipoDeCaso: boolean
   createdAt: string
   updatedAt: string
 }
@@ -24,6 +27,8 @@ export interface GuardarTipoDeFamiliaRequest {
   activo: boolean
   creadorAlTerminarId: string | null
   condicion: CondicionDeCierre
+  pasoQueLaForma: string | null
+  unaPorTipoDeCaso: boolean
 }
 
 export interface FamiliaDto {
@@ -126,8 +131,10 @@ export function describirEvento(e: Pick<FamiliaEventoDto, 'accion' | 'detalleJso
   const d = leer(e.detalleJson)
   switch (e.accion) {
     case 'Creada':
+      if (d.paso) return `Se formó sola con los casos que crea el paso «${String(d.paso)}»`
       return d.participantesEsperados ? `Creada, esperando ${String(d.participantesEsperados)} casos` : 'Creada'
     case 'Cerrada':
+      if (d.porPaso) return `Se cerró al terminar el paso que creaba sus casos (${String(d.miembros ?? 0)} casos)`
       return d.automatica ? `Se cerró sola al llegar a ${String(d.miembros)} casos` : `Cerrada con ${String(d.miembros ?? 0)} casos`
     case 'Terminada':
       return `Terminada: ${describirFinal({ completados: Number(d.completados ?? 0), fallidos: Number(d.fallidos ?? 0), cancelados: Number(d.cancelados ?? 0) })}`

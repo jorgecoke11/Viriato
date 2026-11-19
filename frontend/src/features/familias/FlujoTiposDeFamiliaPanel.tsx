@@ -5,6 +5,7 @@ import { CrudPage } from '../../components/crud/CrudPage'
 import type { CrudColumn, CrudField, CrudFormConfig } from '../../components/crud/types'
 import { Badge } from '../../components/ui/Badge'
 import * as flujosApi from '../flujos/api'
+import * as reprocesamientosApi from '../reprocesamientos/api'
 import * as api from './api'
 import type { CondicionDeCierre, GuardarTipoDeFamiliaRequest, TipoDeFamiliaDto } from './api'
 
@@ -15,9 +16,19 @@ interface ValoresDeTipo {
   activo: boolean
   creadorAlTerminarId: string
   condicion: string
+  pasoQueLaForma: string
+  unaPorTipoDeCaso: boolean
 }
 
-const VACIOS: ValoresDeTipo = { nombre: '', descripcion: '', activo: true, creadorAlTerminarId: '', condicion: 'Siempre' }
+const VACIOS: ValoresDeTipo = {
+  nombre: '',
+  descripcion: '',
+  activo: true,
+  creadorAlTerminarId: '',
+  condicion: 'Siempre',
+  pasoQueLaForma: '',
+  unaPorTipoDeCaso: false,
+}
 
 const aSolicitud = (v: ValoresDeTipo): GuardarTipoDeFamiliaRequest => ({
   nombre: v.nombre.trim(),
@@ -25,6 +36,8 @@ const aSolicitud = (v: ValoresDeTipo): GuardarTipoDeFamiliaRequest => ({
   activo: v.activo,
   creadorAlTerminarId: v.creadorAlTerminarId || null,
   condicion: (v.condicion || 'Siempre') as CondicionDeCierre,
+  pasoQueLaForma: v.pasoQueLaForma || null,
+  unaPorTipoDeCaso: v.pasoQueLaForma !== '' && v.unaPorTipoDeCaso,
 })
 
 /**
@@ -34,11 +47,30 @@ const aSolicitud = (v: ValoresDeTipo): GuardarTipoDeFamiliaRequest => ({
  */
 export function FlujoTiposDeFamiliaPanel({ flujoId }: { flujoId: string }) {
   const creadoresQuery = useQuery({ queryKey: ['flujo-creadores', flujoId], queryFn: () => flujosApi.listCreadoresDeCaso(flujoId) })
+  // The names of the process's steps (of its active version): the same list the reprocessing rules pick from.
+  const pasosQuery = useQuery({ queryKey: ['flujo-reprocesamientos-pasos', flujoId], queryFn: () => reprocesamientosApi.listPasos(flujoId) })
 
   const campos = useMemo<CrudField<ValoresDeTipo>[]>(
     () => [
       { name: 'nombre', label: 'Nombre', required: true, helpText: 'Los robots lo nombran al crear una familia, p. ej. «Extracción del día».' },
       { name: 'descripcion', label: 'Descripción', type: 'textarea' },
+      {
+        name: 'pasoQueLaForma',
+        label: 'Cómo se forma',
+        type: 'select',
+        options: [
+          { value: '', label: 'La crean los robots o las personas' },
+          ...(pasosQuery.data ?? []).map((p) => ({ value: p, label: `Sola, con los casos que crea el paso «${p}»` })),
+        ],
+        helpText: 'Sola: los casos que crea un caso desde ese paso entran en su familia, y la familia se cierra cuando ese paso termina bien.',
+      },
+      {
+        name: 'unaPorTipoDeCaso',
+        label: 'Una familia por tipo de caso',
+        type: 'checkbox',
+        visibleWhen: (v) => v.pasoQueLaForma !== '',
+        helpText: 'P. ej. una por marca: «Creador 19/11 · Balay», «… · Bosch». Cada una termina por su cuenta.',
+      },
       {
         name: 'creadorAlTerminarId',
         label: 'Al terminar una familia, abrir un caso con',
@@ -51,14 +83,14 @@ export function FlujoTiposDeFamiliaPanel({ flujoId }: { flujoId: string }) {
       },
       {
         name: 'condicion',
-        label: 'Abrirlo',
+        label: 'Cuándo se abre el caso de cierre',
         type: 'select',
         options: api.CONDICIONES,
         visibleWhen: (v) => v.creadorAlTerminarId !== '',
       },
       { name: 'activo', label: 'Activo', type: 'checkbox', helpText: 'Un tipo desactivado no admite familias nuevas; las que tiene siguen su curso.' },
     ],
-    [creadoresQuery.data],
+    [creadoresQuery.data, pasosQuery.data],
   )
 
   const columnas: CrudColumn<TipoDeFamiliaDto>[] = [
@@ -71,6 +103,19 @@ export function FlujoTiposDeFamiliaPanel({ flujoId }: { flujoId: string }) {
           {t.descripcion && <span className="text-xs text-gray-500">{t.descripcion}</span>}
         </span>
       ),
+    },
+    {
+      key: 'forma',
+      label: 'Cómo se forma',
+      render: (t) =>
+        t.pasoQueLaForma ? (
+          <span className="flex flex-col">
+            <span className="text-sm text-gray-700">Sola, con lo que crea «{t.pasoQueLaForma}»</span>
+            {t.unaPorTipoDeCaso && <span className="text-xs text-gray-500">Una por tipo de caso</span>}
+          </span>
+        ) : (
+          <span className="text-sm text-gray-500">La crean robots o personas</span>
+        ),
     },
     {
       key: 'cierre',
@@ -107,6 +152,8 @@ export function FlujoTiposDeFamiliaPanel({ flujoId }: { flujoId: string }) {
       activo: t.activo,
       creadorAlTerminarId: t.creadorAlTerminarId ?? '',
       condicion: t.condicion,
+      pasoQueLaForma: t.pasoQueLaForma ?? '',
+      unaPorTipoDeCaso: t.unaPorTipoDeCaso,
     }),
     toCreateInput: aSolicitud,
     toUpdateInput: aSolicitud,

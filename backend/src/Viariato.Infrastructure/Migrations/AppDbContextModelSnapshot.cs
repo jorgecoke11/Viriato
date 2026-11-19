@@ -555,6 +555,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("CasoPadreId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_padre_id");
+
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
@@ -613,6 +617,9 @@ namespace Viariato.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_casos");
+
+                    b.HasIndex("CasoPadreId")
+                        .HasDatabaseName("ix_casos_caso_padre_id");
 
                     b.HasIndex("DatosJson")
                         .HasDatabaseName("ix_casos_datos_json");
@@ -1022,6 +1029,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("caso_de_cierre_id");
 
+                    b.Property<Guid?>("CasoOrigenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_origen_id");
+
                     b.Property<DateTimeOffset?>("CerradaAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("cerrada_at");
@@ -1071,9 +1082,17 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("participantes_esperados");
 
+                    b.Property<Guid?>("PasoOrigenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paso_origen_id");
+
                     b.Property<DateTimeOffset?>("TerminadaAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("terminada_at");
+
+                    b.Property<Guid?>("TipoCasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tipo_caso_id");
 
                     b.Property<Guid>("TipoDeFamiliaId")
                         .HasColumnType("uuid")
@@ -1089,8 +1108,14 @@ namespace Viariato.Infrastructure.Migrations
                         .HasDatabaseName("ix_familias_estado")
                         .HasFilter("estado <> 'Terminada'");
 
+                    b.HasIndex("TipoCasoId")
+                        .HasDatabaseName("ix_familias_tipo_caso_id");
+
                     b.HasIndex("TipoDeFamiliaId")
                         .HasDatabaseName("ix_familias_tipo_de_familia_id");
+
+                    b.HasIndex("CasoOrigenId", "TipoDeFamiliaId")
+                        .HasDatabaseName("ix_familias_caso_origen_id_tipo_de_familia_id");
 
                     b.HasIndex("FlujoId", "CreatedAt")
                         .HasDatabaseName("ix_familias_flujo_id_created_at");
@@ -1461,6 +1486,15 @@ namespace Viariato.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("nombre");
+
+                    b.Property<string>("PasoQueLaForma")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("paso_que_la_forma");
+
+                    b.Property<bool>("UnaPorTipoDeCaso")
+                        .HasColumnType("boolean")
+                        .HasColumnName("una_por_tipo_de_caso");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -3321,6 +3355,12 @@ namespace Viariato.Infrastructure.Migrations
 
             modelBuilder.Entity("Viariato.Modules.Casos.Domain.Caso", b =>
                 {
+                    b.HasOne("Viariato.Modules.Casos.Domain.Caso", null)
+                        .WithMany()
+                        .HasForeignKey("CasoPadreId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_casos_casos_caso_padre_id");
+
                     b.HasOne("Viariato.Modules.Casos.Domain.Ejecucion", "EjecucionActual")
                         .WithMany()
                         .HasForeignKey("EjecucionActualId")
@@ -3521,12 +3561,24 @@ namespace Viariato.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_familias_casos_caso_de_cierre_id");
 
+                    b.HasOne("Viariato.Modules.Casos.Domain.Caso", null)
+                        .WithMany()
+                        .HasForeignKey("CasoOrigenId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_familias_casos_caso_origen_id");
+
                     b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", null)
                         .WithMany()
                         .HasForeignKey("FlujoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_familias_flujos_flujo_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.FlujoTipoCasoDef", null)
+                        .WithMany()
+                        .HasForeignKey("TipoCasoId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_familias_flujo_tipo_caso_defs_tipo_caso_id");
 
                     b.HasOne("Viariato.Modules.Casos.Domain.TipoDeFamilia", "Tipo")
                         .WithMany()

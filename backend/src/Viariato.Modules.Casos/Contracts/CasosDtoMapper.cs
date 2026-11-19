@@ -14,9 +14,11 @@ public static class CasosDtoMapper
         caso.Id, caso.Titulo, caso.Estado.ToString(), caso.ToEstadoNegocioDto(), caso.TipoCaso?.Nombre, caso.FlujoId, caso.FlujoVersionId,
         caso.CreatedAt, caso.UpdatedAt, caso.CompletedAt, progresoPorcentaje, enVivo);
 
-    public static CasoDetailDto ToDetailDto(this Caso caso, EjecucionDto? ejecucionActual, IReadOnlyList<CasoEventoDto> eventosRecientes) => new(
+    /// <param name="casoPadreTitulo">The title of the case that created this one, if any (see <see cref="Caso.CasoPadreId"/>).</param>
+    public static CasoDetailDto ToDetailDto(
+        this Caso caso, EjecucionDto? ejecucionActual, IReadOnlyList<CasoEventoDto> eventosRecientes, string? casoPadreTitulo = null) => new(
         caso.Id, caso.Titulo, caso.Estado.ToString(), caso.ToEstadoNegocioDto(), caso.TipoCaso?.Nombre, caso.FlujoId, caso.FlujoVersionId, caso.DatosJson,
-        caso.CreatedAt, caso.UpdatedAt, caso.CompletedAt, ejecucionActual, eventosRecientes);
+        caso.CreatedAt, caso.UpdatedAt, caso.CompletedAt, ejecucionActual, eventosRecientes, caso.CasoPadreId, casoPadreTitulo);
 
     public static EjecucionDto ToDto(this Ejecucion ejecucion, IReadOnlyList<EjecucionPasoDto> pasos) => new(
         ejecucion.Id, ejecucion.CasoId, ejecucion.FlujoVersionId, ejecucion.Estado.ToString(), ejecucion.PasoActualId,

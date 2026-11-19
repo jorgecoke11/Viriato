@@ -320,7 +320,10 @@ internal static class CasosEndpoints
             .Select(e => e.ToDto())
             .ToListAsync(ct);
 
-        return Results.Ok(caso.ToDetailDto(ejecucionDto, eventos));
+        var casoPadreTitulo = caso.CasoPadreId is { } padreId
+            ? await db.Set<Caso>().AsNoTracking().Where(c => c.Id == padreId).Select(c => c.Titulo).FirstOrDefaultAsync(ct)
+            : null;
+        return Results.Ok(caso.ToDetailDto(ejecucionDto, eventos, casoPadreTitulo));
     }
 
     private static async Task<IResult> ListEventosAsync(

@@ -320,4 +320,98 @@ public sealed class FamiliasFlowTests(ViariatoApiFactory factory) : IClassFixtur
         Assert.True((await Assert.ThrowsAsync<ViriatoApiException>(() => ajeno.ObtenerFamiliaAsync(familiaId))).IsNotFound);
         Assert.True((await Assert.ThrowsAsync<ViriatoApiException>(() => ajeno.CerrarFamiliaAsync(familiaId))).IsNotFound);
     }
+
+    /// <summary>
+    /// The BSH case: a case creator (step «Crear casos») makes one case per brand and product; each brand's cases form a family by
+    /// themselves, which closes when the creator's step ends well and ends when that brand's cases do — each brand on its own.
+    /// </summary>
+    [Fact]
+    public async Task Los_casos_que_crea_un_paso_forman_solos_una_familia_por_tipo_de_caso()
+    {
+        var admin = (await CrearEntornoAsync()).Admin;
+        var equipoId = await IdAsync(await admin.PostAsJsonAsync("/api/v1/equipos", new { nombre = $"Equipo {Guid.NewGuid():N}", descripcion = (string?)null }));
+        var creador = await IdAsync(await admin.PostAsJsonAsync("/api/v1/servicios", new { nombre = $"Creador {Guid.NewGuid():N}", descripcion = (string?)null }));
+        var extractor = await IdAsync(await admin.PostAsJsonAsync("/api/v1/servicios", new { nombre = $"Extractor {Guid.NewGuid():N}", descripcion = (string?)null }));
+        var flujoId = await IdAsync(await admin.PostAsJsonAsync("/api/v1/flujos", new { nombre = $"BSH {Guid.NewGuid():N}", descripcion = (string?)null }));
+        var yo = (await admin.GetFromJsonAsync<JsonElement>("/api/v1/users/me")).GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/asignaciones", new { userId = yo })).StatusCode);
+        foreach (var marca in new[] { "Balay", "Bosch" })
+        {
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/tipos-caso", new { nombre = marca, orden = 1 })).StatusCode);
+        }
+
+        var versionId = await IdAsync(await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/versiones", new { notas = (string?)null }));
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/pasos", new
+        {
+            pasos = new object[]
+            {
+                new { orden = 1, nombre = "Crear casos", tipoPaso = "Rpa", agenteDefinicionId = (Guid?)null, servicioId = (Guid?)creador, configuracionJson = "{\"aplicacion\":\"Viriato\"}" },
+                new { orden = 2, nombre = "Extraer precios", tipoPaso = "Rpa", agenteDefinicionId = (Guid?)null, servicioId = (Guid?)extractor, configuracionJson = "{\"aplicacion\":\"Tradeplace\"}" },
+            },
+        })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsync($"/api/v1/flujos/{flujoId}/versiones/{versionId}/publicar", null)).StatusCode);
+        var primerPaso = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/flujos/{flujoId}/versiones/{versionId}")).GetProperty("pasos")[0].GetProperty("id").GetGuid();
+        var keyCreador = (await (await admin.PostAsJsonAsync("/api/v1/despliegues", new { equipoId, servicioId = creador, flujoId, flujoDestinoId = flujoId }))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("apiKey").GetString()!;
+        var keyExtractor = (await (await admin.PostAsJsonAsync("/api/v1/despliegues", new { equipoId, servicioId = extractor, flujoId }))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("apiKey").GetString()!;
+
+        var tipo = await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/tipos-de-familia", new
+        {
+            nombre = "Marca terminada", descripcion = (string?)null, activo = true, creadorAlTerminarId = (Guid?)null, condicion = "Siempre",
+            pasoQueLaForma = "Crear casos", unaPorTipoDeCaso = true,
+        });
+        Assert.Equal("Crear casos", (await tipo.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("pasoQueLaForma").GetString());
+        var mal = await admin.PostAsJsonAsync($"/api/v1/flujos/{flujoId}/tipos-de-familia", new
+        {
+            nombre = "Otra", descripcion = (string?)null, activo = true, creadorAlTerminarId = (Guid?)null, condicion = "Siempre", pasoQueLaForma = "No existe",
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, mal.StatusCode);
+
+        // A person launches the creator case; the creator robot takes it and, from its step, creates two Balay cases and one Bosch.
+        var lanzamiento = await IdAsync(await admin.PostAsJsonAsync("/api/v1/casos", new { flujoId, titulo = "Creador de casos 19/11", pasoInicialId = primerPaso }));
+        var robotCreador = Robot(keyCreador);
+        await robotCreador.ObtenerEstadoAsync();
+        var asignada = await robotCreador.ObtenerSiguienteEjecucionAsync();
+        Assert.Equal(lanzamiento, asignada!.CasoId);
+        var paso = new RpaStepContext(robotCreador, asignada);
+        var balay1 = await paso.CrearCasoAsync(new CrearCasoRobotRequest("Lavadoras Balay", null, TipoCaso: "Balay", PasoInicial: "Extraer precios"));
+        await paso.CrearCasoAsync(new CrearCasoRobotRequest("Frigos Balay", null, TipoCaso: "Balay", PasoInicial: "Extraer precios"));
+        await paso.CrearCasoAsync(new CrearCasoRobotRequest("Lavadoras Bosch", null, TipoCaso: "Bosch", PasoInicial: "Extraer precios"));
+
+        Assert.Equal(lanzamiento, (await CasoAsync(balay1.CasoId)).CasoPadreId);
+        var detalle = await admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{balay1.CasoId}");
+        Assert.Equal("Creador de casos 19/11", detalle.GetProperty("casoPadreTitulo").GetString());
+
+        var familias = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/familias?flujoId={flujoId}")).GetProperty("items").EnumerateArray()
+            .ToDictionary(f => f.GetProperty("nombre").GetString()!, f => (Id: f.GetProperty("id").GetGuid(), Miembros: f.GetProperty("miembros").GetInt32()));
+        Assert.Equal(2, familias["Creador de casos 19/11 · Balay"].Miembros);
+        Assert.Equal(1, familias["Creador de casos 19/11 · Bosch"].Miembros);
+        var balay = familias["Creador de casos 19/11 · Balay"].Id;
+        var bosch = familias["Creador de casos 19/11 · Bosch"].Id;
+
+        // While the creator is still working they stay open, even if their cases end.
+        var robotExtractor = Robot(keyExtractor);
+        await robotExtractor.ObtenerEstadoAsync();
+        for (var i = 0; i < 2; i++)
+        {
+            var trabajo = await robotExtractor.ObtenerSiguienteEjecucionAsync();
+            Assert.NotNull(trabajo);
+            Assert.Contains("Balay", (await CasoAsync(trabajo.CasoId)).Titulo);
+            await robotExtractor.CompletarPasoAsync(trabajo.EjecucionPasoId);
+        }
+        await VueltaAsync();
+        Assert.Equal(EstadoDeFamilia.Abierta, (await FamiliaAsync(balay)).Estado);
+
+        // The creator's step ends well: both close; Balay's cases are all done, so it ends; Bosch waits for its case.
+        await robotCreador.CompletarPasoAsync(asignada.EjecucionPasoId);
+        await VueltaAsync();
+        Assert.Equal(EstadoDeFamilia.Terminada, (await FamiliaAsync(balay)).Estado);
+        Assert.Equal(EstadoDeFamilia.Cerrada, (await FamiliaAsync(bosch)).Estado);
+
+        var ultimo = await robotExtractor.ObtenerSiguienteEjecucionAsync();
+        await robotExtractor.CompletarPasoAsync(ultimo!.EjecucionPasoId);
+        await VueltaAsync();
+        Assert.Equal(EstadoDeFamilia.Terminada, (await FamiliaAsync(bosch)).Estado);
+    }
 }

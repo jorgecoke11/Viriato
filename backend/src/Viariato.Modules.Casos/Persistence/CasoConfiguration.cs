@@ -51,6 +51,8 @@ public sealed class CasoConfiguration : IEntityTypeConfiguration<Caso>
         builder.HasIndex(c => c.Estado);
         builder.HasIndex(c => c.EstadoNegocioActualId);
         builder.HasIndex(c => c.TipoCasoId);
+        builder.HasOne<Caso>().WithMany().HasForeignKey(c => c.CasoPadreId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(c => c.CasoPadreId);
         builder.HasIndex(c => c.DatosJson).HasMethod("gin");
     }
 }

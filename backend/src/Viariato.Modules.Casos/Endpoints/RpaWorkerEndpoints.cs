@@ -232,6 +232,22 @@ internal static class RpaWorkerEndpoints
             UpdatedAt = now,
         };
         db.Add(caso);
+
+        // Created from a step of a case this robot is working: that case is its parent, and the families that form by themselves from
+        // that step take it in.
+        if (request.PasoOrigenId is { } pasoOrigenId)
+        {
+            if (await RpaWorkerAuthorization.RequireClaimedStepAsync(db, despliegue.Id, pasoOrigenId, ct) is null)
+            {
+                return ProblemResults.Conflict(http, "El paso desde el que se crea el caso no es uno que esté trabajando este robot.");
+            }
+
+            var pasoOrigen = await db.Set<EjecucionPaso>().AsNoTracking().FirstAsync(p => p.Id == pasoOrigenId, ct);
+            var nombrePaso = await db.Set<FlujoPasoDef>().AsNoTracking().Where(p => p.Id == pasoOrigen.FlujoPasoDefId).Select(p => p.Nombre).FirstAsync(ct);
+            caso.CasoPadreId = pasoOrigen.CasoId;
+            await familias.AnadirALasQueSeFormanSolasAsync(caso, pasoOrigen, nombrePaso, ct);
+        }
+
         // Its families, in the same save: a case is never born outside the family it was meant for.
         foreach (var familiaId in (request.Familias ?? []).Distinct())
         {

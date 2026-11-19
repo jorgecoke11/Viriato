@@ -81,7 +81,31 @@ public sealed class TerminadorDeFamilias(AppDbContext db, AbridorDeCasos abridor
             });
         }
 
-        if (completas.Count > 0) await db.SaveChangesAsync(ct);
+        // Families that formed by themselves close when the step that created their cases ends well: it will not create any more.
+        var porPaso = await db.Set<Familia>()
+            .Where(f => f.Estado == EstadoDeFamilia.Abierta && f.PasoOrigenId != null
+                && db.Set<EjecucionPaso>().Any(p => p.Id == f.PasoOrigenId && p.Estado == EjecucionPasoEstado.Completado))
+            .Take(PorVuelta)
+            .ToListAsync(ct);
+        foreach (var familia in porPaso)
+        {
+            familia.Estado = EstadoDeFamilia.Cerrada;
+            familia.CerradaAt = ahora;
+            db.Add(new FamiliaEvento
+            {
+                FamiliaId = familia.Id,
+                Accion = FamiliaEventoAccion.Cerrada,
+                DetalleJson = JsonSerializer.Serialize(new
+                {
+                    miembros = await db.Set<MiembroDeFamilia>().CountAsync(m => m.FamiliaId == familia.Id, ct),
+                    automatica = true,
+                    porPaso = true,
+                }),
+                OccurredAt = ahora,
+            });
+        }
+
+        if (completas.Count + porPaso.Count > 0) await db.SaveChangesAsync(ct);
     }
 
     private async Task TerminarAsync(Familia familia, DateTimeOffset ahora, CancellationToken ct)

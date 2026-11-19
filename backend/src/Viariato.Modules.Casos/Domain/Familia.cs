@@ -32,6 +32,17 @@ public sealed class TipoDeFamilia
 
     public CondicionDeCierre Condicion { get; set; } = CondicionDeCierre.Siempre;
 
+    /// <summary>
+    /// If set, its families form by themselves: the cases a case creates from its step with this name (by name, so it outlives versions)
+    /// go into a family of this type that belongs to that case, opened with its first one; it closes when that step ends well. Null: the
+    /// families are created by robots or people.
+    /// </summary>
+    public string? PasoQueLaForma { get; set; }
+
+    /// <summary>With <see cref="PasoQueLaForma"/>: one family per case type of the cases created (a family per brand) instead of one for
+    /// all of them.</summary>
+    public bool UnaPorTipoDeCaso { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
@@ -95,6 +106,15 @@ public sealed class Familia
     public DateTimeOffset? TerminadaAt { get; set; }
 
     public List<MiembroDeFamilia> Miembros { get; set; } = [];
+
+    /// <summary>For a family that formed by itself: the case whose step created its members…</summary>
+    public Guid? CasoOrigenId { get; set; }
+
+    /// <summary>…the latest attempt of that step (the family closes when it ends well; a reprocess moves it to the new attempt)…</summary>
+    public Guid? PasoOrigenId { get; set; }
+
+    /// <summary>…and, for a type with <see cref="TipoDeFamilia.UnaPorTipoDeCaso"/>, the case type of its members (null: cases without one).</summary>
+    public Guid? TipoCasoId { get; set; }
 }
 
 public sealed class MiembroDeFamilia

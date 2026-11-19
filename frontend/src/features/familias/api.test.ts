@@ -26,6 +26,13 @@ describe('historia de una familia', () => {
     expect(describirEvento({ accion: 'CierreNoAbierto', detalleJson: '{"motivo":"No todos acabaron bien."}' })).toBe('Sin caso de cierre: No todos acabaron bien.')
   })
 
+  it('dice si se formó y se cerró sola por un paso', () => {
+    expect(describirEvento({ accion: 'Creada', detalleJson: '{"paso":"Crear casos"}' })).toBe('Se formó sola con los casos que crea el paso «Crear casos»')
+    expect(describirEvento({ accion: 'Cerrada', detalleJson: '{"miembros":3,"automatica":true,"porPaso":true}' })).toBe(
+      'Se cerró al terminar el paso que creaba sus casos (3 casos)',
+    )
+  })
+
   it('aguanta un detalle roto', () => {
     expect(describirEvento({ accion: 'Cerrada', detalleJson: 'no es json' })).toBe('Cerrada con 0 casos')
   })

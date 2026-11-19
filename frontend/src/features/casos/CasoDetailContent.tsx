@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Ban, Check, Copy, Eye, Hourglass, OctagonAlert, Pause, PauseCircle, Play, RotateCcw, XCircle, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
@@ -241,6 +242,14 @@ export function CasoDetailContent({ casoId }: { casoId: string }) {
               {flujoNombre ?? 'Proceso'}
               {versionQuery.data && <span> · versión {versionQuery.data.numeroVersion}</span>}
             </p>
+            {caso.casoPadreId && (
+              <p className="mt-1 text-sm text-gray-500">
+                Creado por{' '}
+                <Link to={`/casos/${caso.casoPadreId}`} className="font-medium text-indigo-600 hover:text-indigo-700">
+                  {caso.casoPadreTitulo ?? 'otro caso'}
+                </Link>
+              </p>
+            )}
             <FamiliasDelCaso casoId={caso.id} />
           </div>
 

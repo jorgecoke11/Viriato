@@ -18,9 +18,28 @@ Cuando todos sus casos han terminado, la familia termina y hace lo que diga su t
 | Campo | Qué es |
 |---|---|
 | Nombre | Único en el proceso. Los robots lo usan al crear una familia. |
+| Cómo se forma | **La crean los robots o las personas**, o **sola, con los casos que crea el paso…** (ver abajo). |
+| Una familia por tipo de caso | Solo si se forma sola: una familia por cada tipo de caso de lo creado (p. ej. una por marca). |
 | Al terminar, abrir un caso con | Un creador de casos (de este proceso o de otro). Vacío: no se abre caso de cierre. |
-| Abrirlo | **Siempre**, o **solo si todos acabaron completados**. |
+| Cuándo se abre el caso de cierre | **Siempre**, o **solo si todos acabaron completados**. |
 | Activo | Un tipo inactivo no admite familias nuevas; las que tiene siguen su curso. Un tipo con familias no se borra. |
+
+## Familias que se forman solas
+
+Lo normal es que una familia sea «lo que ha creado un caso». Con **Cómo se forma → Sola, con los casos que crea el paso «Crear casos»**:
+
+- Cada caso que un robot crea **desde ese paso** de otro caso entra en la familia de ese caso, que se abre con el primero. Se llama como
+  el caso creador («Creador de casos 19/11») y, con **una por tipo de caso**, lleva el tipo detrás: «Creador de casos 19/11 · Balay»,
+  «… · Bosch», «… · Siemens». Cada una termina por su cuenta: si Balay acaba antes, su aviso sale antes.
+- Se **cierra cuando ese paso termina bien**: el creador ya no va a crear más. Si falla, sus familias siguen abiertas (no se avisa de un
+  lote a medias); si se reprocesa, lo que cree entra en las mismas familias, y se cierran cuando por fin termine bien.
+- El robot no hace nada: `RpaStepContext.CrearCasoAsync` dice a Viriato desde qué paso se crea el caso (`PasoOrigenId`). Ese caso es su
+  **caso padre**, y en la ficha del caso sale «Creado por …».
+- El paso se guarda por su **nombre**, como en los reprocesamientos: sobrevive a las versiones del proceso.
+
+Ejemplo, BSH: un aviso cuando acabe cada marca. Tipo «Marca terminada», que se forma con los casos que crea «Crear casos», una por tipo
+de caso; y en *Notificaciones*, «Una familia termina» de ese tipo con el asunto «Ha terminado {caso}: {datos.completados} bien,
+{datos.fallidos} fallidos».
 
 ## La vida de una familia
 
@@ -30,8 +49,8 @@ Cuando todos sus casos han terminado, la familia termina y hace lo que diga su t
 | **Cerrada** | No entran más. Termina en cuanto acaban todos los que tiene. |
 | **Terminada** | Sus cifras (completados, fallidos, cancelados) quedan fijas y se han hecho sus acciones. |
 
-- **Cerrar**: a mano (botón en la familia), el robot (`CerrarFamiliaAsync`) o **sola**, si al crearla se dijeron sus
-  **participantes esperados** y ya los tiene. Con esperados, no admite más de esos. Sin esperados y sin cerrarla, **nunca termina**.
+- **Cerrar**: a mano (botón en la familia), el robot (`CerrarFamiliaAsync`), **sola** si al crearla se dijeron sus
+  **participantes esperados** y ya los tiene, o, en las que se forman solas, cuando termina bien el paso que crea sus casos. Con esperados, no admite más de esos. Sin esperados y sin cerrarla, **nunca termina**.
 - **Un caso ha terminado** cuando está completado, fallido o cancelado **y no tiene un reprocesamiento pendiente**: un caso fallido que
   una regla va a relanzar no cuenta como terminado hasta que acabe de verdad.
 - Un caso puede estar en **varias familias**. Una familia cerrada con cero casos termina enseguida.
@@ -98,5 +117,6 @@ API de robots: `POST /api/v1/rpa/familias`, `POST /api/v1/rpa/familias/{id}/cerr
   crecen siempre, no lo encarecen.
 - El aviso sale como todos: el terminador escribe «Terminada» en la historia de la familia (`familia_eventos`) y el interceptor de
   notificaciones encola los avisos en ese mismo guardado.
-- Tablas (esquema `casos`): `tipos_de_familia`, `familias`, `familia_miembros`, `familia_eventos`. Los envíos (`notificaciones.envios`)
+- Tablas (esquema `casos`): `tipos_de_familia`, `familias`, `familia_miembros`, `familia_eventos`, y `casos.caso_padre_id`. Una familia
+  que se forma sola guarda su caso de origen, el último intento del paso que la llena (lo que la cierra) y su tipo de caso. Los envíos (`notificaciones.envios`)
   tienen `familia_id` y su `caso_id` puede ser nulo.

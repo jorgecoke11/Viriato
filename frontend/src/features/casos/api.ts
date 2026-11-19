@@ -132,6 +132,9 @@ export interface CasoDetailDto extends CasoListItemDto {
   datosJson: string | null
   ejecucionActual: EjecucionDto | null
   eventosRecientes: CasoEventoDto[]
+  /** The case whose robot created this one, if any. */
+  casoPadreId?: string | null
+  casoPadreTitulo?: string | null
 }
 
 export interface EjecucionResumenDto {

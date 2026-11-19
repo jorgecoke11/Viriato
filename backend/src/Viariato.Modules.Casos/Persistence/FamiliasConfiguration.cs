@@ -15,6 +15,7 @@ public sealed class TipoDeFamiliaConfiguration : IEntityTypeConfiguration<TipoDe
         builder.Property(t => t.Nombre).HasMaxLength(100).IsRequired();
         builder.Property(t => t.Descripcion).HasMaxLength(500);
         builder.Property(t => t.Condicion).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(t => t.PasoQueLaForma).HasMaxLength(200);
 
         builder.HasOne<Flujo>().WithMany().HasForeignKey(t => t.FlujoId).OnDelete(DeleteBehavior.Cascade);
         // A creator in use as a closing action cannot be deleted from under it.
@@ -44,6 +45,10 @@ public sealed class FamiliaConfiguration : IEntityTypeConfiguration<Familia>
         // What the finisher looks at on every turn (only the open and closed ones), and the process's list.
         builder.HasIndex(f => f.Estado).HasFilter("estado <> 'Terminada'");
         builder.HasIndex(f => new { f.FlujoId, f.CreatedAt });
+        // A case creating cases finds its own open family of a type (and case type) on every case it creates.
+        builder.HasIndex(f => new { f.CasoOrigenId, f.TipoDeFamiliaId });
+        builder.HasOne<Caso>().WithMany().HasForeignKey(f => f.CasoOrigenId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<FlujoTipoCasoDef>().WithMany().HasForeignKey(f => f.TipoCasoId).OnDelete(DeleteBehavior.SetNull);
     }
 }
 
