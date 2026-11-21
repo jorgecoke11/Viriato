@@ -1,4 +1,4 @@
-# Viariato — frontend
+# Viriato — frontend
 
 React 18 + TypeScript + Vite + Tailwind 4. Tests de la lógica pura con `npm test` (vitest); `npm run lint`; `npm run build`.
 

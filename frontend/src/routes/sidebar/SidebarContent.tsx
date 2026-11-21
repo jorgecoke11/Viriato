@@ -41,14 +41,14 @@ export function SidebarContent({
         <Link
           to="/"
           onClick={onNavigate}
-          aria-label="Viariato"
+          aria-label="Viriato"
           className="flex h-10 w-10 shrink-0"
         >
           <Logo className="h-10 w-10" />
         </Link>
         {!collapsed && (
           <Link to="/" onClick={onNavigate} className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-[18px] font-semibold tracking-tight text-side-strong">Viariato</span>
+            <span className="block truncate text-[18px] font-semibold tracking-tight text-side-strong">Viriato</span>
             <span className="block truncate text-[11px] tracking-wide text-side-text">Procesos y robots</span>
           </Link>
         )}
