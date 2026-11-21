@@ -96,7 +96,7 @@ export function AppLayout() {
             <Menu size={20} />
           </button>
           <Logo className="h-7 w-7 rounded-md" />
-          <span className="text-sm font-semibold tracking-tight text-gray-900">Viariato</span>
+          <span className="text-sm font-semibold tracking-tight text-gray-900">Viriato</span>
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">

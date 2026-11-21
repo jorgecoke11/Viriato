@@ -16,7 +16,7 @@ export function AuthShell({ titulo, descripcion, children, pie }: { titulo: stri
       <aside className="hidden border-r border-gray-200 bg-gray-100 p-12 text-gray-900 lg:flex lg:flex-col lg:justify-between">
         <div className="flex items-center gap-3">
           <Logo className="h-10 w-10" />
-          <span className="text-xl font-semibold tracking-tight">Viariato</span>
+          <span className="text-xl font-semibold tracking-tight">Viriato</span>
         </div>
 
         <div className="flex max-w-md flex-col gap-8">
@@ -43,7 +43,7 @@ export function AuthShell({ titulo, descripcion, children, pie }: { titulo: stri
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Logo className="h-9 w-9" />
-            <span className="text-lg font-semibold tracking-tight text-gray-900">Viariato</span>
+            <span className="text-lg font-semibold tracking-tight text-gray-900">Viriato</span>
           </div>
           <h1 className="page-title">{titulo}</h1>
           <p className="mt-1 mb-6 text-sm text-gray-500">{descripcion}</p>
