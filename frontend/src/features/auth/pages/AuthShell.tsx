@@ -1,5 +1,6 @@
-import { Bot, Layers, ShieldCheck, Workflow } from 'lucide-react'
+import { Bot, Layers, ShieldCheck } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Logo } from '../../../lib/brand/Logo'
 
 const puntos = [
   { icon: Layers, titulo: 'Casos con seguimiento', texto: 'Cada caso con su historial, documentos y evidencias en un solo sitio.' },
@@ -14,9 +15,7 @@ export function AuthShell({ titulo, descripcion, children, pie }: { titulo: stri
     <div className="grid min-h-screen bg-page lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <aside className="hidden border-r border-gray-200 bg-gray-100 p-12 text-gray-900 lg:flex lg:flex-col lg:justify-between">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white">
-            <Workflow size={20} />
-          </span>
+          <Logo className="h-10 w-10" />
           <span className="text-xl font-semibold tracking-tight">Viariato</span>
         </div>
 
@@ -43,9 +42,7 @@ export function AuthShell({ titulo, descripcion, children, pie }: { titulo: stri
       <main className="flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
-              <Workflow size={18} />
-            </span>
+            <Logo className="h-9 w-9" />
             <span className="text-lg font-semibold tracking-tight text-gray-900">Viariato</span>
           </div>
           <h1 className="page-title">{titulo}</h1>
