@@ -112,10 +112,26 @@ export function peticionDesdeGrafo(grafo: Grafo): ReplacePasosRequest {
   }
 }
 
-/** The steps some arrow path from the start reaches. */
-export function alcanzables(grafo: Grafo): Set<string> {
+/** A creator of the process that opens its Casos at a step, by the step's name. */
+export interface EntradaDeCreador {
+  creador: string
+  paso: string
+}
+
+const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), undefined, { sensitivity: 'accent' }) === 0
+
+/** The creators that open their Casos at this step. */
+export function creadoresQueEmpiezanEn(paso: PasoDelGrafo, entradas: EntradaDeCreador[]): string[] {
+  return entradas.filter((e) => mismoNombre(e.paso, paso.nombre)).map((e) => e.creador)
+}
+
+/** The steps some arrow path reaches from the start or from a step a creator starts at (a process may hold several flows). */
+export function alcanzables(grafo: Grafo, entradas: EntradaDeCreador[] = []): Set<string> {
   const vistos = new Set<string>()
-  const pendientes = grafo.flechas.filter((f) => f.origen === INICIO).map((f) => f.destino)
+  const pendientes = [
+    ...grafo.flechas.filter((f) => f.origen === INICIO).map((f) => f.destino),
+    ...grafo.pasos.filter((p) => creadoresQueEmpiezanEn(p, entradas).length > 0).map((p) => p.clave),
+  ]
   while (pendientes.length > 0) {
     const paso = pendientes.pop()!
     if (vistos.has(paso)) continue
@@ -144,7 +160,7 @@ export interface Aviso {
   bloquea: boolean
 }
 
-export function avisos(grafo: Grafo): Aviso[] {
+export function avisos(grafo: Grafo, entradas: EntradaDeCreador[] = []): Aviso[] {
   const lista: Aviso[] = []
   if (grafo.pasos.length === 0) lista.push({ objetivo: null, texto: 'Añade al menos un paso.', bloquea: true })
   if (!grafo.flechas.some((f) => f.origen === INICIO) && grafo.pasos.length > 0) {
@@ -173,9 +189,26 @@ export function avisos(grafo: Grafo): Aviso[] {
     lista.push({ objetivo: id, texto: 'Dos flechas salen del mismo paso con el mismo resultado y estado.', bloquea: true })
   }
 
-  const llegan = alcanzables(grafo)
+  const llegan = alcanzables(grafo, entradas)
   for (const p of grafo.pasos) {
-    if (!llegan.has(p.clave)) lista.push({ objetivo: p.clave, texto: `Ninguna flecha lleva a «${p.nombre || 'sin nombre'}». No se podrá publicar.`, bloquea: false })
+    if (!llegan.has(p.clave)) {
+      lista.push({
+        objetivo: p.clave,
+        texto: `Ni una flecha ni un creador llevan a «${p.nombre || 'sin nombre'}». No se podrá publicar.`,
+        bloquea: false,
+      })
+    }
+  }
+
+  // Creators look their step up by name: one whose step is not in this flow would refuse every Caso once it is published.
+  for (const e of entradas) {
+    if (!grafo.pasos.some((p) => mismoNombre(p.nombre, e.paso))) {
+      lista.push({
+        objetivo: null,
+        texto: `El creador «${e.creador}» empieza en «${e.paso}», que no está en este flujo. Llama así a un paso o cambia el creador; si no, no se podrá publicar.`,
+        bloquea: false,
+      })
+    }
   }
   return lista
 }

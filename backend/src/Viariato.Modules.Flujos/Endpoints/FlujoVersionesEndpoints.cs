@@ -224,14 +224,35 @@ internal static class FlujoVersionesEndpoints
             return ProblemResults.Conflict(http, "No se puede publicar una versión sin pasos.");
         }
 
-        // A published flow has no dead steps: every one must be reachable from the start by some arrow.
+        // Once published, this version is where every active creator of the process opens its Casos, at the step it names: a creator
+        // whose step is not here would stop working (it refuses every Caso). Better to say so now than when someone creates one.
+        var creadores = await db.Set<CreadorDeCaso>().AsNoTracking()
+            .Where(c => c.FlujoId == flujoId && c.Activo && c.PasoInicialNombre != null)
+            .Select(c => new { c.Nombre, Paso = c.PasoInicialNombre! })
+            .ToListAsync(ct);
+        var nombresDePasos = version.Pasos.Select(p => p.Nombre.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var sinPaso = creadores.Where(c => !nombresDePasos.Contains(c.Paso.Trim())).ToList();
+        if (sinPaso.Count > 0)
+        {
+            return ProblemResults.Conflict(http,
+                "Estos creadores empiezan en un paso que esta versión no tiene: "
+                + string.Join("; ", sinPaso.Select(c => $"«{c.Nombre}» → «{c.Paso}»"))
+                + ". Pon un paso con ese nombre o cambia el paso inicial del creador.");
+        }
+
+        // A published flow has no dead steps: every one must be reachable by some arrow from an entry — the start, or a step a creator
+        // opens its Casos at. A process may hold several flows that way (e.g. one that only creates Casos, and the one they then follow).
         if (version.Transiciones.Count > 0)
         {
-            var alcanzables = PasosAlcanzables(version.Transiciones);
+            var entradas = version.Pasos
+                .Where(p => creadores.Any(c => string.Equals(c.Paso.Trim(), p.Nombre.Trim(), StringComparison.OrdinalIgnoreCase)))
+                .Select(p => p.Id);
+            var alcanzables = PasosAlcanzables(version.Transiciones, entradas);
             var muertos = version.Pasos.Where(p => !alcanzables.Contains(p.Id)).OrderBy(p => p.Orden).Select(p => p.Nombre).ToList();
             if (muertos.Count > 0)
             {
-                return ProblemResults.Conflict(http, $"Ninguna flecha lleva a: {string.Join(", ", muertos)}. Únelos al flujo o quítalos antes de publicar.");
+                return ProblemResults.Conflict(http,
+                    $"Ninguna flecha ni ningún creador lleva a: {string.Join(", ", muertos)}. Únelos al flujo, haz que un creador empiece ahí o quítalos antes de publicar.");
             }
         }
 
@@ -264,12 +285,13 @@ internal static class FlujoVersionesEndpoints
         return Results.Ok(version.ToDto());
     }
 
-    /// <summary>The steps an arrow path from the start reaches.</summary>
-    internal static HashSet<Guid> PasosAlcanzables(IEnumerable<FlujoTransicionDef> transiciones)
+    /// <summary>The steps an arrow path reaches from the start or from one of <paramref name="entradas"/> (steps Casos start at
+    /// directly, such as a creator's first step), those included.</summary>
+    internal static HashSet<Guid> PasosAlcanzables(IEnumerable<FlujoTransicionDef> transiciones, IEnumerable<Guid>? entradas = null)
     {
         var lista = transiciones.ToList();
         var alcanzables = new HashSet<Guid>();
-        var pendientes = new Queue<Guid>(lista.Where(t => t.PasoOrigenId is null).Select(t => t.PasoDestinoId));
+        var pendientes = new Queue<Guid>(lista.Where(t => t.PasoOrigenId is null).Select(t => t.PasoDestinoId).Concat(entradas ?? []));
         while (pendientes.TryDequeue(out var paso))
         {
             if (!alcanzables.Add(paso)) continue;

@@ -34,6 +34,7 @@ import {
   ANCHO_COLUMNA,
   avisos as calcularAvisos,
   CODIGO_DE_ESTADO,
+  creadoresQueEmpiezanEn,
   etiquetaDeFlecha,
   grafoDesdeVersion,
   INICIO,
@@ -42,6 +43,7 @@ import {
   peticionDesdeGrafo,
   POSICION_INICIO,
   type Aviso,
+  type EntradaDeCreador,
   type FlechaDelGrafo,
   type Grafo,
   type PasoDelGrafo,
@@ -82,12 +84,12 @@ type Seleccion = { tipo: 'paso'; clave: string } | { tipo: 'flecha'; id: string 
 
 // ---------------------------------------------------------------- canvas pieces
 
-type PasoNodeData = { paso: PasoDelGrafo; subtitulo: string; aviso: string | null; editable: boolean }
+type PasoNodeData = { paso: PasoDelGrafo; subtitulo: string; aviso: string | null; editable: boolean; creadores: string[] }
 type PasoNode = Node<PasoNodeData, 'paso'>
 type InicioNode = Node<{ aviso: string | null }, 'inicio'>
 
 function PasoNodo({ data, selected }: NodeProps<PasoNode>) {
-  const { paso, subtitulo, aviso, editable } = data
+  const { paso, subtitulo, aviso, editable, creadores } = data
   return (
     <div
       title={aviso ?? undefined}
@@ -98,6 +100,11 @@ function PasoNodo({ data, selected }: NodeProps<PasoNode>) {
       <Handle type="target" position={Position.Left} id="in" className="!h-3 !w-3 !border-2 !border-surface !bg-gray-400" />
       <p className="truncate text-sm font-semibold text-gray-900">{paso.nombre || 'Sin nombre'}</p>
       <p className="truncate text-xs text-gray-500">{subtitulo}</p>
+      {creadores.length > 0 && (
+        <p className="mt-1 truncate text-[11px] font-medium text-indigo-600" title={`Los casos de ${creadores.join(', ')} empiezan aquí`}>
+          ▶ Entrada: {creadores.join(', ')}
+        </p>
+      )}
       {aviso && <p className="mt-1 truncate text-[11px] text-amber-700">⚠ {aviso}</p>}
       <Handle
         type="source"
@@ -208,13 +215,22 @@ function Lienzo({ flujoId, version, onClose }: { flujoId: string; version: flujo
   const serviciosQuery = useQuery({ queryKey: ['servicios-all'], queryFn: () => rpaApi.listServicios() })
   const agentesQuery = useQuery({ queryKey: ['agentes-all'], queryFn: () => flujosApi.listAgentes() })
   const estadosQuery = useQuery({ queryKey: [`flujo-${flujoId}-estados`], queryFn: () => flujosApi.listFlujoEstados(flujoId) })
+  const creadoresQuery = useQuery({ queryKey: ['flujo-creadores', flujoId], queryFn: () => flujosApi.listCreadoresDeCaso(flujoId) })
 
   const servicios = useMemo(() => serviciosQuery.data?.items ?? [], [serviciosQuery.data])
   const agentes = agentesQuery.data?.items ?? []
   const estados = (estadosQuery.data ?? []).filter((e) => e.activo)
   const nombreDeServicio = useMemo(() => new Map(servicios.map((s) => [s.id, s.nombre])), [servicios])
 
-  const avisos = useMemo(() => calcularAvisos(grafo), [grafo])
+  // Each active creator opens its Casos at a step of its own: those steps are entries into the flow, like the start.
+  const entradas: EntradaDeCreador[] = useMemo(
+    () =>
+      (creadoresQuery.data ?? [])
+        .filter((c) => c.activo && c.pasoInicialNombre?.trim())
+        .map((c) => ({ creador: c.nombre, paso: c.pasoInicialNombre!.trim() })),
+    [creadoresQuery.data],
+  )
+  const avisos = useMemo(() => calcularAvisos(grafo, entradas), [grafo, entradas])
   const avisoDe = useMemo(() => {
     const mapa = new Map<string, string>()
     for (const a of avisos) if (a.objetivo && !mapa.has(a.objetivo)) mapa.set(a.objetivo, a.texto)
@@ -251,13 +267,14 @@ function Lienzo({ flujoId, version, onClose }: { flujoId: string; version: flujo
               subtitulo: p.tipoPaso === 'Rpa' ? (p.servicioId ? (nombreDeServicio.get(p.servicioId) ?? 'Servicio') : 'Sin servicio') : nombreDeTipo[p.tipoPaso],
               aviso: avisoDe.get(p.clave) ?? null,
               editable,
+              creadores: creadoresQueEmpiezanEn(p, entradas),
             },
             selected: seleccion?.tipo === 'paso' && seleccion.clave === p.clave,
             deletable: editable,
           }) satisfies PasoNode,
       ),
     ],
-    [grafo.pasos, avisoDe, nombreDeServicio, seleccion, editable],
+    [grafo.pasos, avisoDe, nombreDeServicio, seleccion, editable, entradas],
   )
 
   const edges: Edge[] = useMemo(() => {
@@ -470,7 +487,10 @@ function Lienzo({ flujoId, version, onClose }: { flujoId: string; version: flujo
                       </li>
                     )
                   })}
-                {servicios.length === 0 && <li className="text-xs text-gray-500">No hay servicios. Créalos en RPA → Servicios.</li>}
+                {serviciosQuery.isLoading && <li className="text-xs text-gray-500">Cargando…</li>}
+                {serviciosQuery.isSuccess && servicios.length === 0 && (
+                  <li className="text-xs text-gray-500">No hay servicios. Créalos en RPA → Servicios.</li>
+                )}
               </ul>
             </div>
             <div>
