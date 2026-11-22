@@ -40,7 +40,9 @@ public interface IRpaClient
     /// <summary>Marks the step as failed with a human-readable reason.</summary>
     Task FallarPasoAsync(Guid ejecucionPasoId, string error, CancellationToken ct = default);
 
-    /// <summary>Sets the Caso's business state to the Flujo state with this <paramref name="codigoEstado"/>.</summary>
+    /// <summary>Sets the Caso's business state to the Flujo state with this <paramref name="codigoEstado"/>. A state the Flujo does
+    /// not have yet is created (its name is made from the code, and an admin can rename it); one an admin switched off, or a code
+    /// that is not valid (letters, digits, "_" and "-", up to 50), is a <see cref="ViriatoApiException"/> with <c>IsNotFound</c>.</summary>
     Task CambiarEstadoCasoAsync(Guid ejecucionPasoId, string codigoEstado, CancellationToken ct = default);
 
     /// <summary>
