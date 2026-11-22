@@ -1,5 +1,13 @@
 # Transiciones entre servicios: servicio + estado de ejecución + estado de negocio → siguiente servicio
 
+> **Implementado** en la rama `feat/estados-automaticos`. Diferencias con lo que sigue:
+> - No hay marca `ModeloHeredado`: **una versión sin flechas es la antigua** y sigue avanzando por `Orden` (con `Decision`), así que la
+>   migración no convierte datos. El editor convierte un borrador antiguo a flechas al abrirlo (Inicio → primero, cada paso → el
+>   siguiente con *Completada*), salvo si tiene pasos `Decision`, que se sigue viendo como lista; las versiones publicadas o archivadas
+>   sin flechas también se ven como lista.
+> - `Orden` y `ConfiguracionJson` siguen en la API para esas versiones antiguas; con flechas, la configuración de los Rpa se descarta.
+> - El editor de flechas se carga aparte (`lazy`) y no hay minimapa.
+
 Escrito sobre: fa2b30c3115889e7b55c0d41365b77ac41fa3e49
 
 ## Qué se quiere
