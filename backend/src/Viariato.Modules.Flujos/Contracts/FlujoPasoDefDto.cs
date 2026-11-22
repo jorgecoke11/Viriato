@@ -8,4 +8,7 @@ public sealed record FlujoPasoDefDto(
     string TipoPaso,
     Guid? AgenteDefinicionId,
     Guid? ServicioId,
-    string? ConfiguracionJson);
+    string? ConfiguracionJson,
+    double? PosicionX = null,
+    double? PosicionY = null,
+    int? MaximoDeVisitas = null);

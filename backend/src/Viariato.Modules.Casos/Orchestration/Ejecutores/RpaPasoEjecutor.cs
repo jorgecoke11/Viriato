@@ -16,7 +16,12 @@ public sealed class RpaPasoEjecutor(AppDbContext db, ITrabajoTracker tracker) : 
 {
     public async Task<PasoResultado> EjecutarAsync(PasoEjecucionContext context, CancellationToken ct)
     {
-        var aplicacion = ExtraerAplicacion(context.PasoDef.ConfiguracionJson);
+        // A step of the arrow-shaped flow has no configuration: the application robots are told about is its servicio's name.
+        var aplicacion = ExtraerAplicacion(context.PasoDef.ConfiguracionJson)
+            ?? (context.PasoDef.ServicioId is { } servicioId
+                ? await db.Set<RpaFleet.Domain.Servicio>().AsNoTracking().Where(s => s.Id == servicioId).Select(s => s.Nombre).FirstOrDefaultAsync(ct)
+                : null)
+            ?? "desconocida";
 
         var trabajoId = await tracker.StartAsync("casos.paso.rpa", "ejecucion_paso", context.EjecucionPasoId.ToString(), ct: ct);
 
@@ -34,10 +39,10 @@ public sealed class RpaPasoEjecutor(AppDbContext db, ITrabajoTracker tracker) : 
         return PasoResultado.EnProgreso;
     }
 
-    private static string ExtraerAplicacion(string? configuracionJson)
+    private static string? ExtraerAplicacion(string? configuracionJson)
     {
-        if (string.IsNullOrWhiteSpace(configuracionJson)) return "desconocida";
+        if (string.IsNullOrWhiteSpace(configuracionJson)) return null;
         using var doc = JsonDocument.Parse(configuracionJson);
-        return doc.RootElement.TryGetProperty("aplicacion", out var valor) ? valor.GetString() ?? "desconocida" : "desconocida";
+        return doc.RootElement.TryGetProperty("aplicacion", out var valor) ? valor.GetString() : null;
     }
 }

@@ -51,6 +51,8 @@ internal static class FlujoVersionesEndpoints
     {
         var version = await db.Set<FlujoVersion>().AsNoTracking()
             .Include(v => v.Pasos)
+            .Include(v => v.Transiciones).ThenInclude(t => t.EstadoNegocio)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(v => v.Id == versionId && v.FlujoId == flujoId, ct);
 
         return version is null
@@ -106,12 +108,24 @@ internal static class FlujoVersionesEndpoints
 
         var version = await db.Set<FlujoVersion>()
             .Include(v => v.Pasos)
+            .Include(v => v.Transiciones)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(v => v.Id == versionId && v.FlujoId == flujoId, ct);
         if (version is null) return ProblemResults.NotFound(http, "Versión no encontrada.");
 
         if (version.Estado != FlujoVersionEstado.Borrador)
         {
             return ProblemResults.Conflict(http, "Solo se pueden modificar los pasos de una versión en Borrador.");
+        }
+
+        // The states the arrows name, created if the process does not have them yet — before anything else changes, since
+        // creating one saves on its own.
+        var estadosPorCodigo = new Dictionary<string, FlujoEstadoDef>(StringComparer.Ordinal);
+        foreach (var codigo in (request.Transiciones ?? []).Select(t => t.EstadoNegocioCodigo?.Trim()).OfType<string>().Distinct(StringComparer.Ordinal))
+        {
+            var (estado, _) = await EstadosDeNegocio.ObtenerOCrearAsync(db, flujoId, codigo, ct);
+            if (estado is null) return ProblemResults.Conflict(http, $"El estado de negocio \"{codigo}\" está desactivado en este proceso.");
+            estadosPorCodigo[codigo] = estado;
         }
 
         if (request.Pasos.Any(p => p.AgenteDefinicionId is not null))
@@ -134,26 +148,57 @@ internal static class FlujoVersionesEndpoints
             }
         }
 
+        db.RemoveRange(version.Transiciones);
+        version.Transiciones.Clear();
         db.RemoveRange(version.Pasos);
         version.Pasos.Clear();
+
+        var conTransiciones = request.Transiciones is not null;
 
         // Added explicitly via db.Add (not version.Pasos.Add) — FlujoPasoDef.Id is assigned
         // client-side (Guid.CreateVersion7()), and adding to an already-tracked parent's navigation
         // collection makes EF's key-is-set heuristic assume these rows already exist, generating
         // UPDATEs that match zero rows instead of INSERTs.
-        var nuevosPasos = request.Pasos.Select(input => new FlujoPasoDef
+        var nuevosPasos = request.Pasos.Select(input =>
         {
-            FlujoVersionId = version.Id,
-            Orden = input.Orden,
-            Nombre = input.Nombre,
-            TipoPaso = Enum.Parse<TipoPaso>(input.TipoPaso, ignoreCase: true),
-            AgenteDefinicionId = input.AgenteDefinicionId,
-            ServicioId = input.ServicioId,
-            ConfiguracionJson = input.ConfiguracionJson,
-            CreatedAt = DateTimeOffset.UtcNow,
+            var tipo = Enum.Parse<TipoPaso>(input.TipoPaso, ignoreCase: true);
+            return new FlujoPasoDef
+            {
+                FlujoVersionId = version.Id,
+                Orden = input.Orden,
+                Nombre = input.Nombre,
+                TipoPaso = tipo,
+                AgenteDefinicionId = input.AgenteDefinicionId,
+                ServicioId = input.ServicioId,
+                // In the arrow-shaped flow a Rpa step is just its servicio: robots never read that configuration.
+                ConfiguracionJson = conTransiciones && tipo == TipoPaso.Rpa ? null : input.ConfiguracionJson,
+                PosicionX = input.PosicionX,
+                PosicionY = input.PosicionY,
+                MaximoDeVisitas = input.MaximoDeVisitas,
+                CreatedAt = DateTimeOffset.UtcNow,
+            };
         }).ToList();
         db.AddRange(nuevosPasos);
         version.Pasos = nuevosPasos;
+
+        if (request.Transiciones is { } transiciones)
+        {
+            var porClave = request.Pasos.Zip(nuevosPasos).ToDictionary(par => par.First.Clave!.Trim(), par => par.Second, StringComparer.Ordinal);
+            var ahora = DateTimeOffset.UtcNow;
+            var nuevas = transiciones.Select((t, i) => new FlujoTransicionDef
+            {
+                FlujoVersionId = version.Id,
+                PasoOrigenId = t.Origen is null ? null : porClave[t.Origen.Trim()].Id,
+                Resultado = t.Origen is null ? ResultadoEjecucion.Completada : Enum.Parse<ResultadoEjecucion>(t.Resultado!, ignoreCase: true),
+                EstadoNegocioId = t.EstadoNegocioCodigo is { } codigo ? estadosPorCodigo[codigo.Trim()].Id : null,
+                EstadoNegocio = t.EstadoNegocioCodigo is { } c ? estadosPorCodigo[c.Trim()] : null,
+                PasoDestinoId = porClave[t.Destino.Trim()].Id,
+                // Kept in the order they were sent, which is how they are listed back.
+                CreatedAt = ahora.AddTicks(i),
+            }).ToList();
+            db.AddRange(nuevas);
+            version.Transiciones = nuevas;
+        }
 
         await db.SaveChangesAsync(ct);
 
@@ -165,7 +210,8 @@ internal static class FlujoVersionesEndpoints
         var flujo = await db.Set<Flujo>().FirstOrDefaultAsync(f => f.Id == flujoId, ct);
         if (flujo is null) return ProblemResults.NotFound(http, "Flujo no encontrado.");
 
-        var version = await db.Set<FlujoVersion>().Include(v => v.Pasos).FirstOrDefaultAsync(v => v.Id == versionId && v.FlujoId == flujoId, ct);
+        var version = await db.Set<FlujoVersion>().Include(v => v.Pasos).Include(v => v.Transiciones).AsSplitQuery()
+            .FirstOrDefaultAsync(v => v.Id == versionId && v.FlujoId == flujoId, ct);
         if (version is null) return ProblemResults.NotFound(http, "Versión no encontrada.");
 
         if (version.Estado != FlujoVersionEstado.Borrador)
@@ -176,6 +222,17 @@ internal static class FlujoVersionesEndpoints
         if (version.Pasos.Count == 0)
         {
             return ProblemResults.Conflict(http, "No se puede publicar una versión sin pasos.");
+        }
+
+        // A published flow has no dead steps: every one must be reachable from the start by some arrow.
+        if (version.Transiciones.Count > 0)
+        {
+            var alcanzables = PasosAlcanzables(version.Transiciones);
+            var muertos = version.Pasos.Where(p => !alcanzables.Contains(p.Id)).OrderBy(p => p.Orden).Select(p => p.Nombre).ToList();
+            if (muertos.Count > 0)
+            {
+                return ProblemResults.Conflict(http, $"Ninguna flecha lleva a: {string.Join(", ", muertos)}. Únelos al flujo o quítalos antes de publicar.");
+            }
         }
 
         version.Estado = FlujoVersionEstado.Publicada;
@@ -205,5 +262,20 @@ internal static class FlujoVersionesEndpoints
         await db.SaveChangesAsync(ct);
 
         return Results.Ok(version.ToDto());
+    }
+
+    /// <summary>The steps an arrow path from the start reaches.</summary>
+    internal static HashSet<Guid> PasosAlcanzables(IEnumerable<FlujoTransicionDef> transiciones)
+    {
+        var lista = transiciones.ToList();
+        var alcanzables = new HashSet<Guid>();
+        var pendientes = new Queue<Guid>(lista.Where(t => t.PasoOrigenId is null).Select(t => t.PasoDestinoId));
+        while (pendientes.TryDequeue(out var paso))
+        {
+            if (!alcanzables.Add(paso)) continue;
+            foreach (var siguiente in lista.Where(t => t.PasoOrigenId == paso)) pendientes.Enqueue(siguiente.PasoDestinoId);
+        }
+
+        return alcanzables;
     }
 }

@@ -1,16 +1,16 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Viariato.Infrastructure;
-using Viariato.Modules.Flujos.Domain;
 
-namespace Viariato.Modules.Casos.Orchestration;
+namespace Viariato.Modules.Flujos.Domain;
 
 /// <summary>
 /// The business states a robot names by code. A robot may use a state its process does not define yet: it is created on the spot,
 /// so nobody has to add every state by hand before a robot can report it. One an admin switched off is the exception: it stays off
-/// (switching a state off is how an admin stops a robot from using it), and the caller treats it as not found.
+/// (switching a state off is how an admin stops a robot from using it), and the caller treats it as not found. The same goes for the
+/// flow editor: an arrow may name a state no robot has used yet, and saving the version creates it.
 /// </summary>
-internal static partial class EstadosDeNegocio
+public static partial class EstadosDeNegocio
 {
     /// <summary>The same rule the admin screen applies when a state is created there.</summary>
     [GeneratedRegex("^[A-Za-z0-9_-]{1,50}$")]
@@ -63,7 +63,7 @@ internal static partial class EstadosDeNegocio
     }
 
     /// <summary><c>PRECIOS_EXTRAIDOS_SIN_ACTUALIZAR</c> → "Precios extraidos sin actualizar". An admin can rename it afterwards.</summary>
-    internal static string DisplayDesdeCodigo(string codigo)
+    public static string DisplayDesdeCodigo(string codigo)
     {
         var texto = string.Join(' ', codigo.Split(['_', '-'], StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
         return texto.Length == 0 ? codigo : char.ToUpperInvariant(texto[0]) + texto[1..];

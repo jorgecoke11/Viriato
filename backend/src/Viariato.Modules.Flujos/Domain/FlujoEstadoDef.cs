@@ -6,7 +6,7 @@ namespace Viariato.Modules.Flujos.Domain;
 /// technical lifecycle (Iniciado/EnProgreso/Pausado/etc.) and never becomes user-configurable.
 /// <see cref="Codigo"/> is the stable identifier a step's own script/config references when it wants
 /// to report "the case is now in this business state"; <see cref="Display"/> is what users see.
-/// A robot that reports a code the Flujo does not have yet creates it (Casos' EstadosDeNegocio), so states
+/// A robot that reports a code the Flujo does not have yet creates it (<see cref="EstadosDeNegocio"/>), so states
 /// need not be added by hand first; switching one off (<see cref="Activo"/>) stops robots from using it.
 /// </summary>
 public sealed class FlujoEstadoDef

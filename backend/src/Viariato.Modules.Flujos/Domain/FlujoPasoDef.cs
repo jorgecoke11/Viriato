@@ -13,7 +13,8 @@ public sealed class FlujoPasoDef
 
     public FlujoVersion? FlujoVersion { get; set; }
 
-    /// <summary>1-based position within the version. Linear by default; a Decision step's
+    /// <summary>1-based position within the version. In a version with arrows (<see cref="FlujoTransicionDef"/>) it is only the
+    /// order steps are listed in; in an older one without them it is also the order they run in, and a Decision step's
     /// <see cref="ConfiguracionJson"/> can send execution to a different Orden.</summary>
     public int Orden { get; set; }
 
@@ -33,6 +34,18 @@ public sealed class FlujoPasoDef
     public RpaFleet.Domain.Servicio? Servicio { get; set; }
 
     public string? ConfiguracionJson { get; set; }
+
+    /// <summary>Where the flow editor draws this step. Presentation only.</summary>
+    public double? PosicionX { get; set; }
+
+    /// <summary>Where the flow editor draws this step. Presentation only.</summary>
+    public double? PosicionY { get; set; }
+
+    /// <summary>How many times one execution of a Caso may run this step before the Caso fails, so an arrow that loops back cannot
+    /// spin for ever. Null is <see cref="MaximoDeVisitasPorDefecto"/>. Only the arrow-shaped flow uses it.</summary>
+    public int? MaximoDeVisitas { get; set; }
+
+    public const int MaximoDeVisitasPorDefecto = 10;
 
     public DateTimeOffset CreatedAt { get; set; }
 }

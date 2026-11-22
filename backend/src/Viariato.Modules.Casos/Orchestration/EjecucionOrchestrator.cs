@@ -30,8 +30,13 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
             throw new InvalidOperationException("La FlujoVersion no tiene pasos.");
         }
 
+        // A version with arrows starts where its start arrow points; an older one, at its first step by Orden.
+        var inicio = await db.Set<FlujoTransicionDef>().AsNoTracking()
+            .FirstOrDefaultAsync(t => t.FlujoVersionId == caso.FlujoVersionId && t.PasoOrigenId == null, ct);
+        var conTransiciones = inicio is not null;
+
         var pasoInicial = pasoInicialId is null
-            ? pasos[0]
+            ? (inicio is null ? pasos[0] : pasos.First(p => p.Id == inicio.PasoDestinoId))
             : pasos.FirstOrDefault(p => p.Id == pasoInicialId)
                 ?? throw new InvalidOperationException("El paso inicial indicado no pertenece a esta FlujoVersion.");
 
@@ -53,7 +58,8 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
         // Starting past the first step (e.g. "the documentation was already validated externally") —
         // every step before it is recorded as Omitido for traceability, the same mechanism a Decision
         // branch uses for the side not taken, rather than just silently never mentioning them.
-        foreach (var pasoAnterior in pasos.Where(p => p.Orden < pasoInicial.Orden))
+        // With arrows there is no "before": a flow is a graph, so nothing is marked as skipped.
+        foreach (var pasoAnterior in conTransiciones ? [] : pasos.Where(p => p.Orden < pasoInicial.Orden))
         {
             db.Add(new EjecucionPaso
             {
@@ -88,12 +94,18 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
             case EjecucionPasoEstado.Completado:
                 await RegistrarEventoAsync(caso.Id, ejecucion.Id, CasoEventoAccion.PasoCompletado, paso.Id, ct);
                 await AplicarEstadoNegocioSiCorrespondeAsync(caso, paso, ct);
-                await ContinuarTrasCompletarAsync(ejecucion, caso, paso, ct);
+                if (!await SeguirPorTransicionAsync(ejecucion, caso, paso, ResultadoEjecucion.Completada, ct))
+                {
+                    await ContinuarTrasCompletarAsync(ejecucion, caso, paso, ct);
+                }
                 break;
 
             case EjecucionPasoEstado.Fallido:
                 await RegistrarEventoAsync(caso.Id, ejecucion.Id, CasoEventoAccion.PasoFallido, paso.Id, ct);
-                await FinalizarAsync(ejecucion, caso, EjecucionEstado.Fallida, CasoEstado.Fallido, CasoEventoAccion.Fallido, ct);
+                if (!await SeguirPorTransicionAsync(ejecucion, caso, paso, ResultadoEjecucion.Fallida, ct))
+                {
+                    await FinalizarAsync(ejecucion, caso, EjecucionEstado.Fallida, CasoEstado.Fallido, CasoEventoAccion.Fallido, ct);
+                }
                 break;
 
             case EjecucionPasoEstado.EsperandoRevisionHumana:
@@ -411,6 +423,73 @@ public sealed class EjecucionOrchestrator(AppDbContext db, IServiceProvider serv
 
         await db.SaveChangesAsync(ct);
         await AvanzarAsync(paso.Id, ct);
+    }
+
+    /// <summary>
+    /// The arrow-shaped flow: after a step ends, the arrow leaving it for that <paramref name="resultado"/> and the Caso's business
+    /// state (the one naming that exact state, else the one for any state) says which step comes next. With no such arrow, the Caso
+    /// ends with the step's result. Returns false, doing nothing, for a version without arrows, which keeps moving by Orden.
+    /// Arrows are only looked at here, when an execution ends: a Caso already sitting in a state never moves because an arrow appears.
+    /// </summary>
+    private async Task<bool> SeguirPorTransicionAsync(
+        Ejecucion ejecucion, Caso caso, EjecucionPaso pasoTerminado, ResultadoEjecucion resultado, CancellationToken ct)
+    {
+        var tieneTransiciones = await db.Set<FlujoTransicionDef>().AnyAsync(t => t.FlujoVersionId == ejecucion.FlujoVersionId, ct);
+        if (!tieneTransiciones) return false;
+
+        var candidatas = await db.Set<FlujoTransicionDef>().AsNoTracking()
+            .Where(t => t.FlujoVersionId == ejecucion.FlujoVersionId
+                && t.PasoOrigenId == pasoTerminado.FlujoPasoDefId
+                && t.Resultado == resultado
+                && (t.EstadoNegocioId == null || t.EstadoNegocioId == caso.EstadoNegocioActualId))
+            .ToListAsync(ct);
+        var elegida = candidatas.FirstOrDefault(t => t.EstadoNegocioId is not null) ?? candidatas.FirstOrDefault();
+
+        if (elegida is null)
+        {
+            if (resultado == ResultadoEjecucion.Completada)
+            {
+                await FinalizarAsync(ejecucion, caso, EjecucionEstado.Completada, CasoEstado.Completado, CasoEventoAccion.Completado, ct);
+            }
+            else
+            {
+                await FinalizarAsync(ejecucion, caso, EjecucionEstado.Fallida, CasoEstado.Fallido, CasoEventoAccion.Fallido, ct);
+            }
+
+            return true;
+        }
+
+        var destino = await db.Set<FlujoPasoDef>().AsNoTracking().FirstAsync(p => p.Id == elegida.PasoDestinoId, ct);
+
+        // A loop must end: each step may run a bounded number of times in one execution.
+        var vecesEjecutado = await db.Set<EjecucionPaso>()
+            .CountAsync(p => p.EjecucionId == ejecucion.Id && p.FlujoPasoDefId == destino.Id && p.Estado != EjecucionPasoEstado.Omitido, ct);
+        var maximo = destino.MaximoDeVisitas ?? FlujoPasoDef.MaximoDeVisitasPorDefecto;
+        if (vecesEjecutado >= maximo)
+        {
+            var ahora = DateTimeOffset.UtcNow;
+            ejecucion.Estado = EjecucionEstado.Fallida;
+            ejecucion.FinishedAt = ahora;
+            caso.Estado = CasoEstado.Fallido;
+            caso.UpdatedAt = ahora;
+            caso.CompletedAt = ahora;
+            db.Add(new CasoEvento
+            {
+                CasoId = caso.Id,
+                EjecucionId = ejecucion.Id,
+                Accion = CasoEventoAccion.Fallido,
+                DetalleJson = JsonSerializer.Serialize(new { motivo = $"Demasiadas vueltas en {destino.Nombre}", maximo }),
+                OccurredAt = ahora,
+            });
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
+
+        var intentosPrevios = await db.Set<EjecucionPaso>()
+            .Where(p => p.EjecucionId == ejecucion.Id && p.FlujoPasoDefId == destino.Id)
+            .MaxAsync(p => (int?)p.NumeroIntento, ct) ?? 0;
+        await CrearYDespacharPasoAsync(ejecucion, caso, destino, numeroIntento: intentosPrevios + 1, ct);
+        return true;
     }
 
     private async Task ContinuarTrasCompletarAsync(Ejecucion ejecucion, Caso caso, EjecucionPaso pasoCompletado, CancellationToken ct)
