@@ -109,6 +109,25 @@ describe('checks', () => {
     expect(avisos(grafo).filter((a) => a.bloquea).map((a) => a.objetivo)).toEqual(expect.arrayContaining([INICIO, 'x', 'y']))
   })
 
+  it('counts a step a creator starts at as an entry, so a flow of its own is not a dead step', () => {
+    const conCreador: Grafo = {
+      ...p01,
+      pasos: [
+        ...p01.pasos,
+        { clave: 'cre', nombre: 'Crear casos', tipoPaso: 'Rpa', servicioId: 's3', agenteDefinicionId: null, configuracionJson: null, maximoDeVisitas: null, x: 0, y: 200 },
+      ],
+    }
+
+    expect(avisos(conCreador).some((a) => a.objetivo === 'cre')).toBe(true)
+    expect(avisos(conCreador, [{ creador: 'Masivo', paso: ' crear casos ' }]).some((a) => a.objetivo === 'cre')).toBe(false)
+  })
+
+  it('warns about a creator whose step is not in the flow', () => {
+    const lista = avisos(p01, [{ creador: 'Crear Balay', paso: 'Extraer precios' }])
+
+    expect(lista.find((a) => a.texto.includes('Crear Balay'))).toMatchObject({ objetivo: null, bloquea: false })
+  })
+
   it('lays the steps out by distance from the start', () => {
     const ordenado = ordenar(p01)
 

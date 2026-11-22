@@ -186,6 +186,66 @@ public sealed class FlujoTransicionesFlowTests(ViariatoApiFactory factory) : ICl
         Assert.Contains("Actualizador", await publicado.Content.ReadAsStringAsync());
     }
 
+    private static object Creador(string nombre, string? pasoInicial) => new
+    {
+        nombre, descripcion = (string?)null, tipoCasoId = (Guid?)null, pasoInicialNombre = pasoInicial,
+        estadoNegocioInicialId = (Guid?)null, plantillaTitulo = (string?)null, orden = 1, activo = true,
+    };
+
+    [Fact]
+    public async Task AStepNoArrowReaches_CanBePublished_WhenACreatorStartsThere_AndCasosItOpensEndThere()
+    {
+        // The real P01: a creating flow on its own (Crear casos, no arrows) and the pricing flow (Extractor → Actualizador).
+        var e = await CrearEntornoAsync("Creador", "Extractor", "Actualizador");
+        var versionId = await IdAsync(await e.Admin.PostAsJsonAsync($"/api/v1/flujos/{e.FlujoId}/versiones", new { notas = (string?)null }));
+        Assert.Equal(HttpStatusCode.OK, (await GuardarAsync(e, versionId,
+            [Paso(e, "Extractor", 1), Paso(e, "Actualizador", 2), Paso(e, "Creador", 3)],
+            [Flecha(null, "Extractor"), Flecha("Extractor", "Actualizador", "Completada", "PRECIOS_EXTRAIDOS")])).StatusCode);
+
+        // Without a creator starting at it, «Creador» is a dead step.
+        Assert.Equal(HttpStatusCode.Conflict, (await e.Admin.PostAsync($"/api/v1/flujos/{e.FlujoId}/versiones/{versionId}/publicar", null)).StatusCode);
+
+        await IdAsync(await e.Admin.PostAsJsonAsync($"/api/v1/flujos/{e.FlujoId}/creadores", Creador("Crear casos masivamente", "Creador")));
+        var publicado = await e.Admin.PostAsync($"/api/v1/flujos/{e.FlujoId}/versiones/{versionId}/publicar", null);
+        Assert.True(publicado.IsSuccessStatusCode, await publicado.Content.ReadAsStringAsync());
+
+        // A Caso started where that creator starts runs the creating step and, with no arrow leaving it, ends there.
+        var version = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/flujos/{e.FlujoId}/versiones/{versionId}");
+        var pasoCreador = version.GetProperty("pasos").EnumerateArray().Single(p => p.GetProperty("nombre").GetString() == "Creador").GetProperty("id").GetGuid();
+        var casoId = await IdAsync(await e.Admin.PostAsJsonAsync("/api/v1/casos", new { flujoId = e.FlujoId, titulo = "Lanzamiento", pasoInicialId = pasoCreador }));
+        var paso = await Robot(e, "Creador").ObtenerSiguienteEjecucionAsync();
+        Assert.NotNull(paso);
+        Assert.Equal(casoId, paso.CasoId);
+        Assert.Null(await Robot(e, "Extractor").ObtenerSiguienteEjecucionAsync());
+        await Robot(e, "Creador").CompletarPasoAsync(paso.EjecucionPasoId);
+        Assert.Equal("Completado", await EstadoCasoAsync(e, casoId));
+        Assert.Null(await Robot(e, "Extractor").ObtenerSiguienteEjecucionAsync());
+    }
+
+    [Fact]
+    public async Task AVersionWithoutTheStepAnActiveCreatorStartsAt_CannotBePublished()
+    {
+        var e = await CrearEntornoAsync("Extractor", "Actualizador");
+        await PublicarP01Async(e);
+        await IdAsync(await e.Admin.PostAsJsonAsync($"/api/v1/flujos/{e.FlujoId}/creadores", Creador("Crear Balay", "Extractor")));
+
+        // The next version names its steps after something else: the creator would be left without its step.
+        var versionId = await IdAsync(await e.Admin.PostAsJsonAsync($"/api/v1/flujos/{e.FlujoId}/versiones", new { notas = (string?)null }));
+        var renombrado = new
+        {
+            clave = "Extractor", orden = 1, nombre = "BSH - Extractor de precios", tipoPaso = "Rpa", agenteDefinicionId = (Guid?)null,
+            servicioId = (Guid?)e.Servicios["Extractor"], configuracionJson = (string?)null,
+        };
+        Assert.Equal(HttpStatusCode.OK, (await GuardarAsync(e, versionId, [renombrado], [Flecha(null, "Extractor")])).StatusCode);
+
+        var publicado = await e.Admin.PostAsync($"/api/v1/flujos/{e.FlujoId}/versiones/{versionId}/publicar", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, publicado.StatusCode);
+        var detalle = await publicado.Content.ReadAsStringAsync();
+        Assert.Contains("Crear Balay", detalle);
+        Assert.Contains("Extractor", detalle);
+    }
+
     [Fact]
     public async Task AnExtractionLeftInPreciosExtraidos_GoesOnToTheUpdater()
     {
