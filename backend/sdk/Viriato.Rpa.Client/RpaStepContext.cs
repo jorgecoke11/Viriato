@@ -87,9 +87,10 @@ public sealed class RpaStepContext
         _client.CambiarEstadoCasoAsync(Ejecucion.EjecucionPasoId, codigoEstado, ct);
 
     /// <summary>
-    /// Like <see cref="CambiarEstadoCasoAsync"/>, but returns false instead of throwing when Viriato says
-    /// there is no such state (the Flujo does not define it). A business state is informational: a step
-    /// should not fail over one. Any other error — bad key, network, server — still throws.
+    /// Like <see cref="CambiarEstadoCasoAsync"/>, but returns false instead of throwing when Viriato refuses
+    /// the state (an admin switched it off, or the code is not valid; a state the Flujo does not have yet is
+    /// created, not refused). A business state is informational: a step should not fail over one. Any other
+    /// error — bad key, network, server — still throws.
     /// </summary>
     public async Task<bool> IntentarCambiarEstadoCasoAsync(string codigoEstado, CancellationToken ct = default)
     {

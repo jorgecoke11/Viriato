@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { Modal } from '../../components/ui/Modal'
 import { mensajeDeError } from '../../lib/apiClient'
 import { useToast } from '../../lib/toast/useToast'
-import { FlujoPasosEditor } from './FlujoPasosEditor'
 import * as flujosApi from './api'
 import type { FlujoVersionDto } from './api'
+
+// The flow canvas (React Flow) is only downloaded when someone opens a flow.
+const FlujoTransicionesEditor = lazy(() => import('./FlujoTransicionesEditor').then((m) => ({ default: m.FlujoTransicionesEditor })))
 
 const estadoBadge: Record<FlujoVersionDto['estado'], string> = {
   Borrador: 'bg-gray-100 text-gray-600',
@@ -67,7 +69,11 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
   const versiones = [...(versionesQuery.data ?? [])].sort((a, b) => b.numeroVersion - a.numeroVersion)
 
   if (editingVersionId) {
-    return <FlujoPasosEditor flujoId={flujoId} versionId={editingVersionId} onClose={() => setEditingVersionId(null)} />
+    return (
+      <Suspense fallback={<p className="p-4 text-sm text-gray-500">Cargando…</p>}>
+        <FlujoTransicionesEditor flujoId={flujoId} versionId={editingVersionId} onClose={() => setEditingVersionId(null)} />
+      </Suspense>
+    )
   }
 
   return (
@@ -104,7 +110,7 @@ export function FlujoVersionesPanel({ flujoId }: { flujoId: string }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <button type="button" className="text-gray-500 hover:text-gray-900" onClick={() => setEditingVersionId(version.id)}>
-                      {version.estado === 'Borrador' ? 'Editar pasos' : 'Ver pasos'}
+                      {version.estado === 'Borrador' ? 'Editar flujo' : 'Ver flujo'}
                     </button>
                     {version.estado === 'Borrador' && (
                       <button

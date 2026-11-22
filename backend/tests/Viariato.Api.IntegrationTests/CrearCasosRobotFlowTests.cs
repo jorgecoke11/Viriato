@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Viariato.ApiContracts;
 using Viariato.Infrastructure;
+using Viariato.Modules.Flujos.Domain;
 using Viariato.Modules.Users.Domain;
 using Viariato.Shared.Authorization;
 using Viriato.Rpa.Client;
@@ -227,7 +228,7 @@ public sealed class CrearCasosRobotFlowTests(ViariatoApiFactory factory) : IClas
     }
 
     [Fact]
-    public async Task AnUnknownTipoOrEstado_IsAConflict_NamingWhatIsMissing()
+    public async Task AnUnknownTipo_IsAConflict_NamingWhatIsMissing()
     {
         var e = await CrearEntornoAsync();
         var robot = Robot(e.KeyLanzador);
@@ -236,11 +237,96 @@ public sealed class CrearCasosRobotFlowTests(ViariatoApiFactory factory) : IClas
         Assert.True(tipo.IsConflict);
         Assert.Contains("Fagor", tipo.Detail);
 
-        var estado = await Assert.ThrowsAsync<ViriatoApiException>(() => robot.CrearCasoAsync(new CrearCasoRobotRequest("x", null, EstadoNegocioCodigo: "NO_EXISTE")));
-        Assert.True(estado.IsConflict);
-        Assert.Contains("NO_EXISTE", estado.Detail);
-
         Assert.Null(await Robot(e.KeyDestino).ObtenerSiguienteEjecucionAsync());
+    }
+
+    [Fact]
+    public async Task AnEstadoTheProcessDoesNotHaveYet_IsCreated_AndTheCasoStartsInIt()
+    {
+        var e = await CrearEntornoAsync();
+
+        var creado = await Robot(e.KeyLanzador).CrearCasoAsync(new CrearCasoRobotRequest("x", null, EstadoNegocioCodigo: "PENDIENTE_DE_REVISAR"));
+
+        var caso = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{creado.CasoId}");
+        Assert.Equal("PENDIENTE_DE_REVISAR", caso.GetProperty("estadoNegocio").GetProperty("codigo").GetString());
+
+        var estado = await EstadoAsync(e.DestinoId, "PENDIENTE_DE_REVISAR");
+        Assert.Equal("Pendiente de revisar", estado.Display);
+        Assert.True(estado.Activo);
+        Assert.Equal(2, estado.Orden); // after EN_COLA, the one the process already had
+    }
+
+    [Fact]
+    public async Task ASwitchedOffEstado_IsNotRecreated_AndCreatingTheCasoInItIsAConflict()
+    {
+        var e = await CrearEntornoAsync();
+        await DesactivarAsync(e.DestinoId, "EN_COLA");
+
+        var error = await Assert.ThrowsAsync<ViriatoApiException>(() =>
+            Robot(e.KeyLanzador).CrearCasoAsync(new CrearCasoRobotRequest("x", null, EstadoNegocioCodigo: "EN_COLA")));
+
+        Assert.True(error.IsConflict);
+        Assert.Contains("EN_COLA", error.Detail);
+        Assert.False((await EstadoAsync(e.DestinoId, "EN_COLA")).Activo);
+        Assert.Null(await Robot(e.KeyDestino).ObtenerSiguienteEjecucionAsync());
+    }
+
+    [Fact]
+    public async Task ARobotReportingAnEstadoTheProcessDoesNotHaveYet_CreatesIt_AndTheCasoMovesToIt()
+    {
+        var e = await CrearEntornoAsync();
+        var creado = await Robot(e.KeyLanzador).CrearCasoAsync(new CrearCasoRobotRequest("x", null));
+        var destino = Robot(e.KeyDestino);
+        var asignada = await destino.ObtenerSiguienteEjecucionAsync();
+        Assert.NotNull(asignada);
+
+        await destino.CambiarEstadoCasoAsync(asignada.EjecucionPasoId, "PRECIOS_EXTRAIDOS_SIN_ACTUALIZAR");
+
+        var caso = await e.Admin.GetFromJsonAsync<JsonElement>($"/api/v1/casos/{creado.CasoId}");
+        Assert.Equal("PRECIOS_EXTRAIDOS_SIN_ACTUALIZAR", caso.GetProperty("estadoNegocio").GetProperty("codigo").GetString());
+        Assert.Equal("Precios extraidos sin actualizar", (await EstadoAsync(e.DestinoId, "PRECIOS_EXTRAIDOS_SIN_ACTUALIZAR")).Display);
+
+        // A second report of the same state reuses it.
+        await destino.CambiarEstadoCasoAsync(asignada.EjecucionPasoId, "PRECIOS_EXTRAIDOS_SIN_ACTUALIZAR");
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.Set<FlujoEstadoDef>().CountAsync(x => x.FlujoId == e.DestinoId && x.Codigo == "PRECIOS_EXTRAIDOS_SIN_ACTUALIZAR"));
+    }
+
+    [Theory]
+    [InlineData("EN_COLA")]          // switched off by an admin: stays off
+    [InlineData("CON ESPACIOS")]     // not a valid code
+    public async Task ARobotReportingASwitchedOffOrInvalidEstado_GetsNotFound_SoTheStepDoesNotFail(string codigo)
+    {
+        var e = await CrearEntornoAsync();
+        await DesactivarAsync(e.DestinoId, "EN_COLA");
+        await Robot(e.KeyLanzador).CrearCasoAsync(new CrearCasoRobotRequest("x", null));
+        var destino = Robot(e.KeyDestino);
+        var asignada = await destino.ObtenerSiguienteEjecucionAsync();
+        Assert.NotNull(asignada);
+
+        var error = await Assert.ThrowsAsync<ViriatoApiException>(() => destino.CambiarEstadoCasoAsync(asignada.EjecucionPasoId, codigo));
+
+        Assert.True(error.IsNotFound);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await db.Set<FlujoEstadoDef>().AnyAsync(x => x.FlujoId == e.DestinoId && x.Codigo == "CON ESPACIOS"));
+    }
+
+    private async Task<FlujoEstadoDef> EstadoAsync(Guid flujoId, string codigo)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.Set<FlujoEstadoDef>().AsNoTracking().SingleAsync(x => x.FlujoId == flujoId && x.Codigo == codigo);
+    }
+
+    private async Task DesactivarAsync(Guid flujoId, string codigo)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var estado = await db.Set<FlujoEstadoDef>().SingleAsync(x => x.FlujoId == flujoId && x.Codigo == codigo);
+        estado.Activo = false;
+        await db.SaveChangesAsync();
     }
 
     [Fact]

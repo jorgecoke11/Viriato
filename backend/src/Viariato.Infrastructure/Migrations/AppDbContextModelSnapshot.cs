@@ -1974,6 +1974,10 @@ namespace Viariato.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("flujo_version_id");
 
+                    b.Property<int?>("MaximoDeVisitas")
+                        .HasColumnType("integer")
+                        .HasColumnName("maximo_de_visitas");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1983,6 +1987,14 @@ namespace Viariato.Infrastructure.Migrations
                     b.Property<int>("Orden")
                         .HasColumnType("integer")
                         .HasColumnName("orden");
+
+                    b.Property<double?>("PosicionX")
+                        .HasColumnType("double precision")
+                        .HasColumnName("posicion_x");
+
+                    b.Property<double?>("PosicionY")
+                        .HasColumnType("double precision")
+                        .HasColumnName("posicion_y");
 
                     b.Property<Guid?>("ServicioId")
                         .HasColumnType("uuid")
@@ -2057,6 +2069,60 @@ namespace Viariato.Infrastructure.Migrations
                         .HasDatabaseName("ix_flujo_tipo_caso_defs_flujo_id_nombre");
 
                     b.ToTable("flujo_tipo_caso_defs", "flujos");
+                });
+
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoTransicionDef", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("EstadoNegocioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("estado_negocio_id");
+
+                    b.Property<Guid>("FlujoVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flujo_version_id");
+
+                    b.Property<Guid>("PasoDestinoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paso_destino_id");
+
+                    b.Property<Guid?>("PasoOrigenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paso_origen_id");
+
+                    b.Property<string>("Resultado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("resultado");
+
+                    b.HasKey("Id")
+                        .HasName("pk_flujo_transicion_defs");
+
+                    b.HasIndex("EstadoNegocioId")
+                        .HasDatabaseName("ix_flujo_transicion_defs_estado_negocio_id");
+
+                    b.HasIndex("PasoDestinoId")
+                        .HasDatabaseName("ix_flujo_transicion_defs_paso_destino_id");
+
+                    b.HasIndex("PasoOrigenId")
+                        .HasDatabaseName("ix_flujo_transicion_defs_paso_origen_id");
+
+                    b.HasIndex("FlujoVersionId", "PasoOrigenId", "Resultado", "EstadoNegocioId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_flujo_transicion_defs_flujo_version_id_paso_origen_id_resul");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("FlujoVersionId", "PasoOrigenId", "Resultado", "EstadoNegocioId"), false);
+
+                    b.ToTable("flujo_transicion_defs", "flujos");
                 });
 
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoVersion", b =>
@@ -3833,6 +3899,43 @@ namespace Viariato.Infrastructure.Migrations
                     b.Navigation("Flujo");
                 });
 
+            modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoTransicionDef", b =>
+                {
+                    b.HasOne("Viariato.Modules.Flujos.Domain.FlujoEstadoDef", "EstadoNegocio")
+                        .WithMany()
+                        .HasForeignKey("EstadoNegocioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_flujo_transicion_defs_flujo_estado_defs_estado_negocio_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.FlujoVersion", "FlujoVersion")
+                        .WithMany("Transiciones")
+                        .HasForeignKey("FlujoVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_flujo_transicion_defs_flujo_version_flujo_version_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.FlujoPasoDef", "PasoDestino")
+                        .WithMany()
+                        .HasForeignKey("PasoDestinoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_flujo_transicion_defs_flujo_paso_defs_paso_destino_id");
+
+                    b.HasOne("Viariato.Modules.Flujos.Domain.FlujoPasoDef", "PasoOrigen")
+                        .WithMany()
+                        .HasForeignKey("PasoOrigenId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_flujo_transicion_defs_flujo_paso_defs_paso_origen_id");
+
+                    b.Navigation("EstadoNegocio");
+
+                    b.Navigation("FlujoVersion");
+
+                    b.Navigation("PasoDestino");
+
+                    b.Navigation("PasoOrigen");
+                });
+
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoVersion", b =>
                 {
                     b.HasOne("Viariato.Modules.Flujos.Domain.Flujo", "Flujo")
@@ -4114,6 +4217,8 @@ namespace Viariato.Infrastructure.Migrations
             modelBuilder.Entity("Viariato.Modules.Flujos.Domain.FlujoVersion", b =>
                 {
                     b.Navigation("Pasos");
+
+                    b.Navigation("Transiciones");
                 });
 
             modelBuilder.Entity("Viariato.Modules.RpaFleet.Domain.PlantillaDespacho", b =>

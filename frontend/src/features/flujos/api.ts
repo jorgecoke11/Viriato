@@ -140,10 +140,28 @@ export interface FlujoPasoDefDto {
   agenteDefinicionId: string | null
   servicioId: string | null
   configuracionJson: string | null
+  posicionX: number | null
+  posicionY: number | null
+  maximoDeVisitas: number | null
+}
+
+export type ResultadoEjecucion = 'Completada' | 'Fallida'
+
+/** An arrow of the flow: when `pasoOrigenId` ends with `resultado` and the caso is in `estadoNegocioCodigo` (null: any state), the
+ * caso goes on to `pasoDestinoId`. `pasoOrigenId` null is the start arrow. */
+export interface FlujoTransicionDefDto {
+  id: string
+  pasoOrigenId: string | null
+  resultado: ResultadoEjecucion | null
+  estadoNegocioId: string | null
+  estadoNegocioCodigo: string | null
+  pasoDestinoId: string
 }
 
 export interface FlujoVersionDetailDto extends FlujoVersionDto {
   pasos: FlujoPasoDefDto[]
+  /** Empty in a version from before arrows existed: it runs its steps by `orden`. */
+  transiciones: FlujoTransicionDefDto[]
 }
 
 export interface CreateFlujoVersionRequest {
@@ -157,10 +175,24 @@ export interface FlujoPasoDefInput {
   agenteDefinicionId?: string | null
   servicioId?: string | null
   configuracionJson?: string | null
+  /** The step's name within the request, which arrows refer to. Required when sending arrows. */
+  clave?: string | null
+  posicionX?: number | null
+  posicionY?: number | null
+  maximoDeVisitas?: number | null
+}
+
+export interface FlujoTransicionInput {
+  origen: string | null
+  destino: string
+  resultado: ResultadoEjecucion | null
+  estadoNegocioCodigo: string | null
 }
 
 export interface ReplacePasosRequest {
   pasos: FlujoPasoDefInput[]
+  /** Omitted: the older, list-shaped flow. */
+  transiciones?: FlujoTransicionInput[]
 }
 
 export interface AgenteDefinicionDto {

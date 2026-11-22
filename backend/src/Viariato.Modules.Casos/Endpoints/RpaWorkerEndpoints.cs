@@ -185,12 +185,12 @@ internal static class RpaWorkerEndpoints
         }
         else if (!string.IsNullOrWhiteSpace(request.EstadoNegocioCodigo))
         {
-            var codigo = request.EstadoNegocioCodigo.Trim();
-            estado = await db.Set<FlujoEstadoDef>().AsNoTracking()
-                .FirstOrDefaultAsync(e => e.FlujoId == flujoDestinoId && e.Activo && e.Codigo == codigo, ct);
+            // Created if the process does not have it yet, like a state a robot reports on its own step.
+            (estado, _) = await EstadosDeNegocio.ObtenerOCrearAsync(db, flujoDestinoId, request.EstadoNegocioCodigo, ct);
             if (estado is null)
             {
-                return ProblemResults.Conflict(http, $"El proceso \"{flujo.Nombre}\" no tiene el estado de negocio \"{request.EstadoNegocioCodigo}\".");
+                return ProblemResults.Conflict(http,
+                    $"El proceso \"{flujo.Nombre}\" tiene desactivado el estado de negocio \"{request.EstadoNegocioCodigo}\", o no es un código válido (letras, números, \"_\" y \"-\", hasta 50).");
             }
         }
 
@@ -762,9 +762,13 @@ internal static class RpaWorkerEndpoints
         var paso = await db.Set<EjecucionPaso>().AsNoTracking().FirstAsync(p => p.Id == id, ct);
         var caso = await db.Set<Caso>().FirstAsync(c => c.Id == paso.CasoId, ct);
 
-        var estado = await db.Set<FlujoEstadoDef>()
-            .FirstOrDefaultAsync(e => e.FlujoId == caso.FlujoId && e.Codigo == request.Codigo && e.Activo, ct);
-        if (estado is null) return ProblemResults.NotFound(http, "Estado de negocio no encontrado.");
+        // A state the process does not define yet is created: robots name their states, nobody has to add them by hand first. A
+        // switched-off state, or a code that could not be one, is still "not found" — which the SDK's IntentarCambiarEstadoCasoAsync
+        // turns into false, so a step never fails over a business state.
+        var (estado, creado) = string.IsNullOrWhiteSpace(request.Codigo)
+            ? (null, false)
+            : await EstadosDeNegocio.ObtenerOCrearAsync(db, caso.FlujoId, request.Codigo, ct);
+        if (estado is null) return ProblemResults.NotFound(http, "Estado de negocio no encontrado o desactivado.");
 
         caso.EstadoNegocioActualId = estado.Id;
         caso.UpdatedAt = DateTimeOffset.UtcNow;
@@ -773,7 +777,9 @@ internal static class RpaWorkerEndpoints
             CasoId = caso.Id,
             EjecucionId = paso.EjecucionId,
             Accion = CasoEventoAccion.EstadoNegocioActualizado,
-            DetalleJson = JsonSerializer.Serialize(new { estado.Codigo, estado.Display }),
+            DetalleJson = creado
+                ? JsonSerializer.Serialize(new { estado.Codigo, estado.Display, creadoAutomaticamente = true })
+                : JsonSerializer.Serialize(new { estado.Codigo, estado.Display }),
             OccurredAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync(ct);

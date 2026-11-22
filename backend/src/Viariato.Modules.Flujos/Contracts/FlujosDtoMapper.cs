@@ -34,7 +34,19 @@ public static class FlujosDtoMapper
         version.Notas,
         version.CreatedAt,
         version.PublishedAt,
-        version.Pasos.OrderBy(p => p.Orden).Select(p => p.ToDto()).ToList());
+        version.Pasos.OrderBy(p => p.Orden).Select(p => p.ToDto()).ToList(),
+        version.Transiciones
+            .OrderBy(t => t.PasoOrigenId is null ? 0 : 1).ThenBy(t => t.CreatedAt).ThenBy(t => t.Id)
+            .Select(t => t.ToDto()).ToList());
+
+    /// <summary>Needs <see cref="FlujoTransicionDef.EstadoNegocio"/> loaded for the state's code.</summary>
+    public static FlujoTransicionDefDto ToDto(this FlujoTransicionDef transicion) => new(
+        transicion.Id,
+        transicion.PasoOrigenId,
+        transicion.PasoOrigenId is null ? null : transicion.Resultado.ToString(),
+        transicion.EstadoNegocioId,
+        transicion.EstadoNegocio?.Codigo,
+        transicion.PasoDestinoId);
 
     public static FlujoPasoDefDto ToDto(this FlujoPasoDef paso) => new(
         paso.Id,
@@ -44,7 +56,10 @@ public static class FlujosDtoMapper
         paso.TipoPaso.ToString(),
         paso.AgenteDefinicionId,
         paso.ServicioId,
-        paso.ConfiguracionJson);
+        paso.ConfiguracionJson,
+        paso.PosicionX,
+        paso.PosicionY,
+        paso.MaximoDeVisitas);
 
     public static AsignacionFlujoDto ToDto(this AsignacionFlujo asignacion) => new(
         asignacion.Id, asignacion.FlujoId, asignacion.UserId, asignacion.CreatedAt);

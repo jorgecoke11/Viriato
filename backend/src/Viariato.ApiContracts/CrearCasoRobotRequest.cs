@@ -8,7 +8,8 @@ namespace Viariato.ApiContracts;
 /// <param name="DatosJson">The Caso's business data (a JSON object). It is what the robots of the process will read. With a
 /// <paramref name="Creador"/>, it is laid over the creator's defaults field by field and checked against the creator's form.</param>
 /// <param name="TipoCaso">Name of one of the process's case types (e.g. a brand), or null for none.</param>
-/// <param name="EstadoNegocioCodigo">Code of the business state the Caso starts in, or null for none.</param>
+/// <param name="EstadoNegocioCodigo">Code of the business state the Caso starts in, or null for none. Created in the process if it
+/// does not have it yet; one an admin switched off is a conflict.</param>
 /// <param name="PasoInicial">Name of the step of the process the Caso starts at (the steps before it are recorded as
 /// skipped), or null to start at the first one. A robot cannot create a Caso that would begin at a step of its own
 /// Servicio — it would just create more of itself — so a launcher that is itself step 1 of the process names the

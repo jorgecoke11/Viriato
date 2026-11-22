@@ -32,4 +32,7 @@ public sealed class FlujoVersion
     public Guid? CreatedByUserId { get; set; }
 
     public ICollection<FlujoPasoDef> Pasos { get; set; } = new List<FlujoPasoDef>();
+
+    /// <summary>The arrows between its steps. Empty in a version from before arrows existed, which keeps moving by Orden.</summary>
+    public ICollection<FlujoTransicionDef> Transiciones { get; set; } = new List<FlujoTransicionDef>();
 }
