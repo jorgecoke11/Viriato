@@ -164,7 +164,7 @@ services:
   # El token sale del panel de Cloudflare (Zero Trust → Networks → Tunnels) y va solo en .env. En ese mismo panel, el
   # "Public hostname" del túnel apunta al servicio  http://web:80  (Cloudflare pone el HTTPS; con esto DOMAIN=:80).
   cloudflared:
-    image: cloudflare/cloudflared:2024.12.2
+    image: cloudflare/cloudflared:2026.11.1
     profiles: ["tunnel"]
     command: tunnel --no-autoupdate run
     environment:
